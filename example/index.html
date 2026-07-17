@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SupaMDE — M0 Gerüst</title>
+  </head>
+  <body>
+    <h1>SupaMDE</h1>
+    <p>M0-Gerüst: Das Paket ist importierbar. Der Editor folgt in M1.</p>
+    <textarea id="editor"></textarea>
+    <script type="module">
+      import SupaMDE from '../dist/supamde.mjs';
+      const editor = new SupaMDE({ element: document.getElementById('editor') });
+      // eslint-disable-next-line no-console
+      console.log('SupaMDE-Version:', SupaMDE.version, editor);
+    </script>
+  </body>
+</html>
