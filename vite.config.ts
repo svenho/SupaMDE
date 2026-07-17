@@ -11,6 +11,11 @@ export default defineConfig({
       formats: ['es', 'umd'],
     },
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        exports: 'named',
+      },
+    },
   },
   test: {
     globals: true,
