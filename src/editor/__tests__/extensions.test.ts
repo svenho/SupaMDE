@@ -30,17 +30,15 @@ describe('buildExtensions', () => {
     expect(state.doc.toString()).toBe('# Test');
   });
 
-  it('aktiviert lineWrapping-Facet, wenn lineWrapping=true', () => {
+  it('aktiviert lineWrapping, wenn lineWrapping=true', () => {
     const view = new EditorView({ state: stateFrom({ ...base, lineWrapping: true }) });
-    // Query using the FacetProvider directly — returns { class: 'cm-lineWrapping' } or undefined
-    expect(view.state.facet(EditorView.lineWrapping as any)).toBeTruthy();
+    expect(view.lineWrapping).toBe(true);
     view.destroy();
   });
 
-  it('aktiviert lineWrapping-Facet NICHT, wenn lineWrapping=false', () => {
+  it('aktiviert lineWrapping NICHT, wenn lineWrapping=false', () => {
     const view = new EditorView({ state: stateFrom({ ...base, lineWrapping: false }) });
-    // Query using the FacetProvider directly — returns { class: 'cm-lineWrapping' } or undefined
-    expect(view.state.facet(EditorView.lineWrapping as any)).toBeFalsy();
+    expect(view.lineWrapping).toBe(false);
     view.destroy();
   });
 
