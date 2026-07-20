@@ -4,7 +4,7 @@
 
 **Goal:** Aus dem M0-Skelett einen sichtbaren, live formatierenden CodeMirror-6-Markdown-Editor bauen, der aus einer Textarea initialisiert wird, seinen Wert per `value()`/`getValue()`/`setValue()` les-/setzbar macht und per `toTextArea()` sauber zurückbaut.
 
-**Architecture:** Dünne Fassade (`SupaMDE` in `index.ts`) delegiert an fokussierte Editor-Kern-Module: `options.ts` (Normalisierung), `editor/extensions.ts` (Optionen→CM6-Extensions), `editor/theme.ts` + `editor/highlight.ts` (Erscheinungsbild), `editor/setup.ts` (`fromTextArea`-Äquivalent + Rückbau). Reine/headless-testbare Logik ist von der Klasse getrennt. Keine Adapter-Schicht — echte CM6-Idiome.
+**Architecture:** Dünne Fassade (`SupaMDE` in `index.ts`) delegiert an fokussierte Editor-Kern-Module: `options.ts` (Normalisierung), `editor/tokens.ts` (geteilte Style-Tokens), `editor/highlight.ts` + `editor/theme.ts` (Erscheinungsbild, aus Tokens), `editor/value.ts` (headless value-Logik), `editor/extensions.ts` (Optionen→CM6-Extensions), `editor/setup.ts` (`fromTextArea`-Äquivalent + Rückbau). Reine/headless-testbare Logik (Optionen, Tokens, value) ist von der Klasse getrennt. Keine Adapter-Schicht — echte CM6-Idiome.
 
 **Tech Stack:** TypeScript (strict), CodeMirror 6 (`@codemirror/state`, `@codemirror/view`, `@codemirror/language`, `@codemirror/lang-markdown`, `@lezer/highlight`), Vite (Library-Mode, ESM+UMD), Vitest (jsdom).
 
@@ -28,8 +28,10 @@
 | Datei | Verantwortung | Status |
 |---|---|---|
 | `src/options.ts` | `SupaMDEOptions`-Typ (Kern-Set), Defaults, Normalisierung → `ResolvedOptions` | Create |
+| `src/editor/tokens.ts` | geteilte Style-Tokens (Farben, Font-Stack) — eine Quelle für Highlight + Theme | Create |
 | `src/editor/highlight.ts` | `HighlightStyle` für Kern-Formatierungen (Headings, strong/em/strike, code, quote, link) | Create |
 | `src/editor/theme.ts` | `EditorView.theme` — Basis-Erscheinungsbild | Create |
+| `src/editor/value.ts` | headless value-Logik (`readValue`/`writeValue`) über einer `EditorView` | Create |
 | `src/editor/extensions.ts` | `buildExtensions(resolved)` → CM6-Extension-Liste | Create |
 | `src/editor/setup.ts` | `editorFromTextArea(...)` + `EditorHandle` (View + Rückbau) | Create |
 | `src/index.ts` | Fassade: Konstruktor ruft setup, delegiert value/getValue/setValue/toTextArea | Modify |
@@ -40,9 +42,12 @@
 Test-Dateien (je Modul in `__tests__/`):
 - `src/__tests__/options.test.ts`
 - `src/editor/__tests__/highlight.test.ts`
+- `src/editor/__tests__/value.test.ts`
 - `src/editor/__tests__/extensions.test.ts`
 - `src/editor/__tests__/setup.test.ts`
 - `src/__tests__/index.test.ts` (Modify — value-API-Tests ergänzen)
+
+> `tokens.ts` ist eine reine Konstanten-Datei ohne eigene Logik und bekommt keinen eigenen Test — es wird über `highlight.ts`/`theme.ts` mitgeprüft.
 
 ---
 
@@ -200,7 +205,57 @@ git commit -m "feat(m1): Optionen-Normalisierung (Kern-Set)"
 
 ---
 
-## Task 3: HighlightStyle (`editor/highlight.ts`)
+## Task 3: Style-Tokens (`editor/tokens.ts`)
+
+**Files:**
+- Create: `src/editor/tokens.ts`
+
+**Interfaces:**
+- Consumes: nichts (reine Konstanten)
+- Produces:
+  - `const colors` — geteilte Farbwerte (quote, link, Rahmen).
+  - `const fontStack` — der System-Font-Stack.
+
+> **Warum eigene Datei:** Highlight (Task 4) und Theme (Task 5) greifen sonst je hart­kodierte Magic-Values ab (`#6a737d`, `#0366d6`, Font-Stack). Die Spec kündigt für M3/M6 einen Farb-/px-Feinschliff an — mit einer Token-Quelle fasst dieser Feinschliff **eine** Datei an statt zwei. Kein eigener Test (reine Konstanten); über Highlight/Theme mitgeprüft.
+
+- [ ] **Step 1: `src/editor/tokens.ts` schreiben**
+
+```typescript
+/**
+ * Geteilte Style-Tokens für Highlight (`highlight.ts`) und Theme (`theme.ts`).
+ * EINE Quelle für Farben und Font-Stack, damit der Feinschliff in M3/M6 nur hier
+ * ansetzt. Exakte Werte sind bewusst vorläufig (easyMDE-Look, keine px-Parität).
+ */
+
+/** Kern-Farbwerte des SupaMDE-Basis-Looks. */
+export const colors = {
+  /** Blockquote-Text (gedämpftes Grau). */
+  quote: '#6a737d',
+  /** Links (GitHub-Blau). */
+  link: '#0366d6',
+  /** Container-Rahmen. */
+  border: '#ddd',
+} as const;
+
+/** System-Font-Stack (kein Web-Font-Load in M1). */
+export const fontStack = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+```
+
+- [ ] **Step 2: typecheck**
+
+Run: `npm run typecheck`
+Expected: PASS (Datei wird noch nicht importiert; nur Syntax-/Typ-Check).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/editor/tokens.ts
+git commit -m "feat(m1): geteilte Style-Tokens (Farben, Font-Stack)"
+```
+
+---
+
+## Task 4: HighlightStyle (`editor/highlight.ts`)
 
 **Files:**
 - Create: `src/editor/highlight.ts`
@@ -218,6 +273,7 @@ Datei `src/editor/__tests__/highlight.test.ts`:
 
 ```typescript
 import { describe, it, expect } from 'vitest';
+import { EditorState } from '@codemirror/state';
 import { HighlightStyle } from '@codemirror/language';
 import { supaHighlightStyle, highlightExtension } from '../highlight';
 
@@ -226,10 +282,12 @@ describe('supaHighlightStyle', () => {
     expect(supaHighlightStyle).toBeInstanceOf(HighlightStyle);
   });
 
-  it('definiert Regeln (nicht leer)', () => {
-    // HighlightStyle.specs hält die konfigurierten Stil-Regeln.
-    expect(Array.isArray(supaHighlightStyle.specs)).toBe(true);
-    expect(supaHighlightStyle.specs.length).toBeGreaterThan(0);
+  it('ist als Extension in einem State nutzbar (Style gültig)', () => {
+    // Robuster als das Inspizieren von HighlightStyle-Interna (`.specs` ist
+    // kein garantiertes öffentliches API): Wenn der Style ungültig wäre,
+    // würde EditorState.create() werfen.
+    const state = EditorState.create({ doc: '# H', extensions: [highlightExtension] });
+    expect(state.doc.toString()).toBe('# H');
   });
 
   it('stellt eine Extension bereit', () => {
@@ -251,11 +309,13 @@ Datei `src/editor/highlight.ts`:
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import type { Extension } from '@codemirror/state';
 import { tags as t } from '@lezer/highlight';
+import { colors } from './tokens';
 
 /**
  * Kern-Formatierungen für die easyMDE-„Quasi-WYSIWYG"-Parität: der Markdown-
- * Quelltext bleibt sichtbar, wird aber live formatiert. Exakte px/Farben sind
- * bewusst NICHT Teil von M1 (Feinschliff folgt in M3/M6).
+ * Quelltext bleibt sichtbar, wird aber live formatiert. Farben stammen aus
+ * `tokens.ts`; exakte px/Farben sind bewusst NICHT Teil von M1 (Feinschliff
+ * folgt in M3/M6, dann nur an der Token-Quelle).
  */
 export const supaHighlightStyle: HighlightStyle = HighlightStyle.define([
   { tag: t.heading1, fontSize: '1.6em', fontWeight: 'bold' },
@@ -267,16 +327,16 @@ export const supaHighlightStyle: HighlightStyle = HighlightStyle.define([
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strikethrough, textDecoration: 'line-through' },
   { tag: t.monospace, fontFamily: 'monospace' },
-  { tag: t.quote, color: '#6a737d', fontStyle: 'italic' },
-  { tag: t.link, color: '#0366d6', textDecoration: 'underline' },
-  { tag: t.url, color: '#0366d6' },
+  { tag: t.quote, color: colors.quote, fontStyle: 'italic' },
+  { tag: t.link, color: colors.link, textDecoration: 'underline' },
+  { tag: t.url, color: colors.link },
 ]);
 
 /** Fertige Extension: Syntax-Highlighting mit dem SupaMDE-Stil. */
 export const highlightExtension: Extension = syntaxHighlighting(supaHighlightStyle);
 ```
 
-> Hinweis für den Implementierer: Falls `t.content` im installierten `@lezer/highlight` nicht existiert oder zu breit greift, die betreffende Regel entfernen — die restlichen Tags decken den Look ab. Der Test prüft nur, dass Regeln existieren, nicht welche.
+> Hinweis für den Implementierer: Falls eines der `t.*`-Tags im installierten `@lezer/highlight` nicht existiert oder zu breit greift, die betreffende Regel entfernen — die restlichen Tags decken den Look ab. Der Test prüft nur, dass der Style als Extension gültig ist, nicht welche Regeln enthalten sind.
 
 - [ ] **Step 4: Test ausführen, Erfolg verifizieren**
 
@@ -297,14 +357,14 @@ git commit -m "feat(m1): HighlightStyle für easyMDE-Kern-Formatierungen"
 
 ---
 
-## Task 4: Basis-Theme (`editor/theme.ts`)
+## Task 5: Basis-Theme (`editor/theme.ts`)
 
 **Files:**
 - Create: `src/editor/theme.ts`
 - Test: `src/editor/__tests__/theme.test.ts`
 
 **Interfaces:**
-- Consumes: `@codemirror/view` (`EditorView`)
+- Consumes: `@codemirror/view` (`EditorView`), `tokens.ts` (`colors`, `fontStack`)
 - Produces: `const supaTheme: Extension` (Rückgabe von `EditorView.theme(...)`)
 
 - [ ] **Step 1: Failing-Test schreiben**
@@ -334,16 +394,18 @@ Datei `src/editor/theme.ts`:
 ```typescript
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
+import { colors, fontStack } from './tokens';
 
 /**
  * Basis-Erscheinungsbild des SupaMDE-Editors (Container, Font, Padding).
- * Ersetzt das CM5-'easymde'-Theme. Feinschliff (Farben/Abstände) folgt in M3/M6.
+ * Ersetzt das CM5-'easymde'-Theme. Farben/Font stammen aus `tokens.ts`;
+ * Feinschliff (Farben/Abstände) folgt in M3/M6, dann nur an der Token-Quelle.
  */
 export const supaTheme: Extension = EditorView.theme({
   '&': {
-    fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    fontFamily: fontStack,
     fontSize: '16px',
-    border: '1px solid #ddd',
+    border: `1px solid ${colors.border}`,
     borderRadius: '4px',
   },
   '.cm-content': {
@@ -370,14 +432,116 @@ git commit -m "feat(m1): Basis-Theme für den Editor-Container"
 
 ---
 
-## Task 5: Extension-Zusammenstellung (`editor/extensions.ts`)
+## Task 6: value-Logik (`editor/value.ts`)
+
+**Files:**
+- Create: `src/editor/value.ts`
+- Test: `src/editor/__tests__/value.test.ts`
+
+**Interfaces:**
+- Consumes: `@codemirror/view` (`EditorView`)
+- Produces:
+  - `function readValue(view: EditorView): string` (= `view.state.doc.toString()`)
+  - `function writeValue(view: EditorView, val: string): void` (ersetzt gesamten Doc via `dispatch`)
+
+> **Warum eigene Datei:** Die Spec (Abschnitt 3) verlangt, dass die value-Logik „rein/headless testbar" ist. Läge sie in der `SupaMDE`-Klasse, wäre sie nur über den Konstruktor (mit Textarea) testbar. Als freie Funktionen über einer `EditorView` sind sie direkt testbar und in M2 (Commands) wiederverwendbar. `index.ts` (Task 9) delegiert an diese Funktionen.
+
+- [ ] **Step 1: Failing-Test schreiben**
+
+Datei `src/editor/__tests__/value.test.ts`:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { EditorView } from '@codemirror/view';
+import { readValue, writeValue } from '../value';
+
+function viewWith(doc: string): EditorView {
+  return new EditorView({ doc });
+}
+
+describe('readValue / writeValue', () => {
+  it('readValue liefert den aktuellen Doc-Inhalt', () => {
+    const view = viewWith('# Titel');
+    expect(readValue(view)).toBe('# Titel');
+    view.destroy();
+  });
+
+  it('writeValue ersetzt den gesamten Doc-Inhalt', () => {
+    const view = viewWith('alt');
+    writeValue(view, 'neu');
+    expect(readValue(view)).toBe('neu');
+    view.destroy();
+  });
+
+  it('Roundtrip für Mehrzeiler und Leerstring', () => {
+    const view = viewWith('start');
+    writeValue(view, 'Zeile 1\nZeile 2\n');
+    expect(readValue(view)).toBe('Zeile 1\nZeile 2\n');
+    writeValue(view, '');
+    expect(readValue(view)).toBe('');
+    view.destroy();
+  });
+});
+```
+
+- [ ] **Step 2: Test ausführen, Fehlschlag verifizieren**
+
+Run: `npm run test:run -- src/editor/__tests__/value.test.ts`
+Expected: FAIL mit „Cannot find module '../value'".
+
+- [ ] **Step 3: Minimale Implementierung**
+
+Datei `src/editor/value.ts`:
+
+```typescript
+import type { EditorView } from '@codemirror/view';
+
+/**
+ * Headless value-Logik über einer `EditorView`. Bewusst aus der `SupaMDE`-
+ * Fassade herausgezogen: so ist sie ohne Textarea/Konstruktor testbar (Spec
+ * Abschnitt 3) und in M2 (Commands) wiederverwendbar.
+ */
+
+/** Liefert den aktuellen Editor-Inhalt als String. */
+export function readValue(view: EditorView): string {
+  return view.state.doc.toString();
+}
+
+/** Ersetzt den gesamten Editor-Inhalt durch `val`. */
+export function writeValue(view: EditorView, val: string): void {
+  view.dispatch({
+    changes: { from: 0, to: view.state.doc.length, insert: val },
+  });
+}
+```
+
+- [ ] **Step 4: Test ausführen, Erfolg verifizieren**
+
+Run: `npm run test:run -- src/editor/__tests__/value.test.ts`
+Expected: PASS (3 Tests).
+
+- [ ] **Step 5: typecheck**
+
+Run: `npm run typecheck`
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/editor/value.ts src/editor/__tests__/value.test.ts
+git commit -m "feat(m1): headless value-Logik (readValue/writeValue)"
+```
+
+---
+
+## Task 7: Extension-Zusammenstellung (`editor/extensions.ts`)
 
 **Files:**
 - Create: `src/editor/extensions.ts`
 - Test: `src/editor/__tests__/extensions.test.ts`
 
 **Interfaces:**
-- Consumes: `ResolvedOptions` (Task 2), `highlightExtension` (Task 3), `supaTheme` (Task 4), CM6-Pakete.
+- Consumes: `ResolvedOptions` (Task 2), `highlightExtension` (Task 4), `supaTheme` (Task 5), CM6-Pakete.
 - Produces: `function buildExtensions(resolved: ResolvedOptions): Extension[]`
   - Enthält immer: `markdown()`, `highlightExtension`, `supaTheme`, `EditorState.tabSize.of(...)`, `indentUnit.of(...)`.
   - Bedingt: `EditorView.lineWrapping` (wenn `lineWrapping`), `placeholder(text)` (wenn `placeholder !== null`).
@@ -391,6 +555,7 @@ Datei `src/editor/__tests__/extensions.test.ts`:
 import { describe, it, expect } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { indentUnit } from '@codemirror/language';
 import { buildExtensions } from '../extensions';
 import type { ResolvedOptions } from '../../options';
 
@@ -436,9 +601,38 @@ describe('buildExtensions', () => {
     expect(state.tabSize).toBe(4);
   });
 
-  it('baut auch mit gesetztem placeholder einen gültigen State', () => {
-    const state = stateFrom({ ...base, placeholder: 'Los geht’s …' });
-    expect(state.doc.toString()).toBe('# Test');
+  it('übernimmt indentUnit in den State', () => {
+    // indentUnit ist als String (Leerzeichen) im Facet hinterlegt.
+    const state = stateFrom({ ...base, indentUnit: 4 });
+    expect(state.facet(indentUnit)).toBe('    ');
+  });
+
+  it('erzeugt bei gesetztem placeholder das .cm-placeholder-DOM', () => {
+    const ta = document.createElement('textarea');
+    document.body.appendChild(ta);
+    const view = new EditorView({
+      state: stateFrom({ ...base, placeholder: 'Los geht’s …' }),
+      parent: ta.parentNode as HTMLElement,
+    });
+    // Placeholder erscheint nur im leeren Doc; hier ist doc='# Test' → wir
+    // prüfen stattdessen, dass die Extension aktiv ist, indem wir leeren.
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } });
+    expect(view.dom.querySelector('.cm-placeholder')).not.toBeNull();
+    view.destroy();
+    ta.remove();
+  });
+
+  it('erzeugt KEIN .cm-placeholder-DOM, wenn placeholder=null', () => {
+    const ta = document.createElement('textarea');
+    document.body.appendChild(ta);
+    const view = new EditorView({
+      state: stateFrom({ ...base, placeholder: null }),
+      parent: ta.parentNode as HTMLElement,
+    });
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } });
+    expect(view.dom.querySelector('.cm-placeholder')).toBeNull();
+    view.destroy();
+    ta.remove();
   });
 });
 ```
@@ -489,7 +683,7 @@ export function buildExtensions(resolved: ResolvedOptions): Extension[] {
 - [ ] **Step 4: Test ausführen, Erfolg verifizieren**
 
 Run: `npm run test:run -- src/editor/__tests__/extensions.test.ts`
-Expected: PASS (6 Tests).
+Expected: PASS (8 Tests).
 
 - [ ] **Step 5: typecheck**
 
@@ -505,14 +699,14 @@ git commit -m "feat(m1): Optionen→CM6-Extensions (Kern-Set)"
 
 ---
 
-## Task 6: fromTextArea-Äquivalent + Rückbau (`editor/setup.ts`)
+## Task 8: fromTextArea-Äquivalent + Rückbau (`editor/setup.ts`)
 
 **Files:**
 - Create: `src/editor/setup.ts`
 - Test: `src/editor/__tests__/setup.test.ts`
 
 **Interfaces:**
-- Consumes: `SupaMDEOptions`, `resolveOptions` (Task 2), `buildExtensions` (Task 5), CM6 `EditorView`.
+- Consumes: `SupaMDEOptions`, `resolveOptions` (Task 2), `buildExtensions` (Task 7), CM6 `EditorView`.
 - Produces:
   - `interface EditorHandle { view: EditorView; toTextArea(): HTMLTextAreaElement; forceSync(): void; }`
   - `function editorFromTextArea(options: SupaMDEOptions): EditorHandle`
@@ -548,6 +742,13 @@ describe('editorFromTextArea', () => {
     const ta = makeTextarea('# Hallo');
     const h = editorFromTextArea({ element: ta });
     expect(h.view.state.doc.toString()).toBe('# Hallo');
+    h.toTextArea();
+  });
+
+  it('initialValue überschreibt den Textarea-Wert', () => {
+    const ta = makeTextarea('aus Textarea');
+    const h = editorFromTextArea({ element: ta, initialValue: 'aus initialValue' });
+    expect(h.view.state.doc.toString()).toBe('aus initialValue');
     h.toTextArea();
   });
 
@@ -674,7 +875,7 @@ export function editorFromTextArea(options: SupaMDEOptions): EditorHandle {
 - [ ] **Step 4: Test ausführen, Erfolg verifizieren**
 
 Run: `npm run test:run -- src/editor/__tests__/setup.test.ts`
-Expected: PASS (6 Tests).
+Expected: PASS (8 Tests).
 
 - [ ] **Step 5: typecheck + lint**
 
@@ -690,14 +891,14 @@ git commit -m "feat(m1): fromTextArea-Äquivalent mit sauberem Rückbau"
 
 ---
 
-## Task 7: Fassade verdrahten (`index.ts`)
+## Task 9: Fassade verdrahten (`index.ts`)
 
 **Files:**
 - Modify: `src/index.ts`
 - Modify: `src/__tests__/index.test.ts`
 
 **Interfaces:**
-- Consumes: `SupaMDEOptions` (Task 2), `EditorHandle`/`editorFromTextArea` (Task 6), `EditorView`.
+- Consumes: `SupaMDEOptions` (Task 2), `readValue`/`writeValue` (Task 6), `EditorHandle`/`editorFromTextArea` (Task 8), `EditorView`.
 - Produces (öffentliche API):
   - `class SupaMDE` mit `options: SupaMDEOptions`, `codemirror: EditorView` (die View), Methoden:
     - `value(): string` und `value(val: string): void` (überladen)
@@ -782,6 +983,7 @@ import type { EditorView } from '@codemirror/view';
 import { VERSION } from './version';
 import type { SupaMDEOptions } from './options';
 import { editorFromTextArea, type EditorHandle } from './editor/setup';
+import { readValue, writeValue } from './editor/value';
 
 export type { SupaMDEOptions } from './options';
 
@@ -789,7 +991,8 @@ export type { SupaMDEOptions } from './options';
  * SupaMDE — moderner Markdown-Editor auf Basis von CodeMirror 6.
  *
  * Dünne Fassade: der Konstruktor baut über `editor/setup.ts` eine EditorView
- * aus der übergebenen Textarea; alle Methoden delegieren an diese View.
+ * aus der übergebenen Textarea; alle Methoden delegieren an diese View bzw. an
+ * die headless value-Logik (`editor/value.ts`). Keine Editor-Logik in der Klasse.
  */
 export class SupaMDE {
   /** Aktuelle SupaMDE-Version. */
@@ -821,14 +1024,12 @@ export class SupaMDE {
 
   /** Liefert den aktuellen Editor-Inhalt als String. */
   getValue(): string {
-    return this.codemirror.state.doc.toString();
+    return readValue(this.codemirror);
   }
 
   /** Ersetzt den gesamten Editor-Inhalt. */
   setValue(val: string): void {
-    this.codemirror.dispatch({
-      changes: { from: 0, to: this.codemirror.state.doc.length, insert: val },
-    });
+    writeValue(this.codemirror, val);
   }
 
   /** Baut den Editor zurück und stellt die ursprüngliche Textarea wieder her. */
@@ -860,7 +1061,7 @@ git commit -m "feat(m1): SupaMDE-Fassade mit value/getValue/setValue/toTextArea"
 
 ---
 
-## Task 8: Example-Seite auf echten Editor umstellen
+## Task 10: Example-Seite auf echten Editor umstellen
 
 **Files:**
 - Modify: `example/index.html`
@@ -869,7 +1070,9 @@ git commit -m "feat(m1): SupaMDE-Fassade mit value/getValue/setValue/toTextArea"
 - Consumes: gebauter Library-Output `../dist/supamde.mjs` (Default-Export `SupaMDE`).
 - Produces: manuell verifizierbare, live formatierende Editor-Seite (AK-3).
 
-- [ ] **Step 1: Build erzeugen**
+> **Wichtig — Build/Dev-Kopplung:** Das Example importiert aus `../dist/supamde.mjs` (bestehende Projektkonvention aus M0), **nicht** aus `../src`. Der Vite-Dev-Server bedient zwar die Seite, liefert aber **kein** frisches `dist`. Die visuelle Abnahme sieht also nur den Stand des **letzten** `npm run build`. Deshalb: vor jeder Abnahme neu bauen (Step 1) und bei Code-Änderungen erneut. (Ein Umstieg des Imports auf `../src/index.ts` wäre für den Dev-Flow bequemer, weicht aber von der M0-Konvention ab — bewusst zurückgestellt, ggf. eigener Meilenstein.)
+
+- [ ] **Step 1: Build erzeugen (Pflicht vor der Abnahme)**
 
 Run: `npm run build`
 Expected: PASS; `dist/supamde.mjs` und `dist/supamde.css` (falls Theme CSS emittiert) vorhanden.
@@ -924,7 +1127,7 @@ Ein [Link](https://example.org).
 
 - [ ] **Step 3: Manuelle visuelle Abnahme (AK-3)**
 
-Run: `npm run dev` und im Browser `example/index.html` öffnen (bzw. Vite-Dev-URL).
+Run: `npm run dev` und im Browser `example/index.html` öffnen (bzw. Vite-Dev-URL). **Voraussetzung:** `dist` ist aktuell (Step 1 gelaufen; bei zwischenzeitlichen Code-Änderungen `npm run build` erneut ausführen — der Dev-Server baut `dist` nicht selbst).
 Prüfen: Überschriften größer/fett, `**fett**` fett, `*kursiv*` kursiv, Inline-/Block-Code monospace, Zitat abgesetzt, Link erkennbar. Absenden schreibt Wert in die (versteckte) Textarea (via `forceSync`).
 
 - [ ] **Step 4: Commit**
@@ -936,7 +1139,7 @@ git commit -m "feat(m1): Example-Seite zeigt live formatierenden Editor"
 
 ---
 
-## Task 9: README erstellen
+## Task 11: README erstellen
 
 **Files:**
 - Create: `README.md`
@@ -1028,7 +1231,7 @@ git commit -m "docs(m1): README mit Installation, Optionen und API"
 
 ---
 
-## Task 10: M1-Abnahme (Definition of Done)
+## Task 12: M1-Abnahme (Definition of Done)
 
 **Files:** keine Änderung — reiner Verifikationslauf.
 
@@ -1040,8 +1243,10 @@ Expected: alle vier grün.
 - [ ] **Step 2: Akzeptanzkriterien gegen die Spec abhaken**
 
 Prüfen, dass AK-1..AK-13 aus `docs/superpowers/specs/2026-07-20-supamde-m1-editor-kern-design.md` erfüllt sind:
-- AK-1..AK-2, AK-4..AK-11: durch Unit-Tests belegt (Tasks 2, 5, 6, 7).
-- AK-3: manuelle visuelle Abnahme (Task 8, Step 3).
+- AK-4..AK-6 (value-API): durch `value.test.ts` (Task 6) + `index.test.ts` (Task 9) belegt.
+- AK-9..AK-10 (Optionen/Extensions): durch `options.test.ts` (Task 2) + `extensions.test.ts` (Task 7) belegt.
+- AK-1..AK-2, AK-7..AK-8, AK-11 (Setup/Rückbau/Fehler): durch `setup.test.ts` (Task 8) + `index.test.ts` (Task 9) belegt.
+- AK-3: manuelle visuelle Abnahme (Task 10, Step 3).
 - AK-12: Step 1 hier.
 - AK-13: CM6 in `dependencies` (Task 1), Build gebündelt (Step 1).
 
@@ -1057,8 +1262,9 @@ git status
 
 ## Notizen für den Implementierer
 
-- **`@lezer/highlight`-Tags:** Die verfügbaren Tags (`t.heading1`…`t.link`) können je nach Version leicht abweichen. Falls ein Tag nicht existiert, den TypeScript-Fehler beachten und das Tag weglassen — der Highlight-Test prüft nur, dass Regeln existieren.
-- **jsdom + CM6:** CM6 läuft headless in jsdom, aber Layout-Messungen (`getBoundingClientRect`) sind 0. Tests dürfen sich nicht auf gerenderte Pixel verlassen — nur auf State/DOM-Struktur (so gebaut).
+- **`@lezer/highlight`-Tags:** Die verfügbaren Tags (`t.heading1`…`t.link`) können je nach Version leicht abweichen. Falls ein Tag nicht existiert, den TypeScript-Fehler beachten und das Tag weglassen — der Highlight-Test prüft nur, dass der Style als Extension gültig ist, nicht welche Tags enthalten sind.
+- **`HighlightStyle.specs` meiden:** Der Highlight-Test inspiziert bewusst keine `HighlightStyle`-Interna (`.specs` ist kein garantiert stabiles API), sondern prüft die Gültigkeit über `EditorState.create`. Nicht auf Interna zurückfallen.
+- **jsdom + CM6:** CM6 läuft headless in jsdom, aber Layout-Messungen (`getBoundingClientRect`) sind 0. Tests dürfen sich nicht auf gerenderte Pixel verlassen — nur auf State/DOM-Struktur (so gebaut). Das `.cm-placeholder`-DOM (Task 7) wird jedoch von CM6 auch in jsdom eingehängt und ist prüfbar.
 - **`view.dom.remove()`** statt manuellem `parentNode.removeChild` — robuster, falls die View schon detached ist.
-- **Reihenfolge einhalten:** Task 5 braucht Task 2–4, Task 6 braucht Task 5, Task 7 braucht Task 6. Task 8/9 brauchen einen erfolgreichen Build (Task 7).
+- **Reihenfolge einhalten:** Task 4/5 brauchen die Tokens (Task 3). Task 7 (Extensions) braucht Task 2 + 4 + 5. Task 8 (Setup) braucht Task 7. Task 9 (Fassade) braucht Task 6 (value) + Task 8 (Setup). Task 10/11 brauchen einen erfolgreichen Build (Task 9).
 ```
