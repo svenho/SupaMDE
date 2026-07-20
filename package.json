@@ -1,0 +1,55 @@
+{
+  "name": "supamde",
+  "version": "0.0.0",
+  "description": "Ein moderner, einbettbarer Markdown-Editor auf Basis von CodeMirror 6 — die modernisierte Neufassung von easyMDE.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Sven Deginther",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
+  "main": "./dist/supamde.js",
+  "module": "./dist/supamde.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/supamde.mjs",
+      "require": "./dist/supamde.js"
+    },
+    "./dist/supamde.css": "./dist/supamde.css"
+  },
+  "files": [
+    "dist/**/*",
+    "src/**/*"
+  ],
+  "keywords": [
+    "markdown",
+    "editor",
+    "codemirror",
+    "codemirror6",
+    "wysiwyg",
+    "easymde"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && tsc --project tsconfig.json --emitDeclarationOnly",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.7.0",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.9.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.64.0",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  }
+}
