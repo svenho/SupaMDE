@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { indentUnit } from '@codemirror/language';
+import { indentUnit, syntaxTree } from '@codemirror/language';
 import { buildExtensions } from '../extensions';
 import type { ResolvedOptions } from '../../options';
 
@@ -79,5 +79,16 @@ describe('buildExtensions', () => {
     expect(view.dom.querySelector('.cm-placeholder')).toBeNull();
     view.destroy();
     ta.remove();
+  });
+
+  it('parst GFM-Strikethrough (~~...~~) als Strikethrough-Knoten', () => {
+    const state = EditorState.create({ doc: '~~weg~~', extensions: buildExtensions(base) });
+    let hasStrike = false;
+    syntaxTree(state).iterate({
+      enter: (node) => {
+        if (node.name === 'Strikethrough') hasStrike = true;
+      },
+    });
+    expect(hasStrike).toBe(true);
   });
 });
