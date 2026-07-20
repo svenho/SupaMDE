@@ -146,7 +146,7 @@ vorbehalten.
 
 ---
 
-## 8. Teststrategie & Abnahmekriterien
+## 8. Teststrategie & Verifikation
 
 **Unit-Tests (Vitest + jsdom)** — Verhalten, headless:
 
@@ -161,16 +161,80 @@ vorbehalten.
 **Manuell (nicht automatisiert):** Der HighlightStyle-Look wird in `example/index.html`
 visuell geprüft — Headings größer, `**fett**` fett, Code monospace, Quote abgesetzt.
 
-**Abnahmekriterien (Definition of Done) für M1:**
+**Verifikations-Kommandos:** Der Meilenstein gilt erst als grün, wenn alle vier
+Befehle ohne Fehler durchlaufen:
 
-1. `npm run build` + `npm run test:run` + `npm run lint` + `npm run typecheck` grün
-2. `example/index.html` zeigt einen live formatierenden Editor aus dem Textarea-Inhalt
-3. `value()` / `getValue()` / `setValue()` / `toTextArea()` funktionieren und sind unit-getestet
-4. CM6-Pakete in `dependencies`, gebündelter Build läuft
+```
+npm run build && npm run test:run && npm run lint && npm run typecheck
+```
+
+Die funktionalen Anforderungen, die diese Läufe absichern müssen, sind in Abschnitt 9
+(Akzeptanzkriterien) einzeln festgehalten.
 
 ---
 
-## 9. Offene Entscheidungen — geklärt
+## 9. Akzeptanzkriterien
+
+M1 ist **abgenommen**, wenn alle folgenden Kriterien erfüllt und (wo automatisierbar)
+durch einen Test belegt sind. Jedes Kriterium ist einzeln prüfbar formuliert.
+
+### 9.1 Editor-Erzeugung & Darstellung
+
+- **AK-1 — Editor entsteht aus Textarea.** `new SupaMDE({ element: textarea })` erzeugt
+  eine CM6-`EditorView`, deren `view.dom` im DOM **vor** der ursprünglichen Textarea
+  steht; die Textarea ist auf `display:none` gesetzt.
+- **AK-2 — Doc-Init aus Textarea.** Der initiale Editor-Inhalt entspricht exakt dem
+  Textarea-Wert zum Konstruktionszeitpunkt (`getValue()` == Ausgangs-Textarea-Inhalt).
+- **AK-3 — Live-Formatierung sichtbar.** In `example/index.html` wird der Markdown-
+  Quelltext live formatiert dargestellt: Headings größer/fett, `**fett**` fett,
+  `*kursiv*` kursiv, Inline- und Block-Code monospace mit abgesetztem Hintergrund,
+  Quote abgesetzt, Links erkennbar. (Manuelle visuelle Abnahme.)
+
+### 9.2 Wert-API (Drop-in)
+
+- **AK-4 — Lesen.** `value()` und `getValue()` liefern beide den aktuellen Doc-Inhalt
+  als String und sind äquivalent.
+- **AK-5 — Setzen.** `value(x)` und `setValue(x)` ersetzen beide den kompletten
+  Doc-Inhalt durch `x` und sind äquivalent.
+- **AK-6 — Roundtrip.** Nach `setValue(x)` gilt `getValue() === x` für beliebige
+  Strings (inkl. Mehrzeiler und Leerstring).
+
+### 9.3 Rückbau & Form-Integration
+
+- **AK-7 — `toTextArea()` baut sauber zurück.** Nach `toTextArea()` ist `view.dom`
+  aus dem DOM entfernt, die Textarea wieder sichtbar, ihr Wert entspricht dem letzten
+  Editor-Inhalt, und der Form-Submit-Listener ist per `removeEventListener` entfernt
+  (kein Leak bei wiederholtem Auf-/Abbau).
+- **AK-8 — Form-Submit-Sync.** Bei `submit` der umgebenden Form wird der aktuelle
+  Editor-Inhalt in die Textarea zurückgeschrieben (`forceSync`), auch ohne
+  `toTextArea()`.
+
+### 9.4 Optionen (Kern-Set)
+
+- **AK-9 — Optionen wirken als Extensions.** Für jede Kern-Option greift die erwartete
+  CM6-Extension: `lineWrapping`, `placeholder`, `autofocus`, `tabSize`/`indentUnit`.
+  Belegt durch `extensions.ts`-Tests (gesetztes Flag → erwartete Extension in der
+  Liste). Highlight und Theme sind immer enthalten.
+- **AK-10 — Defaults & Überschreibung.** `options.ts` normalisiert rohe User-Optionen:
+  Defaults greifen bei fehlenden Werten, gesetzte User-Werte überschreiben Defaults.
+
+### 9.5 Fehlerverhalten
+
+- **AK-11 — Ungültiges `element`.** Bei fehlendem oder nicht-Textarea-`element` wirft
+  der Konstruktor einen aussagekräftigen Fehler (kein still erzeugter leerer Editor).
+  Durch Test belegt.
+
+### 9.6 Build & Packaging
+
+- **AK-12 — Toolchain grün.** Die vier Verifikations-Kommandos aus Abschnitt 8 laufen
+  fehlerfrei durch.
+- **AK-13 — Gebündelter Build.** Die CM6-Pakete stehen in `dependencies` und sind in
+  den Library-Build gebündelt; ein Konsument benötigt nur `import SupaMDE`, ohne CM6
+  separat zu installieren.
+
+---
+
+## 10. Offene Entscheidungen — geklärt
 
 Alle für M1 relevanten Design-Entscheidungen sind in dieser Spec festgelegt:
 
