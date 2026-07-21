@@ -56,6 +56,14 @@ describe('headingSmaller / headingBigger (AC-B2)', () => {
     expect(view.state.doc.toString()).toBe('T');
     view.destroy();
   });
+
+  it('headingBigger auf Klartext (Level 0) ist No-op: gibt false zurück und ändert Doc nicht', () => {
+    const view = viewWith('T', 0);
+    const result = headingBigger(view);
+    expect(result).toBe(false);
+    expect(view.state.doc.toString()).toBe('T');
+    view.destroy();
+  });
 });
 
 describe('quote (AC-B3)', () => {

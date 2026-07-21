@@ -24,6 +24,8 @@ function applyHeading(view: EditorView, level: number): boolean {
     const insert = level === 0 ? '' : '#'.repeat(level) + ' ';
     changes.push({ from: line.from, to: line.from + oldLen, insert });
   }
+  const hasRealChange = changes.some((c) => c.from !== c.to || c.insert !== '');
+  if (!hasRealChange) return false;
   view.dispatch({ changes });
   return true;
 }
