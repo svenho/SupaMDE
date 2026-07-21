@@ -124,7 +124,7 @@ export const LINE_PREFIXES: readonly RegExp[] = [
   /^> /, // Blockzitat
   /^- \[[ xX]\] /, // Checkliste (vor "- ")
   /^\d+\. /, // geordnete Liste
-  /^- /, // ungeordnete Liste
+  /^[-*] /, // ungeordnete Liste: SupaMDE erzeugt "* ", erkennt aber auch "- "
 ];
 
 /**
@@ -269,16 +269,24 @@ export function selectedLineRange(state: EditorState): LineRange {
 /**
  * Toggelt ein Zeilen-Präfix über den Selektions-Zeilenbereich: tragen ALLE
  * Zeilen das Präfix, wird es entfernt, sonst überall hinzugefügt.
+ *
+ * `detect` bestimmt, ob eine Zeile als „bereits mit Präfix" gilt und welche
+ * Länge dann entfernt wird — nötig, wenn mehrere Marker denselben Listentyp
+ * bezeichnen (z. B. `- ` und `* ` als ungeordnete Liste). Ohne `detect` gilt
+ * ein exakter `startsWith(prefix)` (die Länge ist dann `prefix.length`).
  */
-export function toggleLinePrefix(view: EditorView, prefix: string): boolean {
+export function toggleLinePrefix(
+  view: EditorView,
+  prefix: string,
+  detect: RegExp = new RegExp(`^${escapeForRegExp(prefix)}`),
+): boolean {
   const { state } = view;
   const range = selectedLineRange(state);
   const changes: DocChange[] = [];
 
   let allHavePrefix = true;
   for (let n = range.firstLine; n <= range.lastLine; n++) {
-    const line = state.doc.line(n);
-    if (!line.text.startsWith(prefix)) {
+    if (!detect.test(state.doc.line(n).text)) {
       allHavePrefix = false;
       break;
     }
@@ -286,9 +294,11 @@ export function toggleLinePrefix(view: EditorView, prefix: string): boolean {
 
   for (let n = range.firstLine; n <= range.lastLine; n++) {
     const line = state.doc.line(n);
+    const existing = detect.exec(line.text);
     if (allHavePrefix) {
-      changes.push({ from: line.from, to: line.from + prefix.length, insert: '' });
-    } else if (!line.text.startsWith(prefix)) {
+      const len = existing ? existing[0].length : 0;
+      changes.push({ from: line.from, to: line.from + len, insert: '' });
+    } else if (!existing) {
       changes.push({ from: line.from, to: line.from, insert: prefix });
     }
   }
@@ -296,6 +306,11 @@ export function toggleLinePrefix(view: EditorView, prefix: string): boolean {
   if (changes.length === 0) return false;
   view.dispatch({ changes });
   return true;
+}
+
+/** Escaped Sonderzeichen eines Strings für die wörtliche Nutzung in einem RegExp. */
+function escapeForRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
@@ -404,7 +419,7 @@ describe('verschachteltes Toggle (AC-I4)', () => {
     // "**a *b* c**" → StrongEmphasis(…, Emphasis(*b*), …). italic-Toggle auf "b"
     // findet den inneren Emphasis-Knoten und entfernt NUR dessen *-Marker;
     // die umschließende **-Ebene bleibt unangetastet.
-    const view = viewWith('**a *b* c**', 6, 7); // "b" innerhalb des Emphasis
+    const view = viewWith('**a *b* c**', 5, 6); // "b" innerhalb des Emphasis (Pos 5='b')
     italic(view);
     expect(view.state.doc.toString()).toBe('**a b c**');
     view.destroy();
@@ -412,7 +427,7 @@ describe('verschachteltes Toggle (AC-I4)', () => {
 
   it('italic-Toggle-On fügt inneres *…* ein, ohne die **-Ebene zu berühren', () => {
     // Gegenprobe ohne inneren Knoten: hier greift der wrapSelection-Zweig.
-    const view = viewWith('**a b c**', 5, 6); // "b" selektiert, kein Emphasis darum
+    const view = viewWith('**a b c**', 4, 5); // "b" selektiert (Pos 4='b'), kein Emphasis darum
     italic(view);
     expect(view.state.doc.toString()).toBe('**a *b* c**');
     view.destroy();
@@ -706,7 +721,9 @@ function currentLevel(view: EditorView): number {
   const { firstLine } = selectedLineRange(view.state);
   const text = view.state.doc.line(firstLine).text;
   const match = /^(#{1,6}) /.exec(text);
-  return match ? match[1].length : 0;
+  // match[0] (voller Match: #-Folge + Leerzeichen) ist unter noUncheckedIndexedAccess
+  // stets definiert — anders als die Capture-Gruppe match[1]. Länge − 1 = Heading-Level.
+  return match ? match[0].length - 1 : 0;
 }
 
 /** Setzt jede Selektionszeile auf `level` #-Zeichen; `level === 0` entfernt sie. */
@@ -720,6 +737,9 @@ function applyHeading(view: EditorView, level: number): boolean {
     const insert = level === 0 ? '' : '#'.repeat(level) + ' ';
     changes.push({ from: line.from, to: line.from + oldLen, insert });
   }
+  // Rückgabe-Constraint: nur bei echter Doc-Änderung dispatchen und true liefern.
+  const hasRealChange = changes.some((c) => c.from !== c.to || c.insert !== '');
+  if (!hasRealChange) return false;
   view.dispatch({ changes });
   return true;
 }
@@ -814,7 +834,7 @@ git commit -m "feat(m2): block-Commands (heading/quote/code-block/hr/clean-block
 **Interfaces:**
 - Consumes: `SupaCommand`, `DocChange` (Task 1), `toggleLinePrefix`, `selectedLineRange` (Task 1).
 - Produces:
-  - `unorderedList: SupaCommand`, `orderedList: SupaCommand`, `checkList: SupaCommand`
+  - `unorderedList: SupaCommand` (`- `), `unorderedListStar: SupaCommand` (`* `), `orderedList: SupaCommand`, `checkList: SupaCommand`
   - `continueList: (view: EditorView) => boolean` — Enter-Handler; setzt Listen-Präfix fort bzw. beendet die Liste; `false`, wenn keine Listenzeile.
 
 > Hinweis: `continueList` baut seine Enter-Transaktion selbst (inkl. Nummern-Inkrement bei
@@ -906,7 +926,46 @@ import { stripLinePrefix } from './prefixes';
 import { selectedLineRange, toggleLinePrefix } from '../utils/text';
 
 /** Ungeordnete Liste (`- `) je Zeile ein-/ausschalten. */
-export const unorderedList: SupaCommand = (view) => toggleLinePrefix(view, '- ');
+/** Ein ungeordneter Bullet-Marker am Zeilenanfang (`- ` oder `* `). */
+const BULLET_PREFIX = /^[-*] /;
+
+/**
+ * Toggelt einen ungeordneten Bullet-Marker über die Selektion mit Konvertier-
+ * Semantik, sodass NIE ein zweiter Marker davorgesetzt wird:
+ * - Tragen ALLE Zeilen bereits exakt `marker`, wird er entfernt (Toggle-Off).
+ * - Sonst wird jede Zeile auf `marker` gebracht: ein vorhandener Fremd-Bullet
+ *   (`- ` ↔ `* `) wird ERSETZT (Konvertierung), Klartextzeilen bekommen `marker`.
+ */
+function toggleBulletList(view: EditorView, marker: '- ' | '* '): boolean {
+  const range = selectedLineRange(view.state);
+  const lines = [];
+  for (let n = range.firstLine; n <= range.lastLine; n++) {
+    lines.push(view.state.doc.line(n));
+  }
+
+  const allHaveMarker = lines.every((line) => line.text.startsWith(marker));
+  const changes: DocChange[] = [];
+  for (const line of lines) {
+    const existing = BULLET_PREFIX.exec(line.text);
+    if (allHaveMarker) {
+      changes.push({ from: line.from, to: line.from + marker.length, insert: '' });
+    } else if (existing) {
+      changes.push({ from: line.from, to: line.from + existing[0].length, insert: marker });
+    } else {
+      changes.push({ from: line.from, to: line.from, insert: marker });
+    }
+  }
+
+  if (changes.length === 0) return false;
+  view.dispatch({ changes });
+  return true;
+}
+
+/** Ungeordnete Liste mit Spiegelstrich (`- `) ein-/ausschalten (Default, Cmd+L). */
+export const unorderedList: SupaCommand = (view) => toggleBulletList(view, '- ');
+
+/** Ungeordnete Liste mit Sternchen (`* `) ein-/ausschalten (Shift+Alt+Cmd+L). */
+export const unorderedListStar: SupaCommand = (view) => toggleBulletList(view, '* ');
 
 /** Checkliste (`- [ ] `) je Zeile ein-/ausschalten. */
 export const checkList: SupaCommand = (view) => toggleLinePrefix(view, '- [ ] ');
@@ -948,7 +1007,8 @@ function continuationPrefix(currentPrefix: string): string | null {
   if (/^- \[[ xX]\] $/.test(currentPrefix)) return '- [ ] ';
   const ordered = /^(\d+)\. $/.exec(currentPrefix);
   if (ordered) return `${Number(ordered[1]) + 1}. `;
-  if (currentPrefix === '- ') return '- ';
+  // Bullet-Marker der aktuellen Zeile beibehalten (`* ` oder ein Bestands-`- `).
+  if (currentPrefix === '* ' || currentPrefix === '- ') return currentPrefix;
   return null;
 }
 
@@ -1312,7 +1372,7 @@ import {
   codeBlock,
   cleanBlock,
 } from './block';
-import { unorderedList, orderedList, checkList, continueList } from './list';
+import { unorderedList, unorderedListStar, orderedList, checkList, continueList } from './list';
 import { drawLink, drawImage } from './link-image';
 
 /**
@@ -1336,9 +1396,14 @@ export const supaKeymap: KeyBinding[] = [
   { key: 'Mod-e', run: cleanBlock, preventDefault: true },
   { key: 'Mod-Alt-i', run: drawImage, preventDefault: true },
   { key: "Mod-'", run: quote, preventDefault: true },
+  // Zweitkürzel für Blockzitat: Mod-' liegt auf DE-Mac-Tastaturen auf Shift+#
+  // und ist dort unzuverlässig. Ctrl-Alt-Q ist layout-unabhängig erreichbar.
+  { key: 'Ctrl-Alt-q', run: quote, preventDefault: true },
   { key: 'Mod-Alt-l', run: orderedList, preventDefault: true },
   { key: 'Mod-l', run: unorderedList, preventDefault: true },
   { key: 'Shift-Mod-l', run: checkList, preventDefault: true },
+  // Ungeordnete Liste mit Sternchen-Marker (Alternative zum Spiegelstrich-Default).
+  { key: 'Shift-Alt-Mod-l', run: unorderedListStar, preventDefault: true },
   { key: 'Mod-Alt-c', run: codeBlock, preventDefault: true },
   // Listen-Fortsetzung: greift nur in Listenzeilen, sonst false → Standard-Enter.
   { key: 'Enter', run: continueList },
@@ -1524,8 +1589,9 @@ Toolbar folgt in M3.
 | `Mod-K` | Link |
 | `Mod-H` / `Shift-Mod-H` | Überschrift kleiner / größer |
 | `Ctrl-Alt-1` … `Ctrl-Alt-6` | Überschrift H1 … H6 |
-| `Mod-'` | Blockzitat |
-| `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste / nummeriert / Checkliste |
+| `Mod-'` / `Ctrl-Alt-Q` | Blockzitat (Zweitkürzel für DE-Mac-Tastatur) |
+| `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste (`- `) / nummeriert / Checkliste |
+| `Shift-Alt-Mod-L` | Liste mit Sternchen (`* `) |
 | `Mod-Alt-C` | Codeblock |
 | `Mod-Alt-I` | Bild einfügen |
 | `Mod-E` | Blockformat entfernen |
