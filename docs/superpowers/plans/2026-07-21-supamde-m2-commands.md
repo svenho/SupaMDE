@@ -4,7 +4,7 @@
 
 **Goal:** Alle Toolbar-Aktionen von SupaMDE als reine, unit-getestete CM6-Commands umsetzen, per Default-Shortcuts (`supaKeymap`) und History (Undo/Redo) verdrahten.
 
-**Architecture:** Jede Aktion ist eine reine Funktion `(view: EditorView) => boolean` unter `src/commands/`. Inline-Toggle nutzt den Lezer-Syntaxbaum (`syntaxTree`), Block/Listen arbeiten zeilenorientiert über kleine reine Helfer in `src/utils/text.ts`. Ein `supaKeymap` bindet die easyMDE-Default-Kürzel an die Commands und wird zusammen mit `history()` in das bestehende `buildExtensions` (M1) eingehängt.
+**Architecture:** Jede Aktion ist eine reine Funktion `(view: EditorView) => boolean` unter `src/commands/`. Inline-Toggle nutzt den Lezer-Syntaxbaum (`syntaxTree`), Block/Listen arbeiten zeilenorientiert über kleine reine Helfer in `src/utils/text.ts`. Wiederkehrende Bausteine sind zentralisiert: der Change-Typ `DocChange` und die Zeilen-Präfix-Erkennung (`prefixes.ts`, genutzt von `block.ts`/`list.ts`/`cleanBlock`), damit sich die Regexes nicht über Module hinweg auseinanderentwickeln. Ein `supaKeymap` bindet die easyMDE-Default-Kürzel an die Commands und wird zusammen mit `history()` in das bestehende `buildExtensions` (M1) eingehängt.
 
 **Tech Stack:** TypeScript 5.9, CodeMirror 6 (`@codemirror/{state,view,language,commands,lang-markdown}`, `@lezer/{highlight,markdown}`), Vitest (jsdom, headless `EditorView`).
 
@@ -27,7 +27,8 @@ Neu bzw. geändert:
 ```
 src/
   commands/
-    types.ts        (neu) → SupaCommand-Typ
+    types.ts        (neu) → SupaCommand-Typ + DocChange
+    prefixes.ts     (neu) → zentrale Zeilen-Präfixe (LINE_PREFIXES, stripLinePrefix)
     inline.ts       (neu) → bold, italic, strikethrough, inlineCode
     block.ts        (neu) → setHeading, headingSmaller/Bigger, quote, codeBlock, horizontalRule, cleanBlock
     list.ts         (neu) → unorderedList, orderedList, checkList, continueList (Extension)
@@ -53,6 +54,7 @@ package.json        (mod) → @codemirror/commands
 **Files:**
 - Modify: `package.json` (dependencies)
 - Create: `src/commands/types.ts`
+- Create: `src/commands/prefixes.ts`
 - Create: `src/utils/text.ts`
 - Test: `src/utils/__tests__/text.test.ts`
 
@@ -60,6 +62,8 @@ package.json        (mod) → @codemirror/commands
 - Consumes: nichts (Fundament).
 - Produces:
   - `type SupaCommand = (view: EditorView) => boolean` (aus `src/commands/types.ts`).
+  - `interface DocChange { from; to; insert }` (aus `src/commands/types.ts`) — geteilter Change-Typ.
+  - `LINE_PREFIXES` + `stripLinePrefix(text): { prefix; rest } | null` (aus `src/commands/prefixes.ts`) — zentrale Definition aller Zeilen-Präfixe (Heading, Quote, ul/ol/check), genutzt von `block.ts`, `list.ts`, `cleanBlock`.
   - `selectedLineRange(state: EditorState): { from: number; to: number; firstLine: number; lastLine: number }` — Doc-Offsets, die den vollständigen Zeilenbereich der aktuellen Hauptselektion umschließen.
   - `toggleLinePrefix(view: EditorView, prefix: string): boolean` — setzt/entfernt `prefix` an jedem Zeilenanfang des Selektions-Zeilenbereichs; gibt `true` zurück, wenn eine Änderung dispatcht wurde.
   - `wrapSelection(view: EditorView, before: string, after: string): boolean` — umschließt die Hauptselektion mit `before`/`after`; bei leerer Selektion Marker einfügen und Cursor dazwischen setzen. Gibt `true` zurück.
@@ -77,7 +81,7 @@ Danach installieren:
 Run: `npm install`
 Expected: Installation ohne Peer-Fehler; `node_modules/@codemirror/commands` existiert.
 
-- [ ] **Step 2: Command-Typ anlegen**
+- [ ] **Step 2: Command-Typ + geteilter Change-Typ anlegen**
 
 Create `src/commands/types.ts`:
 
@@ -90,9 +94,53 @@ import type { EditorView } from '@codemirror/view';
  * verändert wurde — sonst `false` (No-op). Testbar ohne DOM/Toolbar.
  */
 export type SupaCommand = (view: EditorView) => boolean;
+
+/**
+ * Eine einzelne Doc-Änderung im CM6-`changes`-Format. Zentral definiert, damit
+ * die Command-Module (`text.ts`, `block.ts`, `list.ts`, `inline.ts`) nicht
+ * jeweils denselben Inline-Typ wiederholen.
+ */
+export interface DocChange {
+  from: number;
+  to: number;
+  insert: string;
+}
 ```
 
-- [ ] **Step 3: Failing test für Text-Helfer schreiben**
+- [ ] **Step 3: Zentrale Zeilen-Präfixe anlegen**
+
+Create `src/commands/prefixes.ts`:
+
+```typescript
+/**
+ * Zentrale Definition aller markdown-Zeilen-Präfixe, die von mehreren Command-
+ * Modulen erkannt/entfernt werden. Eine einzige Quelle verhindert, dass sich
+ * `block.ts`, `list.ts` und `cleanBlock` in ihren Regexes auseinanderentwickeln.
+ * Reihenfolge ist bedeutsam: spezifischere Muster (Checkliste) VOR allgemeineren
+ * (Aufzählungsstrich) prüfen.
+ */
+export const LINE_PREFIXES: readonly RegExp[] = [
+  /^#{1,6} /, // Heading
+  /^> /, // Blockzitat
+  /^- \[[ xX]\] /, // Checkliste (vor "- ")
+  /^\d+\. /, // geordnete Liste
+  /^- /, // ungeordnete Liste
+];
+
+/**
+ * Trennt ein erkanntes Zeilen-Präfix vom Rest der Zeile. Liefert `null`, wenn die
+ * Zeile mit keinem bekannten Präfix beginnt.
+ */
+export function stripLinePrefix(text: string): { prefix: string; rest: string } | null {
+  for (const re of LINE_PREFIXES) {
+    const m = re.exec(text);
+    if (m) return { prefix: m[0], rest: text.slice(m[0].length) };
+  }
+  return null;
+}
+```
+
+- [ ] **Step 4: Failing test für Text-Helfer + Präfixe schreiben**
 
 Create `src/utils/__tests__/text.test.ts`:
 
@@ -101,6 +149,7 @@ import { describe, it, expect } from 'vitest';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { selectedLineRange, toggleLinePrefix, wrapSelection } from '../text';
+import { stripLinePrefix } from '../../commands/prefixes';
 
 function viewWith(doc: string, anchor = 0, head = anchor): EditorView {
   const state = EditorState.create({
@@ -160,20 +209,37 @@ describe('wrapSelection', () => {
     view.destroy();
   });
 });
+
+describe('stripLinePrefix', () => {
+  it('erkennt Checkliste vor dem allgemeinen Aufzählungsstrich', () => {
+    expect(stripLinePrefix('- [ ] Aufgabe')).toEqual({ prefix: '- [ ] ', rest: 'Aufgabe' });
+  });
+
+  it('erkennt Heading, Quote und geordnete Liste', () => {
+    expect(stripLinePrefix('## Titel')?.prefix).toBe('## ');
+    expect(stripLinePrefix('> zitat')?.prefix).toBe('> ');
+    expect(stripLinePrefix('3. Punkt')?.prefix).toBe('3. ');
+  });
+
+  it('liefert null ohne bekanntes Präfix', () => {
+    expect(stripLinePrefix('Klartext')).toBeNull();
+  });
+});
 ```
 
-- [ ] **Step 4: Test ausführen (muss fehlschlagen)**
+- [ ] **Step 5: Test ausführen (muss fehlschlagen)**
 
 Run: `npx vitest run src/utils/__tests__/text.test.ts`
 Expected: FAIL — `Failed to resolve import "../text"` bzw. „is not a function".
 
-- [ ] **Step 5: Text-Helfer implementieren**
+- [ ] **Step 6: Text-Helfer implementieren**
 
 Create `src/utils/text.ts`:
 
 ```typescript
 import type { EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
+import type { DocChange } from '../commands/types';
 
 /** Der volle Zeilenbereich, den die Hauptselektion berührt. */
 export interface LineRange {
@@ -207,7 +273,7 @@ export function selectedLineRange(state: EditorState): LineRange {
 export function toggleLinePrefix(view: EditorView, prefix: string): boolean {
   const { state } = view;
   const range = selectedLineRange(state);
-  const changes: { from: number; to: number; insert: string }[] = [];
+  const changes: DocChange[] = [];
 
   let allHavePrefix = true;
   for (let n = range.firstLine; n <= range.lastLine; n++) {
@@ -254,16 +320,16 @@ export function wrapSelection(view: EditorView, before: string, after: string): 
 }
 ```
 
-- [ ] **Step 6: Test ausführen (muss grün sein)**
+- [ ] **Step 7: Test ausführen (muss grün sein)**
 
 Run: `npx vitest run src/utils/__tests__/text.test.ts`
-Expected: PASS (alle 6 Tests grün).
+Expected: PASS (alle Tests grün — Text-Helfer und `stripLinePrefix`).
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add package.json package-lock.json src/commands/types.ts src/utils/text.ts src/utils/__tests__/text.test.ts
-git commit -m "feat(m2): Command-Typ, Text-Helfer und @codemirror/commands-Dependency"
+git add package.json package-lock.json src/commands/types.ts src/commands/prefixes.ts src/utils/text.ts src/utils/__tests__/text.test.ts
+git commit -m "feat(m2): Command-Typ, DocChange, Zeilen-Präfixe, Text-Helfer und @codemirror/commands-Dependency"
 ```
 
 ---
@@ -333,10 +399,20 @@ describe('bold', () => {
 });
 
 describe('verschachteltes Toggle (AC-I4)', () => {
-  it('italic-Toggle wirkt nur auf den inneren Bereich, ** bleibt intakt', () => {
-    // "**a b c**" mit Cursorbereich auf "b": italic soll *b* erzeugen,
-    // ohne die umschließende **-Ebene zu berühren.
-    const view = viewWith('**a b c**', 5, 6); // "b" selektiert
+  it('italic-Toggle-Off wirkt nur auf den inneren *b*, ** bleibt intakt', () => {
+    // Ausgangsdoc mit real verschachteltem Emphasis-Knoten:
+    // "**a *b* c**" → StrongEmphasis(…, Emphasis(*b*), …). italic-Toggle auf "b"
+    // findet den inneren Emphasis-Knoten und entfernt NUR dessen *-Marker;
+    // die umschließende **-Ebene bleibt unangetastet.
+    const view = viewWith('**a *b* c**', 6, 7); // "b" innerhalb des Emphasis
+    italic(view);
+    expect(view.state.doc.toString()).toBe('**a b c**');
+    view.destroy();
+  });
+
+  it('italic-Toggle-On fügt inneres *…* ein, ohne die **-Ebene zu berühren', () => {
+    // Gegenprobe ohne inneren Knoten: hier greift der wrapSelection-Zweig.
+    const view = viewWith('**a b c**', 5, 6); // "b" selektiert, kein Emphasis darum
     italic(view);
     expect(view.state.doc.toString()).toBe('**a *b* c**');
     view.destroy();
@@ -446,7 +522,7 @@ export const italic: SupaCommand = toggle({
 /** Durchstreichen (`~~…~~`) ein-/ausschalten. */
 export const strikethrough: SupaCommand = toggle({
   node: 'Strikethrough',
-  mark: 'EmphasisMark',
+  mark: 'StrikethroughMark',
   before: '~~',
   after: '~~',
 });
@@ -465,9 +541,14 @@ export const inlineCode: SupaCommand = toggle({
 Run: `npx vitest run src/commands/__tests__/inline.test.ts`
 Expected: PASS.
 
-Falls der Toggle-Off-Test (AC-I3) fehlschlägt, weil `EmphasisMark` als Kindname für Strikethrough abweicht: die tatsächlichen Kindnamen mit einem Ad-hoc-Log prüfen (`syntaxTree(view.state).topNode.toString()`) und `spec.mark` entsprechend anpassen — nur der Mark-Name je Spec, keine Logikänderung.
+Die Marker-Kindnamen sind gegen `@lezer/markdown` (mit GFM) verifiziert und in den
+`InlineSpec`s bereits korrekt hinterlegt: `StrongEmphasis`/`Emphasis` → `EmphasisMark`,
+`Strikethrough` → `StrikethroughMark`, `InlineCode` → `CodeMark`. **Keine** nachträgliche
+Anpassung der Test-Erwartungen an das Ist-Ergebnis — die erwarteten Doc-Strings sind
+Vorgabe (TDD). Schlägt ein Test fehl, liegt der Fehler im Command, nicht im Test.
 
-Sollte der AC-I4-Test (verschachtelt) am erwarteten String scheitern, weil der Parser den inneren Bereich anders begrenzt: mit demselben `topNode.toString()`-Log die tatsächlichen Knotengrenzen prüfen und die **Test-Erwartung** an das reale (korrekte) Ergebnis anpassen. Kern-Anforderung bleibt: die umschließende `**`-Ebene wird nicht angetastet — nur das ist zu verifizieren, nicht die exakte Zeichenposition.
+Hinweis zur Robustheit (Spec 4.1): Fehlt wider Erwarten ein Knoten (z. B. Cursor am
+Marker-Rand), fällt `toggle` auf `wrapSelection` zurück — nie ein Wurf.
 
 - [ ] **Step 5: Commit**
 
@@ -485,7 +566,7 @@ git commit -m "feat(m2): inline-Commands (bold/italic/strikethrough/inline-code)
 - Test: `src/commands/__tests__/block.test.ts`
 
 **Interfaces:**
-- Consumes: `SupaCommand` (Task 1), `toggleLinePrefix`, `selectedLineRange`, `wrapSelection` (Task 1).
+- Consumes: `SupaCommand`, `DocChange`, `stripLinePrefix` (Task 1), `toggleLinePrefix`, `selectedLineRange`, `wrapSelection` (Task 1).
 - Produces:
   - `setHeading(level: 1|2|3|4|5|6): SupaCommand`
   - `headingSmaller: SupaCommand`, `headingBigger: SupaCommand`
@@ -547,10 +628,12 @@ describe('headingSmaller / headingBigger (AC-B2)', () => {
     view.destroy();
   });
 
-  it('headingBigger bleibt bei H1 stehen (keine Über-Grenze)', () => {
+  it('headingBigger macht aus H1 Klartext und bleibt dann bei Klartext (Untergrenze)', () => {
     const view = viewWith('# T', 0);
     headingBigger(view);
-    expect(view.state.doc.toString()).toBe('# T');
+    expect(view.state.doc.toString()).toBe('T');
+    headingBigger(view);
+    expect(view.state.doc.toString()).toBe('T');
     view.destroy();
   });
 });
@@ -573,22 +656,29 @@ describe('codeBlock (AC-B4)', () => {
     expect(view.state.doc.toString()).toBe('```\nx\n```');
     view.destroy();
   });
+
+  it('entfernt die Fences auf bereits umschlossener Selektion (Toggle-Off)', () => {
+    const view = viewWith('```\nx\n```', 4, 5); // "x" innerhalb der Fences selektiert
+    codeBlock(view);
+    expect(view.state.doc.toString()).toBe('x');
+    view.destroy();
+  });
 });
 
 describe('horizontalRule (AC-B5)', () => {
-  it('fügt eine Trennlinie ein', () => {
+  it('fügt eine Trennlinie an der Cursorzeile ein', () => {
     const view = viewWith('a', 1);
     horizontalRule(view);
-    expect(view.state.doc.toString()).toBe('a\n\n---\n');
+    expect(view.state.doc.toString()).toBe('a\n---\n');
     view.destroy();
   });
 });
 
 describe('cleanBlock (AC-B6)', () => {
-  it('entfernt Heading- und Quote-Präfixe', () => {
-    const view = viewWith('## a\n> b', 0, 7);
+  it('entfernt Heading-, Quote- und Listen-Präfixe', () => {
+    const view = viewWith('## a\n> b\n- c\n1. d', 0, 16);
     cleanBlock(view);
-    expect(view.state.doc.toString()).toBe('a\nb');
+    expect(view.state.doc.toString()).toBe('a\nb\nc\nd');
     view.destroy();
   });
 });
@@ -605,7 +695,8 @@ Create `src/commands/block.ts`:
 
 ```typescript
 import type { EditorView } from '@codemirror/view';
-import type { SupaCommand } from './types';
+import type { DocChange, SupaCommand } from './types';
+import { stripLinePrefix } from './prefixes';
 import { selectedLineRange, toggleLinePrefix, wrapSelection } from '../utils/text';
 
 type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
@@ -621,7 +712,7 @@ function currentLevel(view: EditorView): number {
 /** Setzt jede Selektionszeile auf `level` #-Zeichen; `level === 0` entfernt sie. */
 function applyHeading(view: EditorView, level: number): boolean {
   const range = selectedLineRange(view.state);
-  const changes: { from: number; to: number; insert: string }[] = [];
+  const changes: DocChange[] = [];
   for (let n = range.firstLine; n <= range.lastLine; n++) {
     const line = view.state.doc.line(n);
     const existing = /^(#{1,6}) /.exec(line.text);
@@ -653,24 +744,46 @@ export const headingBigger: SupaCommand = (view) => {
 /** Blockzitat (`> `) je Zeile ein-/ausschalten. */
 export const quote: SupaCommand = (view) => toggleLinePrefix(view, '> ');
 
-/** Umschließt die Selektion mit ```-Fences (Codeblock). */
-export const codeBlock: SupaCommand = (view) => wrapSelection(view, '```\n', '\n```');
+/**
+ * Umschließt die Selektion mit ```-Fences (Codeblock) bzw. entfernt sie, wenn die
+ * Selektion bereits exakt von einem `` ```-Fence-Paar `` umschlossen ist (Toggle).
+ */
+export const codeBlock: SupaCommand = (view) => {
+  const sel = view.state.selection.main;
+  const before = '```\n';
+  const after = '\n```';
+  const pre = view.state.sliceDoc(Math.max(0, sel.from - before.length), sel.from);
+  const post = view.state.sliceDoc(sel.to, Math.min(view.state.doc.length, sel.to + after.length));
+  if (pre === before && post === after) {
+    // Toggle-Off: die umschließenden Fences entfernen.
+    view.dispatch({
+      changes: [
+        { from: sel.from - before.length, to: sel.from, insert: '' },
+        { from: sel.to, to: sel.to + after.length, insert: '' },
+      ],
+    });
+    return true;
+  }
+  return wrapSelection(view, before, after);
+};
 
-/** Fügt eine horizontale Trennlinie nach der Cursorzeile ein. */
+/** Fügt eine horizontale Trennlinie (`\n---\n`) an der Cursorzeile ein. */
 export const horizontalRule: SupaCommand = (view) => {
   const line = view.state.doc.lineAt(view.state.selection.main.head);
-  view.dispatch({ changes: { from: line.to, insert: '\n\n---\n' } });
+  view.dispatch({ changes: { from: line.to, insert: '\n---\n' } });
   return true;
 };
 
-/** Entfernt Block-Marker (#, >) der selektierten Zeilen. */
+/** Entfernt erkannte Block-/Listen-Präfixe (#, >, -, 1., - [ ]) der selektierten Zeilen. */
 export const cleanBlock: SupaCommand = (view) => {
   const range = selectedLineRange(view.state);
-  const changes: { from: number; to: number; insert: string }[] = [];
+  const changes: DocChange[] = [];
   for (let n = range.firstLine; n <= range.lastLine; n++) {
     const line = view.state.doc.line(n);
-    const match = /^(#{1,6} |> )/.exec(line.text);
-    if (match) changes.push({ from: line.from, to: line.from + match[0].length, insert: '' });
+    const stripped = stripLinePrefix(line.text);
+    if (stripped) {
+      changes.push({ from: line.from, to: line.from + stripped.prefix.length, insert: '' });
+    }
   }
   if (changes.length === 0) return false;
   view.dispatch({ changes });
@@ -699,10 +812,13 @@ git commit -m "feat(m2): block-Commands (heading/quote/code-block/hr/clean-block
 - Test: `src/commands/__tests__/list.test.ts`
 
 **Interfaces:**
-- Consumes: `SupaCommand` (Task 1), `toggleLinePrefix`, `selectedLineRange` (Task 1), `insertNewlineAndIndent` (`@codemirror/commands`).
+- Consumes: `SupaCommand`, `DocChange` (Task 1), `toggleLinePrefix`, `selectedLineRange` (Task 1).
 - Produces:
   - `unorderedList: SupaCommand`, `orderedList: SupaCommand`, `checkList: SupaCommand`
   - `continueList: (view: EditorView) => boolean` — Enter-Handler; setzt Listen-Präfix fort bzw. beendet die Liste; `false`, wenn keine Listenzeile.
+
+> Hinweis: `continueList` baut seine Enter-Transaktion selbst (inkl. Nummern-Inkrement bei
+> geordneten Listen) und nutzt **nicht** `insertNewlineAndIndent` aus `@codemirror/commands`.
 
 - [ ] **Step 1: Failing test schreiben**
 
@@ -785,7 +901,8 @@ Create `src/commands/list.ts`:
 
 ```typescript
 import type { EditorView } from '@codemirror/view';
-import type { SupaCommand } from './types';
+import type { DocChange, SupaCommand } from './types';
+import { stripLinePrefix } from './prefixes';
 import { selectedLineRange, toggleLinePrefix } from '../utils/text';
 
 /** Ungeordnete Liste (`- `) je Zeile ein-/ausschalten. */
@@ -805,7 +922,7 @@ export const orderedList: SupaCommand = (view) => {
       break;
     }
   }
-  const changes: { from: number; to: number; insert: string }[] = [];
+  const changes: DocChange[] = [];
   let counter = 1;
   for (let n = range.firstLine; n <= range.lastLine; n++) {
     const line = view.state.doc.line(n);
@@ -822,14 +939,16 @@ export const orderedList: SupaCommand = (view) => {
   return true;
 };
 
-/** Erkanntes Listen-Präfix am Zeilenanfang (ul, checklist, ordered). */
-function listPrefix(text: string): string | null {
-  const check = /^- \[[ x]\] /.exec(text);
-  if (check) return '- [ ] ';
-  const ordered = /^(\d+)\. /.exec(text);
+/**
+ * Berechnet aus einem erkannten Ist-Präfix das Präfix für die FORTSETZUNGSZEILE:
+ * geordnete Listen werden inkrementiert (`3. ` → `4. `), Checklisten starten leer
+ * (`- [x] ` → `- [ ] `), ungeordnete bleiben gleich. `null`, wenn kein Listenpräfix.
+ */
+function continuationPrefix(currentPrefix: string): string | null {
+  if (/^- \[[ xX]\] $/.test(currentPrefix)) return '- [ ] ';
+  const ordered = /^(\d+)\. $/.exec(currentPrefix);
   if (ordered) return `${Number(ordered[1]) + 1}. `;
-  const bullet = /^- /.exec(text);
-  if (bullet) return '- ';
+  if (currentPrefix === '- ') return '- ';
   return null;
 }
 
@@ -837,15 +956,20 @@ function listPrefix(text: string): string | null {
  * Enter-Handler für Listen: setzt das Präfix in der neuen Zeile fort; ist die
  * aktuelle Listenzeile leer (nur Präfix), wird die Liste beendet (Präfix weg).
  * `false`, wenn die Cursorzeile keine Liste ist (Standard-Enter greift dann).
+ *
+ * Die Präfix-Erkennung teilt sich mit `cleanBlock` die zentrale `stripLinePrefix`
+ * (Task 1); nur die Fortsetzungs-Logik (Inkrement) ist listenspezifisch.
  */
 export function continueList(view: EditorView): boolean {
   const sel = view.state.selection.main;
   const line = view.state.doc.lineAt(sel.head);
-  const prefix = listPrefix(line.text);
+  const stripped = stripLinePrefix(line.text);
+  if (stripped === null) return false;
+  // Heading/Quote sind zwar Präfixe, aber keine Listen → Standard-Enter.
+  const prefix = continuationPrefix(stripped.prefix);
   if (prefix === null) return false;
 
-  const contentAfterPrefix = line.text.replace(/^(- \[[ x]\] |\d+\. |- )/, '');
-  if (contentAfterPrefix.length === 0) {
+  if (stripped.rest.length === 0) {
     // Leere Listenzeile → Liste beenden: Präfix entfernen.
     view.dispatch({ changes: { from: line.from, to: line.to, insert: '' } });
     return true;
