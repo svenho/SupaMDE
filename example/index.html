@@ -3,17 +3,41 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SupaMDE — M0 Gerüst</title>
+    <title>SupaMDE — M1 Editor-Kern</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    </style>
   </head>
   <body>
     <h1>SupaMDE</h1>
-    <p>M0-Gerüst: Das Paket ist importierbar. Der Editor folgt in M1.</p>
-    <textarea id="editor"></textarea>
+    <p>M1: Live formatierender CodeMirror-6-Editor. Bearbeite den Markdown-Text unten.</p>
+    <form>
+      <textarea id="editor">
+# Überschrift 1
+## Überschrift 2
+
+Ein Absatz mit **fettem**, *kursivem* und ~~durchgestrichenem~~ Text.
+
+Inline-`code` und ein Block:
+
+```
+const x = 42;
+```
+
+> Ein Zitat.
+
+Ein [Link](https://example.org).
+</textarea>
+      <button type="submit">Absenden (forceSync-Demo)</button>
+    </form>
     <script type="module">
       import SupaMDE from '../dist/supamde.mjs';
-      const editor = new SupaMDE({ element: document.getElementById('editor') });
+      const editor = new SupaMDE({
+        element: document.getElementById('editor'),
+        placeholder: 'Schreibe etwas Markdown …',
+      });
       // eslint-disable-next-line no-console
-      console.log('SupaMDE-Version:', SupaMDE.version, editor);
+      console.log('SupaMDE-Version:', SupaMDE.version, editor.getValue());
     </script>
   </body>
 </html>
