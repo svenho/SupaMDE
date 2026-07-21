@@ -74,6 +74,11 @@ describe('stripLinePrefix', () => {
     expect(stripLinePrefix('3. Punkt')?.prefix).toBe('3. ');
   });
 
+  it('erkennt beide ungeordneten Bullet-Marker ("* " und Bestands-"- ")', () => {
+    expect(stripLinePrefix('* Punkt')?.prefix).toBe('* ');
+    expect(stripLinePrefix('- Punkt')?.prefix).toBe('- ');
+  });
+
   it('liefert null ohne bekanntes Präfix', () => {
     expect(stripLinePrefix('Klartext')).toBeNull();
   });

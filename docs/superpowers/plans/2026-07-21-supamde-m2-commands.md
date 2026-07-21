@@ -124,7 +124,7 @@ export const LINE_PREFIXES: readonly RegExp[] = [
   /^> /, // Blockzitat
   /^- \[[ xX]\] /, // Checkliste (vor "- ")
   /^\d+\. /, // geordnete Liste
-  /^- /, // ungeordnete Liste
+  /^[-*] /, // ungeordnete Liste: SupaMDE erzeugt "* ", erkennt aber auch "- "
 ];
 
 /**
@@ -911,7 +911,7 @@ import { stripLinePrefix } from './prefixes';
 import { selectedLineRange, toggleLinePrefix } from '../utils/text';
 
 /** Ungeordnete Liste (`- `) je Zeile ein-/ausschalten. */
-export const unorderedList: SupaCommand = (view) => toggleLinePrefix(view, '- ');
+export const unorderedList: SupaCommand = (view) => toggleLinePrefix(view, '* ');
 
 /** Checkliste (`- [ ] `) je Zeile ein-/ausschalten. */
 export const checkList: SupaCommand = (view) => toggleLinePrefix(view, '- [ ] ');
@@ -953,7 +953,8 @@ function continuationPrefix(currentPrefix: string): string | null {
   if (/^- \[[ xX]\] $/.test(currentPrefix)) return '- [ ] ';
   const ordered = /^(\d+)\. $/.exec(currentPrefix);
   if (ordered) return `${Number(ordered[1]) + 1}. `;
-  if (currentPrefix === '- ') return '- ';
+  // Bullet-Marker der aktuellen Zeile beibehalten (`* ` oder ein Bestands-`- `).
+  if (currentPrefix === '* ' || currentPrefix === '- ') return currentPrefix;
   return null;
 }
 

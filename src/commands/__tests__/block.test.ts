@@ -103,10 +103,11 @@ describe('horizontalRule (AC-B5)', () => {
 });
 
 describe('cleanBlock (AC-B6)', () => {
-  it('entfernt Heading-, Quote- und Listen-Präfixe', () => {
-    const view = viewWith('## a\n> b\n- c\n1. d', 0, 16);
+  it('entfernt Heading-, Quote- und Listen-Präfixe (inkl. beider Bullet-Marker)', () => {
+    const doc = '## a\n> b\n- c\n1. d\n* e';
+    const view = viewWith(doc, 0, doc.length);
     cleanBlock(view);
-    expect(view.state.doc.toString()).toBe('a\nb\nc\nd');
+    expect(view.state.doc.toString()).toBe('a\nb\nc\nd\ne');
     view.destroy();
   });
 });

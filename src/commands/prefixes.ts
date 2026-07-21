@@ -10,7 +10,7 @@ export const LINE_PREFIXES: readonly RegExp[] = [
   /^> /, // Blockzitat
   /^- \[[ xX]\] /, // Checkliste (vor "- ")
   /^\d+\. /, // geordnete Liste
-  /^- /, // ungeordnete Liste
+  /^[-*] /, // ungeordnete Liste: SupaMDE erzeugt "* ", erkennt aber auch "- "
 ];
 
 /**

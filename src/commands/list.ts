@@ -3,8 +3,8 @@ import type { DocChange, SupaCommand } from './types';
 import { stripLinePrefix } from './prefixes';
 import { selectedLineRange, toggleLinePrefix } from '../utils/text';
 
-/** Ungeordnete Liste (`- `) je Zeile ein-/ausschalten. */
-export const unorderedList: SupaCommand = (view) => toggleLinePrefix(view, '- ');
+/** Ungeordnete Liste (`* `) je Zeile ein-/ausschalten. */
+export const unorderedList: SupaCommand = (view) => toggleLinePrefix(view, '* ');
 
 /** Checkliste (`- [ ] `) je Zeile ein-/ausschalten. */
 export const checkList: SupaCommand = (view) => toggleLinePrefix(view, '- [ ] ');
@@ -40,13 +40,15 @@ export const orderedList: SupaCommand = (view) => {
 /**
  * Berechnet aus einem erkannten Ist-Präfix das Präfix für die FORTSETZUNGSZEILE:
  * geordnete Listen werden inkrementiert (`3. ` → `4. `), Checklisten starten leer
- * (`- [x] ` → `- [ ] `), ungeordnete bleiben gleich. `null`, wenn kein Listenpräfix.
+ * (`- [x] ` → `- [ ] `), ungeordnete behalten ihren Marker (`* ` oder Bestands-`- `).
+ * `null`, wenn kein Listenpräfix.
  */
 function continuationPrefix(currentPrefix: string): string | null {
   if (/^- \[[ xX]\] $/.test(currentPrefix)) return '- [ ] ';
   const ordered = /^(\d+)\. $/.exec(currentPrefix);
   if (ordered) return `${Number(ordered[1]) + 1}. `;
-  if (currentPrefix === '- ') return '- ';
+  // Bullet-Marker der aktuellen Zeile beibehalten (`* ` oder ein Bestands-`- `).
+  if (currentPrefix === '* ' || currentPrefix === '- ') return currentPrefix;
   return null;
 }
 

@@ -12,10 +12,10 @@ function viewWith(doc: string, anchor = 0, head = anchor): EditorView {
 }
 
 describe('unorderedList (AC-L1)', () => {
-  it('setzt und entfernt "- "', () => {
+  it('setzt und entfernt "* "', () => {
     const view = viewWith('a\nb', 0, 3);
     unorderedList(view);
-    expect(view.state.doc.toString()).toBe('- a\n- b');
+    expect(view.state.doc.toString()).toBe('* a\n* b');
     unorderedList(view);
     expect(view.state.doc.toString()).toBe('a\nb');
     view.destroy();
@@ -41,15 +41,22 @@ describe('checkList (AC-L3)', () => {
 });
 
 describe('continueList (AC-L4/L5)', () => {
-  it('setzt das Präfix in der neuen Zeile fort', () => {
-    const view = viewWith('- item', 6); // Cursor am Zeilenende
+  it('setzt das "* "-Präfix in der neuen Zeile fort', () => {
+    const view = viewWith('* item', 6); // Cursor am Zeilenende
+    expect(continueList(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('* item\n* ');
+    view.destroy();
+  });
+
+  it('behält einen Bestands-"- "-Marker bei der Fortsetzung bei', () => {
+    const view = viewWith('- item', 6);
     expect(continueList(view)).toBe(true);
     expect(view.state.doc.toString()).toBe('- item\n- ');
     view.destroy();
   });
 
   it('beendet die Liste bei leerer Listenzeile', () => {
-    const view = viewWith('- ', 2);
+    const view = viewWith('* ', 2);
     expect(continueList(view)).toBe(true);
     expect(view.state.doc.toString()).toBe('');
     view.destroy();
