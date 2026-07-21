@@ -404,7 +404,7 @@ describe('verschachteltes Toggle (AC-I4)', () => {
     // "**a *b* c**" → StrongEmphasis(…, Emphasis(*b*), …). italic-Toggle auf "b"
     // findet den inneren Emphasis-Knoten und entfernt NUR dessen *-Marker;
     // die umschließende **-Ebene bleibt unangetastet.
-    const view = viewWith('**a *b* c**', 6, 7); // "b" innerhalb des Emphasis
+    const view = viewWith('**a *b* c**', 5, 6); // "b" innerhalb des Emphasis (Pos 5='b')
     italic(view);
     expect(view.state.doc.toString()).toBe('**a b c**');
     view.destroy();
@@ -412,7 +412,7 @@ describe('verschachteltes Toggle (AC-I4)', () => {
 
   it('italic-Toggle-On fügt inneres *…* ein, ohne die **-Ebene zu berühren', () => {
     // Gegenprobe ohne inneren Knoten: hier greift der wrapSelection-Zweig.
-    const view = viewWith('**a b c**', 5, 6); // "b" selektiert, kein Emphasis darum
+    const view = viewWith('**a b c**', 4, 5); // "b" selektiert (Pos 4='b'), kein Emphasis darum
     italic(view);
     expect(view.state.doc.toString()).toBe('**a *b* c**');
     view.destroy();
