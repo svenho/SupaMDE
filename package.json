@@ -8,14 +8,12 @@
   "engines": {
     "node": "^20.19.0 || ^22.13.0 || >=24"
   },
-  "main": "./dist/supamde.js",
   "module": "./dist/supamde.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/supamde.mjs",
-      "require": "./dist/supamde.js"
+      "import": "./dist/supamde.mjs"
     }
   },
   "files": [
