@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { insertLink, insertImage, drawLink } from '../link-image';
+import { insertLink, insertImage, drawLink, drawImage } from '../link-image';
 
 function viewWith(doc: string, anchor = 0, head = anchor): EditorView {
   const state = EditorState.create({
@@ -21,7 +21,7 @@ describe('insertLink', () => {
 
   it('nutzt das text-Argument ohne Selektion (AC-K2)', () => {
     const view = viewWith('', 0);
-    insertLink('http://x', 'Text')(view);
+    expect(insertLink('http://x', 'Text')(view)).toBe(true);
     expect(view.state.doc.toString()).toBe('[Text](http://x)');
     view.destroy();
   });
@@ -41,6 +41,13 @@ describe('insertImage (AC-K3)', () => {
     expect(view.state.doc.toString()).toBe('![alt](http://x)');
     view.destroy();
   });
+
+  it('ist ein No-op bei leerer URL und gibt false zurück', () => {
+    const view = viewWith('x', 0, 1);
+    expect(insertImage('')(view)).toBe(false);
+    expect(view.state.doc.toString()).toBe('x');
+    view.destroy();
+  });
 });
 
 describe('drawLink (Wrapper)', () => {
@@ -58,6 +65,26 @@ describe('drawLink (Wrapper)', () => {
     const stub = vi.spyOn(window, 'prompt').mockReturnValue(null);
     expect(drawLink(view)).toBe(false);
     expect(view.state.doc.toString()).toBe('Text');
+    stub.mockRestore();
+    view.destroy();
+  });
+});
+
+describe('drawImage (Wrapper)', () => {
+  it('fragt via prompt und fügt das Bild ein', () => {
+    const view = viewWith('alt', 0, 3);
+    const stub = vi.spyOn(window, 'prompt').mockReturnValue('http://pic.png');
+    expect(drawImage(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('![alt](http://pic.png)');
+    stub.mockRestore();
+    view.destroy();
+  });
+
+  it('bricht ab, wenn prompt null liefert', () => {
+    const view = viewWith('alt', 0, 3);
+    const stub = vi.spyOn(window, 'prompt').mockReturnValue(null);
+    expect(drawImage(view)).toBe(false);
+    expect(view.state.doc.toString()).toBe('alt');
     stub.mockRestore();
     view.destroy();
   });
