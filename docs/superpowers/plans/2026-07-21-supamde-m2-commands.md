@@ -706,7 +706,9 @@ function currentLevel(view: EditorView): number {
   const { firstLine } = selectedLineRange(view.state);
   const text = view.state.doc.line(firstLine).text;
   const match = /^(#{1,6}) /.exec(text);
-  return match ? match[1].length : 0;
+  // match[0] (voller Match: #-Folge + Leerzeichen) ist unter noUncheckedIndexedAccess
+  // stets definiert — anders als die Capture-Gruppe match[1]. Länge − 1 = Heading-Level.
+  return match ? match[0].length - 1 : 0;
 }
 
 /** Setzt jede Selektionszeile auf `level` #-Zeichen; `level === 0` entfernt sie. */
