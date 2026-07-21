@@ -249,18 +249,101 @@ Unit-Tests (Vitest, headless) sind das neue Sicherheitsnetz, das easyMDE fehlt.
 
 ---
 
-## 8. Definition of Done (M2)
+## 8. Akzeptanzkriterien
+
+Verhaltensbasiert und pro Command-Gruppe prüfbar. Jedes Kriterium lässt sich
+direkt in einen headless Unit-Test übersetzen (Given: Doc + Selektion,
+When: Command, Then: erwartetes Doc + Selektion). „Selektion" meint den
+markierten Bereich; „Cursor" die leere Selektion.
+
+### 8.1 Inline (bold/italic/strikethrough/inline-code)
+
+- **AC-I1 (formatieren mit Selektion):** Gegeben `Wort` selektiert, `bold`
+  erzeugt `**Wort**` und hält `Wort` selektiert.
+- **AC-I2 (formatieren am Cursor):** Gegeben leerer Cursor, `bold` fügt `****`
+  ein und setzt den Cursor zwischen die Marker.
+- **AC-I3 (Toggle-Off):** Gegeben `**Wort**` mit `Wort` (oder dem Knoten)
+  selektiert, `bold` entfernt die Marker → `Wort`.
+- **AC-I4 (verschachtelt):** Gegeben `**a _b_ c**` mit Bereich in `b`,
+  `italic`-Toggle wirkt nur auf `b` und lässt die `**`-Ebene intakt (der Fall,
+  an dem String-Matching bräche).
+- **AC-I5 (mehrzeilig):** Selektion über mehrere Zeilen wird als ein Bereich
+  umschlossen (keine Marker pro Zeile).
+
+### 8.2 Block (heading/quote/code-block/hr/clean-block)
+
+- **AC-B1 (heading absolut):** `setHeading(2)` auf einer Klartextzeile erzeugt
+  `## `-Präfix; erneutes `setHeading(2)` entfernt es wieder (Toggle).
+- **AC-B2 (heading relativ):** `smaller`/`bigger` verschieben das Level um eins;
+  an den Grenzen (1 bzw. 6) bleibt das Level stehen (kein Über-/Unterlauf).
+- **AC-B3 (quote):** `quote` setzt `> ` vor jede selektierte Zeile; erneutes
+  `quote` entfernt es.
+- **AC-B4 (code-block):** `codeBlock` umschließt die Selektion mit ` ``` `-Fences;
+  auf bereits umschlossener Selektion entfernt es sie.
+- **AC-B5 (hr):** `horizontalRule` fügt `\n---\n` an der Cursorzeile ein.
+- **AC-B6 (clean-block):** `cleanBlock` entfernt `#`-, `> `- und Listen-Präfixe
+  der selektierten Zeilen.
+
+### 8.3 Listen (unordered/ordered/check + Fortsetzung)
+
+- **AC-L1 (toggle):** `unorderedList` setzt `- ` vor jede selektierte Zeile;
+  erneutes Ausführen entfernt es.
+- **AC-L2 (ordered fortlaufend):** `orderedList` nummeriert mehrere selektierte
+  Zeilen fortlaufend (`1. `, `2. `, …).
+- **AC-L3 (check):** `checkList` setzt `- [ ] `-Präfixe.
+- **AC-L4 (Fortsetzung):** Enter in einer nicht-leeren Listenzeile beginnt die
+  neue Zeile mit demselben Präfix (bei ordered inkrementiert).
+- **AC-L5 (Fortsetzung beenden):** Enter in einer leeren Listenzeile entfernt das
+  Präfix und beendet die Liste.
+
+### 8.4 Link & Bild
+
+- **AC-K1 (link mit Selektion):** `insertLink('http://x')` mit `Text` selektiert
+  erzeugt `[Text](http://x)`.
+- **AC-K2 (link ohne Selektion):** `insertLink('http://x', 'Text')` am Cursor
+  erzeugt `[Text](http://x)`.
+- **AC-K3 (image):** `insertImage('http://x', 'alt')` erzeugt `![alt](http://x)`.
+- **AC-K4 (Abbruch):** `insertLink('')` (leere/abgebrochene URL) ist ein No-op
+  und gibt `false` zurück; das Doc bleibt unverändert.
+
+### 8.5 Tabelle
+
+- **AC-T1:** `table` fügt ein GFM-Gerüst (Header-Zeile, Trennzeile `--- | ---`,
+  eine Datenzeile) am Cursor ein.
+
+### 8.6 History & Shortcuts
+
+- **AC-H1 (undo/redo):** Nach einem Command stellt `undo` den vorherigen
+  Doc-Zustand her; `redo` wendet ihn erneut an.
+- **AC-H2 (Keymap wirkt):** Die in Abschnitt 5.1 gelisteten Shortcuts lösen im
+  `example/` die zugehörigen Commands aus; SupaMDE-Bindings haben Vorrang vor den
+  Standard-Keymaps.
+- **AC-H3 (Rückgabewert):** Jeder Command gibt `true` zurück, wenn er das Doc
+  verändert hat, sonst `false`.
+
+### 8.7 Übergreifend
+
+- **AC-G1 (Reinheit):** Jeder Command ist als `(view) => boolean` ohne DOM/Mock
+  aufrufbar und in einem headless `EditorView` unit-getestet.
+- **AC-G2 (Qualität):** `npm run test:run`, `npm run typecheck` und
+  `npm run lint` sind grün.
+
+---
+
+## 9. Definition of Done (M2)
 
 - Alle Commands (außer echter Bild-Upload) implementiert und unit-getestet.
 - `supaKeymap` + `history()` in `buildExtensions` integriert; Shortcuts wirken
   im `example/`.
+- Alle Akzeptanzkriterien aus Abschnitt 8 durch Tests bzw. das `example/`
+  belegt.
 - `npm run test:run`, `npm run typecheck`, `npm run lint` grün.
 - `example/`-Seite: Text lässt sich per Shortcut formatieren (sichtbares
   M2-Ergebnis).
 
 ---
 
-## 9. Bewusste Grenzen (YAGNI / Scope)
+## 10. Bewusste Grenzen (YAGNI / Scope)
 
 - Kein Toolbar-DOM, keine Button-Aktiv-Zustände, keine statischen Aktions-Aliase
   in M2 (→ M3).
