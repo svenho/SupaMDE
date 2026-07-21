@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { unorderedList, orderedList, checkList, continueList } from '../list';
+import { unorderedList, unorderedListStar, orderedList, checkList, continueList } from '../list';
 
 function viewWith(doc: string, anchor = 0, head = anchor): EditorView {
   const state = EditorState.create({
@@ -11,29 +11,45 @@ function viewWith(doc: string, anchor = 0, head = anchor): EditorView {
   return new EditorView({ state });
 }
 
-describe('unorderedList (AC-L1)', () => {
-  it('setzt und entfernt "* "', () => {
+describe('unorderedList — Spiegelstrich "- " (AC-L1, Default)', () => {
+  it('setzt und entfernt "- "', () => {
     const view = viewWith('a\nb', 0, 3);
     unorderedList(view);
+    expect(view.state.doc.toString()).toBe('- a\n- b');
+    unorderedList(view);
+    expect(view.state.doc.toString()).toBe('a\nb');
+    view.destroy();
+  });
+
+  it('konvertiert eine Bestands-"* "-Liste auf "- " (kein doppeltes Präfix)', () => {
+    const view = viewWith('* a\n* b', 0, 7);
+    unorderedList(view);
+    expect(view.state.doc.toString()).toBe('- a\n- b');
+    view.destroy();
+  });
+});
+
+describe('unorderedListStar — Sternchen "* " (Shift+Alt+Cmd+L)', () => {
+  it('setzt und entfernt "* "', () => {
+    const view = viewWith('a\nb', 0, 3);
+    unorderedListStar(view);
     expect(view.state.doc.toString()).toBe('* a\n* b');
-    unorderedList(view);
+    unorderedListStar(view);
     expect(view.state.doc.toString()).toBe('a\nb');
     view.destroy();
   });
 
-  it('entfernt eine Bestands-"- "-Liste beim Toggle-Off (kein doppeltes "* -")', () => {
+  it('konvertiert eine Bestands-"- "-Liste auf "* " (kein doppeltes Präfix)', () => {
     const view = viewWith('- a\n- b', 0, 7);
-    unorderedList(view);
-    // Bestands-Spiegelstriche werden als Liste erkannt und ENTFERNT,
-    // nicht mit einem zweiten Marker versehen.
-    expect(view.state.doc.toString()).toBe('a\nb');
+    unorderedListStar(view);
+    expect(view.state.doc.toString()).toBe('* a\n* b');
     view.destroy();
   });
 
-  it('gemischte Marker (- und *): alle als Liste erkannt, alle entfernt', () => {
-    const view = viewWith('- a\n* b', 0, 7);
-    unorderedList(view);
-    expect(view.state.doc.toString()).toBe('a\nb');
+  it('gemischte Marker werden einheitlich auf "* " gebracht', () => {
+    const view = viewWith('- a\n* b\nc', 0, 9);
+    unorderedListStar(view);
+    expect(view.state.doc.toString()).toBe('* a\n* b\n* c');
     view.destroy();
   });
 });
@@ -57,22 +73,22 @@ describe('checkList (AC-L3)', () => {
 });
 
 describe('continueList (AC-L4/L5)', () => {
-  it('setzt das "* "-Präfix in der neuen Zeile fort', () => {
-    const view = viewWith('* item', 6); // Cursor am Zeilenende
-    expect(continueList(view)).toBe(true);
-    expect(view.state.doc.toString()).toBe('* item\n* ');
-    view.destroy();
-  });
-
-  it('behält einen Bestands-"- "-Marker bei der Fortsetzung bei', () => {
-    const view = viewWith('- item', 6);
+  it('setzt das "- "-Präfix in der neuen Zeile fort', () => {
+    const view = viewWith('- item', 6); // Cursor am Zeilenende
     expect(continueList(view)).toBe(true);
     expect(view.state.doc.toString()).toBe('- item\n- ');
     view.destroy();
   });
 
+  it('behält auch einen "* "-Marker bei der Fortsetzung bei', () => {
+    const view = viewWith('* item', 6);
+    expect(continueList(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('* item\n* ');
+    view.destroy();
+  });
+
   it('beendet die Liste bei leerer Listenzeile', () => {
-    const view = viewWith('* ', 2);
+    const view = viewWith('- ', 2);
     expect(continueList(view)).toBe(true);
     expect(view.state.doc.toString()).toBe('');
     view.destroy();

@@ -52,19 +52,20 @@ Alle Formatierungs-Aktionen sind als CodeMirror-6-Commands umgesetzt und per
 Tastenkürzel erreichbar (`Mod` = `Cmd` auf macOS, `Ctrl` sonst). Eine grafische
 Toolbar folgt in M3.
 
-| Kürzel                                | Aktion                          |
-| ------------------------------------- | ------------------------------- |
-| `Mod-B`                               | Fett                            |
-| `Mod-I`                               | Kursiv                          |
-| `Mod-K`                               | Link                            |
-| `Mod-H` / `Shift-Mod-H`               | Überschrift kleiner / größer    |
-| `Ctrl-Alt-1` … `Ctrl-Alt-6`           | Überschrift H1 … H6             |
-| `Mod-'` / `Ctrl-Alt-Q`                | Blockzitat                      |
-| `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste / nummeriert / Checkliste |
-| `Mod-Alt-C`                           | Codeblock                       |
-| `Mod-Alt-I`                           | Bild einfügen                   |
-| `Mod-E`                               | Blockformat entfernen           |
-| `Mod-Z` / `Mod-Y`                     | Rückgängig / Wiederholen        |
+| Kürzel                                | Aktion                                 |
+| ------------------------------------- | -------------------------------------- |
+| `Mod-B`                               | Fett                                   |
+| `Mod-I`                               | Kursiv                                 |
+| `Mod-K`                               | Link                                   |
+| `Mod-H` / `Shift-Mod-H`               | Überschrift kleiner / größer           |
+| `Ctrl-Alt-1` … `Ctrl-Alt-6`           | Überschrift H1 … H6                    |
+| `Mod-'` / `Ctrl-Alt-Q`                | Blockzitat                             |
+| `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste (`- `) / nummeriert / Checkliste |
+| `Shift-Alt-Mod-L`                     | Liste mit Sternchen (`* `)             |
+| `Mod-Alt-C`                           | Codeblock                              |
+| `Mod-Alt-I`                           | Bild einfügen                          |
+| `Mod-E`                               | Blockformat entfernen                  |
+| `Mod-Z` / `Mod-Y`                     | Rückgängig / Wiederholen               |
 
 `Enter` in einer Listenzeile setzt die Liste fort; in einer leeren Listenzeile
 beendet es sie. `Durchstreichen`, `Inline-Code`, `Trennlinie` und `Tabelle` sind

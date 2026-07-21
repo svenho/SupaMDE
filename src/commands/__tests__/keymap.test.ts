@@ -10,6 +10,16 @@ describe('supaKeymap', () => {
     expect(keys).toContain("Mod-'");
   });
 
+  it('bindet die Sternchen-Liste auf Shift-Alt-Mod-l (separat von Mod-l)', () => {
+    const star = supaKeymap.find((b) => b.key === 'Shift-Alt-Mod-l');
+    const dash = supaKeymap.find((b) => b.key === 'Mod-l');
+    expect(star).toBeDefined();
+    expect(dash).toBeDefined();
+    expect(typeof star?.run).toBe('function');
+    // Zwei verschiedene Commands (Spiegelstrich vs. Sternchen).
+    expect(star?.run).not.toBe(dash?.run);
+  });
+
   it('bietet ein layout-unabhängiges Zweitkürzel für Blockzitat (DE-Mac-Tastatur)', () => {
     const primary = supaKeymap.find((b) => b.key === "Mod-'");
     const secondary = supaKeymap.find((b) => b.key === 'Ctrl-Alt-q');

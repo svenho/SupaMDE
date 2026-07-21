@@ -834,7 +834,7 @@ git commit -m "feat(m2): block-Commands (heading/quote/code-block/hr/clean-block
 **Interfaces:**
 - Consumes: `SupaCommand`, `DocChange` (Task 1), `toggleLinePrefix`, `selectedLineRange` (Task 1).
 - Produces:
-  - `unorderedList: SupaCommand`, `orderedList: SupaCommand`, `checkList: SupaCommand`
+  - `unorderedList: SupaCommand` (`- `), `unorderedListStar: SupaCommand` (`* `), `orderedList: SupaCommand`, `checkList: SupaCommand`
   - `continueList: (view: EditorView) => boolean` — Enter-Handler; setzt Listen-Präfix fort bzw. beendet die Liste; `false`, wenn keine Listenzeile.
 
 > Hinweis: `continueList` baut seine Enter-Transaktion selbst (inkl. Nummern-Inkrement bei
@@ -926,9 +926,46 @@ import { stripLinePrefix } from './prefixes';
 import { selectedLineRange, toggleLinePrefix } from '../utils/text';
 
 /** Ungeordnete Liste (`- `) je Zeile ein-/ausschalten. */
-// Erkennt beim Toggle-Off beide Bullet-Marker (`* ` und Bestands-`- `), damit
-// eine Spiegelstrich-Liste nicht fälschlich einen zweiten `* `-Marker erhält.
-export const unorderedList: SupaCommand = (view) => toggleLinePrefix(view, '* ', /^[-*] /);
+/** Ein ungeordneter Bullet-Marker am Zeilenanfang (`- ` oder `* `). */
+const BULLET_PREFIX = /^[-*] /;
+
+/**
+ * Toggelt einen ungeordneten Bullet-Marker über die Selektion mit Konvertier-
+ * Semantik, sodass NIE ein zweiter Marker davorgesetzt wird:
+ * - Tragen ALLE Zeilen bereits exakt `marker`, wird er entfernt (Toggle-Off).
+ * - Sonst wird jede Zeile auf `marker` gebracht: ein vorhandener Fremd-Bullet
+ *   (`- ` ↔ `* `) wird ERSETZT (Konvertierung), Klartextzeilen bekommen `marker`.
+ */
+function toggleBulletList(view: EditorView, marker: '- ' | '* '): boolean {
+  const range = selectedLineRange(view.state);
+  const lines = [];
+  for (let n = range.firstLine; n <= range.lastLine; n++) {
+    lines.push(view.state.doc.line(n));
+  }
+
+  const allHaveMarker = lines.every((line) => line.text.startsWith(marker));
+  const changes: DocChange[] = [];
+  for (const line of lines) {
+    const existing = BULLET_PREFIX.exec(line.text);
+    if (allHaveMarker) {
+      changes.push({ from: line.from, to: line.from + marker.length, insert: '' });
+    } else if (existing) {
+      changes.push({ from: line.from, to: line.from + existing[0].length, insert: marker });
+    } else {
+      changes.push({ from: line.from, to: line.from, insert: marker });
+    }
+  }
+
+  if (changes.length === 0) return false;
+  view.dispatch({ changes });
+  return true;
+}
+
+/** Ungeordnete Liste mit Spiegelstrich (`- `) ein-/ausschalten (Default, Cmd+L). */
+export const unorderedList: SupaCommand = (view) => toggleBulletList(view, '- ');
+
+/** Ungeordnete Liste mit Sternchen (`* `) ein-/ausschalten (Shift+Alt+Cmd+L). */
+export const unorderedListStar: SupaCommand = (view) => toggleBulletList(view, '* ');
 
 /** Checkliste (`- [ ] `) je Zeile ein-/ausschalten. */
 export const checkList: SupaCommand = (view) => toggleLinePrefix(view, '- [ ] ');
@@ -1335,7 +1372,7 @@ import {
   codeBlock,
   cleanBlock,
 } from './block';
-import { unorderedList, orderedList, checkList, continueList } from './list';
+import { unorderedList, unorderedListStar, orderedList, checkList, continueList } from './list';
 import { drawLink, drawImage } from './link-image';
 
 /**
@@ -1365,6 +1402,8 @@ export const supaKeymap: KeyBinding[] = [
   { key: 'Mod-Alt-l', run: orderedList, preventDefault: true },
   { key: 'Mod-l', run: unorderedList, preventDefault: true },
   { key: 'Shift-Mod-l', run: checkList, preventDefault: true },
+  // Ungeordnete Liste mit Sternchen-Marker (Alternative zum Spiegelstrich-Default).
+  { key: 'Shift-Alt-Mod-l', run: unorderedListStar, preventDefault: true },
   { key: 'Mod-Alt-c', run: codeBlock, preventDefault: true },
   // Listen-Fortsetzung: greift nur in Listenzeilen, sonst false → Standard-Enter.
   { key: 'Enter', run: continueList },
@@ -1551,7 +1590,8 @@ Toolbar folgt in M3.
 | `Mod-H` / `Shift-Mod-H` | Überschrift kleiner / größer |
 | `Ctrl-Alt-1` … `Ctrl-Alt-6` | Überschrift H1 … H6 |
 | `Mod-'` / `Ctrl-Alt-Q` | Blockzitat (Zweitkürzel für DE-Mac-Tastatur) |
-| `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste / nummeriert / Checkliste |
+| `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste (`- `) / nummeriert / Checkliste |
+| `Shift-Alt-Mod-L` | Liste mit Sternchen (`* `) |
 | `Mod-Alt-C` | Codeblock |
 | `Mod-Alt-I` | Bild einfügen |
 | `Mod-E` | Blockformat entfernen |

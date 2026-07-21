@@ -8,7 +8,7 @@ import {
   codeBlock,
   cleanBlock,
 } from './block';
-import { unorderedList, orderedList, checkList, continueList } from './list';
+import { unorderedList, unorderedListStar, orderedList, checkList, continueList } from './list';
 import { drawLink, drawImage } from './link-image';
 
 /**
@@ -39,6 +39,8 @@ export const supaKeymap: KeyBinding[] = [
   { key: 'Mod-Alt-l', run: orderedList, preventDefault: true },
   { key: 'Mod-l', run: unorderedList, preventDefault: true },
   { key: 'Shift-Mod-l', run: checkList, preventDefault: true },
+  // Ungeordnete Liste mit Sternchen-Marker (Alternative zum Spiegelstrich-Default).
+  { key: 'Shift-Alt-Mod-l', run: unorderedListStar, preventDefault: true },
   { key: 'Mod-Alt-c', run: codeBlock, preventDefault: true },
   // Listen-Fortsetzung: greift nur in Listenzeilen, sonst false → Standard-Enter.
   { key: 'Enter', run: continueList },
