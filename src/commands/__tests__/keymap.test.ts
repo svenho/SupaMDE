@@ -10,6 +10,15 @@ describe('supaKeymap', () => {
     expect(keys).toContain("Mod-'");
   });
 
+  it('bietet ein layout-unabhängiges Zweitkürzel für Blockzitat (DE-Mac-Tastatur)', () => {
+    const primary = supaKeymap.find((b) => b.key === "Mod-'");
+    const secondary = supaKeymap.find((b) => b.key === 'Ctrl-Alt-q');
+    expect(primary).toBeDefined();
+    expect(secondary).toBeDefined();
+    // Beide Kürzel lösen denselben quote-Command aus.
+    expect(secondary?.run).toBe(primary?.run);
+  });
+
   it('bindet Enter an die Listen-Fortsetzung', () => {
     const enter = supaKeymap.find((b) => b.key === 'Enter');
     expect(enter).toBeDefined();

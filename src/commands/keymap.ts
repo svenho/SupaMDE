@@ -32,6 +32,10 @@ export const supaKeymap: KeyBinding[] = [
   { key: 'Mod-e', run: cleanBlock, preventDefault: true },
   { key: 'Mod-Alt-i', run: drawImage, preventDefault: true },
   { key: "Mod-'", run: quote, preventDefault: true },
+  // Zweitkürzel für Blockzitat: Mod-' liegt auf DE-Mac-Tastaturen auf Shift+#
+  // und ist dort unzuverlässig. Ctrl-Alt-Q ist layout-unabhängig erreichbar und
+  // passt zum Ctrl-Alt-Schema der absoluten Überschriften (Ctrl-Alt-1…6).
+  { key: 'Ctrl-Alt-q', run: quote, preventDefault: true },
   { key: 'Mod-Alt-l', run: orderedList, preventDefault: true },
   { key: 'Mod-l', run: unorderedList, preventDefault: true },
   { key: 'Shift-Mod-l', run: checkList, preventDefault: true },

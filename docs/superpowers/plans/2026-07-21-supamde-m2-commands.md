@@ -1341,6 +1341,9 @@ export const supaKeymap: KeyBinding[] = [
   { key: 'Mod-e', run: cleanBlock, preventDefault: true },
   { key: 'Mod-Alt-i', run: drawImage, preventDefault: true },
   { key: "Mod-'", run: quote, preventDefault: true },
+  // Zweitkürzel für Blockzitat: Mod-' liegt auf DE-Mac-Tastaturen auf Shift+#
+  // und ist dort unzuverlässig. Ctrl-Alt-Q ist layout-unabhängig erreichbar.
+  { key: 'Ctrl-Alt-q', run: quote, preventDefault: true },
   { key: 'Mod-Alt-l', run: orderedList, preventDefault: true },
   { key: 'Mod-l', run: unorderedList, preventDefault: true },
   { key: 'Shift-Mod-l', run: checkList, preventDefault: true },
@@ -1529,7 +1532,7 @@ Toolbar folgt in M3.
 | `Mod-K` | Link |
 | `Mod-H` / `Shift-Mod-H` | Überschrift kleiner / größer |
 | `Ctrl-Alt-1` … `Ctrl-Alt-6` | Überschrift H1 … H6 |
-| `Mod-'` | Blockzitat |
+| `Mod-'` / `Ctrl-Alt-Q` | Blockzitat (Zweitkürzel für DE-Mac-Tastatur) |
 | `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste / nummeriert / Checkliste |
 | `Mod-Alt-C` | Codeblock |
 | `Mod-Alt-I` | Bild einfügen |

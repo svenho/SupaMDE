@@ -59,7 +59,7 @@ Toolbar folgt in M3.
 | `Mod-K`                               | Link                            |
 | `Mod-H` / `Shift-Mod-H`               | Überschrift kleiner / größer    |
 | `Ctrl-Alt-1` … `Ctrl-Alt-6`           | Überschrift H1 … H6             |
-| `Mod-'`                               | Blockzitat                      |
+| `Mod-'` / `Ctrl-Alt-Q`                | Blockzitat                      |
 | `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste / nummeriert / Checkliste |
 | `Mod-Alt-C`                           | Codeblock                       |
 | `Mod-Alt-I`                           | Bild einfügen                   |
@@ -69,6 +69,10 @@ Toolbar folgt in M3.
 `Enter` in einer Listenzeile setzt die Liste fort; in einer leeren Listenzeile
 beendet es sie. `Durchstreichen`, `Inline-Code`, `Trennlinie` und `Tabelle` sind
 als Commands vorhanden und werden mit der Toolbar (M3) auch per Klick erreichbar.
+
+> **Hinweis (deutsche Mac-Tastatur):** `Mod-'` (Blockzitat) liegt hier auf
+> `Cmd+Shift+#` und wird je nach Browser nicht zuverlässig erkannt. Nutze
+> stattdessen das layout-unabhängige `Ctrl-Alt-Q`.
 
 ## Entwicklung
 
