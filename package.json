@@ -1,6 +1,6 @@
 {
   "name": "supamde",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Ein moderner, einbettbarer Markdown-Editor auf Basis von CodeMirror 6 — die modernisierte Neufassung von easyMDE.",
   "type": "module",
   "license": "MIT",
@@ -16,12 +16,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/supamde.mjs",
       "require": "./dist/supamde.js"
-    },
-    "./dist/supamde.css": "./dist/supamde.css"
+    }
   },
   "files": [
-    "dist/**/*",
-    "src/**/*"
+    "dist/**/*"
   ],
   "keywords": [
     "markdown",
@@ -33,12 +31,13 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tsc --project tsconfig.json --emitDeclarationOnly",
+    "build": "vite build && tsc --project tsconfig.build.json --emitDeclarationOnly",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

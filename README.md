@@ -9,6 +9,14 @@ modernisierte Neufassung von [easyMDE](https://github.com/Ionaru/easy-markdown-e
 
 ## Installation
 
+Aktuell (direkt aus dem Repo):
+
+```bash
+npm install git+https://github.com/svenho/SupaMDE.git
+```
+
+Später als npm-Paket:
+
 ```bash
 npm install supamde
 ```
