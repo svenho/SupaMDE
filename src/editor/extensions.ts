@@ -1,11 +1,13 @@
 import { EditorState, type Extension } from '@codemirror/state';
-import { EditorView, placeholder } from '@codemirror/view';
+import { EditorView, placeholder, keymap } from '@codemirror/view';
+import { history, historyKeymap, defaultKeymap } from '@codemirror/commands';
 import { indentUnit } from '@codemirror/language';
 import { markdown } from '@codemirror/lang-markdown';
 import { GFM } from '@lezer/markdown';
 import type { ResolvedOptions } from '../options';
 import { highlightExtension } from './highlight';
 import { supaTheme } from './theme';
+import { supaKeymap } from '../commands/keymap';
 
 /**
  * Übersetzt normalisierte Optionen in die CM6-Extension-Liste. Jede easyMDE-
@@ -17,6 +19,8 @@ export function buildExtensions(resolved: ResolvedOptions): Extension[] {
   const extensions: Extension[] = [
     markdown({ extensions: GFM }),
     highlightExtension,
+    history(),
+    keymap.of([...supaKeymap, ...historyKeymap, ...defaultKeymap]),
     supaTheme,
     EditorState.tabSize.of(resolved.tabSize),
     indentUnit.of(' '.repeat(resolved.indentUnit)),

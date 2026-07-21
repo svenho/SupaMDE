@@ -91,4 +91,22 @@ describe('buildExtensions', () => {
     });
     expect(hasStrike).toBe(true);
   });
+
+  it('bindet History ein: eine Änderung ist per undo rücknehmbar', async () => {
+    const { EditorState } = await import('@codemirror/state');
+    const { EditorView } = await import('@codemirror/view');
+    const { undo } = await import('@codemirror/commands');
+    const { resolveOptions } = await import('../../options');
+
+    const state = EditorState.create({
+      doc: 'a',
+      extensions: buildExtensions(resolveOptions({})),
+    });
+    const view = new EditorView({ state });
+    view.dispatch({ changes: { from: 1, insert: 'b' } });
+    expect(view.state.doc.toString()).toBe('ab');
+    undo(view);
+    expect(view.state.doc.toString()).toBe('a');
+    view.destroy();
+  });
 });
