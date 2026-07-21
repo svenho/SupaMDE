@@ -30,16 +30,24 @@ export function selectedLineRange(state: EditorState): LineRange {
 /**
  * Toggelt ein Zeilen-Präfix über den Selektions-Zeilenbereich: tragen ALLE
  * Zeilen das Präfix, wird es entfernt, sonst überall hinzugefügt.
+ *
+ * `detect` bestimmt, ob eine Zeile als „bereits mit Präfix" gilt und welche
+ * Länge dann entfernt wird — nötig, wenn mehrere Marker denselben Listentyp
+ * bezeichnen (z. B. `- ` und `* ` als ungeordnete Liste). Ohne `detect` gilt
+ * ein exakter `startsWith(prefix)` (die Länge ist dann `prefix.length`).
  */
-export function toggleLinePrefix(view: EditorView, prefix: string): boolean {
+export function toggleLinePrefix(
+  view: EditorView,
+  prefix: string,
+  detect: RegExp = new RegExp(`^${escapeForRegExp(prefix)}`),
+): boolean {
   const { state } = view;
   const range = selectedLineRange(state);
   const changes: DocChange[] = [];
 
   let allHavePrefix = true;
   for (let n = range.firstLine; n <= range.lastLine; n++) {
-    const line = state.doc.line(n);
-    if (!line.text.startsWith(prefix)) {
+    if (!detect.test(state.doc.line(n).text)) {
       allHavePrefix = false;
       break;
     }
@@ -47,9 +55,12 @@ export function toggleLinePrefix(view: EditorView, prefix: string): boolean {
 
   for (let n = range.firstLine; n <= range.lastLine; n++) {
     const line = state.doc.line(n);
+    const existing = detect.exec(line.text);
     if (allHavePrefix) {
-      changes.push({ from: line.from, to: line.from + prefix.length, insert: '' });
-    } else if (!line.text.startsWith(prefix)) {
+      // existing ist hier garantiert vorhanden (allHavePrefix wurde oben geprüft).
+      const len = existing ? existing[0].length : 0;
+      changes.push({ from: line.from, to: line.from + len, insert: '' });
+    } else if (!existing) {
       changes.push({ from: line.from, to: line.from, insert: prefix });
     }
   }
@@ -57,6 +68,11 @@ export function toggleLinePrefix(view: EditorView, prefix: string): boolean {
   if (changes.length === 0) return false;
   view.dispatch({ changes });
   return true;
+}
+
+/** Escaped Sonderzeichen eines Strings für die wörtliche Nutzung in einem RegExp. */
+function escapeForRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**

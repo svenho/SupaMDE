@@ -3,8 +3,12 @@ import type { DocChange, SupaCommand } from './types';
 import { stripLinePrefix } from './prefixes';
 import { selectedLineRange, toggleLinePrefix } from '../utils/text';
 
-/** Ungeordnete Liste (`* `) je Zeile ein-/ausschalten. */
-export const unorderedList: SupaCommand = (view) => toggleLinePrefix(view, '* ');
+/**
+ * Ungeordnete Liste (`* `) je Zeile ein-/ausschalten. Erkennt beim Toggle-Off
+ * BEIDE Bullet-Marker (`* ` und Bestands-`- `), damit eine mit Spiegelstrichen
+ * erstellte Liste nicht fälschlich einen zweiten `* `-Marker erhält.
+ */
+export const unorderedList: SupaCommand = (view) => toggleLinePrefix(view, '* ', /^[-*] /);
 
 /** Checkliste (`- [ ] `) je Zeile ein-/ausschalten. */
 export const checkList: SupaCommand = (view) => toggleLinePrefix(view, '- [ ] ');

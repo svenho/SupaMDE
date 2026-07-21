@@ -20,6 +20,22 @@ describe('unorderedList (AC-L1)', () => {
     expect(view.state.doc.toString()).toBe('a\nb');
     view.destroy();
   });
+
+  it('entfernt eine Bestands-"- "-Liste beim Toggle-Off (kein doppeltes "* -")', () => {
+    const view = viewWith('- a\n- b', 0, 7);
+    unorderedList(view);
+    // Bestands-Spiegelstriche werden als Liste erkannt und ENTFERNT,
+    // nicht mit einem zweiten Marker versehen.
+    expect(view.state.doc.toString()).toBe('a\nb');
+    view.destroy();
+  });
+
+  it('gemischte Marker (- und *): alle als Liste erkannt, alle entfernt', () => {
+    const view = viewWith('- a\n* b', 0, 7);
+    unorderedList(view);
+    expect(view.state.doc.toString()).toBe('a\nb');
+    view.destroy();
+  });
 });
 
 describe('orderedList (AC-L2)', () => {
