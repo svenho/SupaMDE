@@ -65,4 +65,27 @@ describe('createToolbar', () => {
     expect(toolbar.dom.querySelector('button i.fa.fa-star')).not.toBeNull();
     view.destroy();
   });
+
+  it('Built-in-Button mit Shortcut: title enthält Titel und formatiertes Kürzel', () => {
+    const view = makeView();
+    const toolbar = createToolbar(view, ['bold'], {})!;
+    const btn = toolbar.dom.querySelector('button')!;
+    // bold hat title: 'Fett' und shortcut: 'Mod-B'
+    // title sollte "Fett (⌘B)" oder "Fett (Ctrl+B)" sein, abhängig von Plattform
+    const titleText = btn.title;
+    expect(titleText).toContain('Fett');
+    expect(titleText).toMatch(/\(/); // enthält öffnende Klammer
+    expect(btn.getAttribute('aria-label')).toBe(titleText);
+    view.destroy();
+  });
+
+  it('Built-in-Button ohne Shortcut: title ohne Klammerzusatz', () => {
+    const view = makeView();
+    const toolbar = createToolbar(view, ['table'], {})!;
+    const btn = toolbar.dom.querySelector('button')!;
+    // table hat kein shortcut
+    expect(btn.title).toBe('Tabelle');
+    expect(btn.getAttribute('aria-label')).toBe('Tabelle');
+    view.destroy();
+  });
 });

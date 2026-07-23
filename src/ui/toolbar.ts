@@ -2,6 +2,7 @@ import type { EditorView } from '@codemirror/view';
 import type { EditorState } from '@codemirror/state';
 import { resolveToolbar, type ResolvedToolbarItem, type ToolbarOption } from './toolbar-config';
 import { renderIcon } from './icons';
+import { formatShortcut } from './shortcut-label';
 
 /** Ein gerendertes Toolbar-Widget mit reaktivem Aktiv-Zustand. */
 export interface Toolbar {
@@ -34,8 +35,11 @@ function buildItem(
 
   if (item.kind === 'builtin') {
     const { action, name } = item;
-    btn.title = action.title;
-    btn.setAttribute('aria-label', action.title);
+    const label = action.shortcut
+      ? `${action.title} (${formatShortcut(action.shortcut)})`
+      : action.title;
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
     btn.dataset.action = name;
     btn.appendChild(renderIcon(action.icon));
     btn.addEventListener('click', () => {
