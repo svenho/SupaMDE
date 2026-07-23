@@ -59,3 +59,58 @@ describe('SupaMDE (Editor-API, M1)', () => {
     expect(() => new SupaMDE({})).toThrow(/element/i);
   });
 });
+
+describe('SupaMDE (Toolbar/Statusbar-Integration, M3)', () => {
+  function makeTextarea(value = ''): HTMLTextAreaElement {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    document.body.appendChild(ta);
+    return ta;
+  }
+
+  it('baut Container mit Toolbar und Statusbar', () => {
+    const ta = makeTextarea('# Titel');
+    const editor = new SupaMDE({ element: ta });
+    const container = ta.previousSibling as HTMLElement;
+    // Container liegt vor der (versteckten) Textarea
+    expect(container.classList.contains('supamde-container')).toBe(true);
+    expect(container.querySelector('.supamde-toolbar')).not.toBeNull();
+    expect(container.querySelector('.supamde-statusbar')).not.toBeNull();
+    expect(container.querySelector('.cm-editor')).not.toBeNull();
+    editor.toTextArea();
+  });
+
+  it('respektiert toolbar:false und status:false', () => {
+    const ta = makeTextarea('x');
+    const editor = new SupaMDE({ element: ta, toolbar: false, status: false });
+    const container = ta.previousSibling as HTMLElement;
+    expect(container.querySelector('.supamde-toolbar')).toBeNull();
+    expect(container.querySelector('.supamde-statusbar')).toBeNull();
+    editor.toTextArea();
+  });
+
+  it('Statusbar zeigt initial die Wortzahl', () => {
+    const ta = makeTextarea('ein zwei drei');
+    const editor = new SupaMDE({ element: ta });
+    const words = (ta.previousSibling as HTMLElement).querySelector('.supamde-status-words')!;
+    expect(words.textContent).toContain('3');
+    editor.toTextArea();
+  });
+
+  it('updateStatusBar überschreibt ein Item', () => {
+    const ta = makeTextarea('x');
+    const editor = new SupaMDE({ element: ta, status: ['autosave'] });
+    editor.updateStatusBar('autosave', 'gespeichert');
+    const el = (ta.previousSibling as HTMLElement).querySelector('.supamde-status-autosave')!;
+    expect(el.textContent).toBe('gespeichert');
+    editor.toTextArea();
+  });
+
+  it('toTextArea räumt den Container ab', () => {
+    const ta = makeTextarea('x');
+    const editor = new SupaMDE({ element: ta });
+    editor.toTextArea();
+    expect(document.querySelector('.supamde-container')).toBeNull();
+    expect(ta.style.display).not.toBe('none');
+  });
+});
