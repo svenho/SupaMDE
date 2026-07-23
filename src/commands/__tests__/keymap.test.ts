@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { supaKeymap } from '../keymap';
+import { BUILTIN_ACTIONS } from '../../ui/actions';
 
 describe('supaKeymap', () => {
   it('enthält die zentralen easyMDE-Default-Shortcuts', () => {
@@ -39,5 +40,27 @@ describe('supaKeymap', () => {
     for (const b of supaKeymap) {
       expect(typeof b.run).toBe('function');
     }
+  });
+
+  it('leitet Kürzel aus BUILTIN_ACTIONS ab (dieselbe Command-Instanz, z.B. bold)', () => {
+    const boldBinding = supaKeymap.find((b) => b.key === 'Mod-b');
+    expect(boldBinding).toBeDefined();
+    expect(boldBinding?.run).toBe(BUILTIN_ACTIONS['bold']?.command);
+  });
+
+  it('enthält undo/redo NICHT (Bindung erfolgt via CM6 historyKeymap)', () => {
+    const keys = supaKeymap.map((b) => b.key ?? b.mac ?? '');
+    expect(keys).not.toContain('Mod-z');
+    expect(keys).not.toContain('Mod-y');
+  });
+
+  it('hat keine unbeabsichtigten doppelten Key-Bindungen (außer bewusst quote)', () => {
+    const keys = supaKeymap.map((b) => b.key ?? b.mac ?? '');
+    const counts = new Map<string, number>();
+    for (const key of keys) {
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const duplicates = [...counts.entries()].filter(([, count]) => count > 1);
+    expect(duplicates).toEqual([]);
   });
 });

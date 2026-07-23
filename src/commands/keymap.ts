@@ -1,47 +1,48 @@
 import type { KeyBinding } from '@codemirror/view';
-import { bold, italic } from './inline';
-import {
-  setHeading,
-  headingSmaller,
-  headingBigger,
-  quote,
-  codeBlock,
-  cleanBlock,
-} from './block';
-import { unorderedList, unorderedListStar, orderedList, checkList, continueList } from './list';
-import { drawLink, drawImage } from './link-image';
+import { quote } from './block';
+import { unorderedListStar, continueList } from './list';
+import { BUILTIN_ACTIONS } from '../ui/actions';
 
 /**
- * Default-Tastenkürzel aus easyMDE (Cmd → CM6 `Mod`, plattformgerecht). Nur die
- * M2-relevanten Aktionen — Preview/SideBySide/Fullscreen (F9/F11/Mod-P) folgen
- * mit ihren Features. `strikethrough`/`inlineCode`/`hr`/`table` haben in easyMDE
- * keinen Default-Shortcut und sind über Command/Toolbar erreichbar.
+ * Built-ins, deren `shortcut` NICHT als KeyBinding abgeleitet werden darf.
+ * undo/redo werden bereits über CM6s `historyKeymap` (siehe editor/extensions.ts)
+ * an Mod-z/Mod-y/Mod-Shift-z gebunden — ihr `shortcut` in actions.ts dient nur der
+ * Anzeige im Toolbar-Button-Title. Eine zusätzliche Ableitung hier würde dieselbe
+ * Taste doppelt binden.
  */
-export const supaKeymap: KeyBinding[] = [
-  { key: 'Mod-b', run: bold, preventDefault: true },
-  { key: 'Mod-i', run: italic, preventDefault: true },
-  { key: 'Mod-k', run: drawLink, preventDefault: true },
-  { key: 'Mod-h', run: headingSmaller, preventDefault: true },
-  { key: 'Shift-Mod-h', run: headingBigger, preventDefault: true },
-  { key: 'Ctrl-Alt-1', run: setHeading(1), preventDefault: true },
-  { key: 'Ctrl-Alt-2', run: setHeading(2), preventDefault: true },
-  { key: 'Ctrl-Alt-3', run: setHeading(3), preventDefault: true },
-  { key: 'Ctrl-Alt-4', run: setHeading(4), preventDefault: true },
-  { key: 'Ctrl-Alt-5', run: setHeading(5), preventDefault: true },
-  { key: 'Ctrl-Alt-6', run: setHeading(6), preventDefault: true },
-  { key: 'Mod-e', run: cleanBlock, preventDefault: true },
-  { key: 'Mod-Alt-i', run: drawImage, preventDefault: true },
-  { key: "Mod-'", run: quote, preventDefault: true },
-  // Zweitkürzel für Blockzitat: Mod-' liegt auf DE-Mac-Tastaturen auf Shift+#
-  // und ist dort unzuverlässig. Ctrl-Alt-Q ist layout-unabhängig erreichbar und
-  // passt zum Ctrl-Alt-Schema der absoluten Überschriften (Ctrl-Alt-1…6).
+const DISPLAY_ONLY = new Set(['undo', 'redo']);
+
+/**
+ * Aus jedem Built-in mit `shortcut` (außer DISPLAY_ONLY) eine KeyBinding ableiten.
+ * `BUILTIN_ACTIONS` (ui/actions.ts) ist damit die alleinige Quelle für Kürzel, die zu
+ * einem Toolbar-Button gehören — keine doppelte Pflege mehr in keymap.ts.
+ */
+const derived: KeyBinding[] = Object.entries(BUILTIN_ACTIONS)
+  .filter(([name, action]) => action.shortcut && !DISPLAY_ONLY.has(name))
+  .map(([, action]) => ({ key: action.shortcut!, run: action.command, preventDefault: true }));
+
+/**
+ * Sonderfälle OHNE Toolbar-Button — bleiben handgepflegt, da sie nicht aus
+ * BUILTIN_ACTIONS ableitbar sind.
+ */
+const extras: KeyBinding[] = [
+  // Zweitkürzel für Blockzitat: Mod-' (Primärkürzel, wird oben aus dem quote-Button
+  // abgeleitet) liegt auf DE-Mac-Tastaturen auf Shift+# und ist dort unzuverlässig.
+  // Ctrl-Alt-Q ist layout-unabhängig erreichbar und passt zum Ctrl-Alt-Schema der
+  // absoluten Überschriften (Ctrl-Alt-1…6). Derselbe quote-Import wie in actions.ts,
+  // damit Primär- und Zweitkürzel dieselbe Command-Instanz teilen.
   { key: 'Ctrl-Alt-q', run: quote, preventDefault: true },
-  { key: 'Mod-Alt-l', run: orderedList, preventDefault: true },
-  { key: 'Mod-l', run: unorderedList, preventDefault: true },
-  { key: 'Shift-Mod-l', run: checkList, preventDefault: true },
-  // Ungeordnete Liste mit Sternchen-Marker (Alternative zum Spiegelstrich-Default).
+  // Ungeordnete Liste mit Sternchen-Marker (kein eigener Button, Alternative zum
+  // Spiegelstrich-Default).
   { key: 'Shift-Alt-Mod-l', run: unorderedListStar, preventDefault: true },
-  { key: 'Mod-Alt-c', run: codeBlock, preventDefault: true },
   // Listen-Fortsetzung: greift nur in Listenzeilen, sonst false → Standard-Enter.
   { key: 'Enter', run: continueList },
 ];
+
+/**
+ * Default-Tastenkürzel aus easyMDE (Cmd → CM6 `Mod`, plattformgerecht). Der Großteil
+ * wird aus `BUILTIN_ACTIONS` (ui/actions.ts) abgeleitet — das ist die Single Source of
+ * Truth für Kürzel, die zu einem Toolbar-Button gehören. Nur Bindungen ohne Button
+ * (quote-Zweitkürzel, Sternchen-Liste, Listen-Fortsetzung) bleiben hier explizit.
+ */
+export const supaKeymap: KeyBinding[] = [...derived, ...extras];
