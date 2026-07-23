@@ -1,5 +1,12 @@
+/* Custom Properties für Toolbar-Styling */
 .supamde-container {
-  border: 1px solid #d0d0d0;
+  --supamde-border: #d0d0d0;
+  --supamde-toolbar-bg: #f7f7f7;
+  --supamde-btn-hover: #e6e6e6;
+  --supamde-btn-active: #d8e6ff;
+  --supamde-btn-text: #333;
+
+  border: 1px solid var(--supamde-border);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -9,8 +16,8 @@
   align-items: center;
   gap: 2px;
   padding: 4px;
-  border-bottom: 1px solid #d0d0d0;
-  background: #f7f7f7;
+  border-bottom: 1px solid var(--supamde-border);
+  background: var(--supamde-toolbar-bg);
   flex-wrap: wrap;
 }
 
@@ -24,17 +31,16 @@
   border: 1px solid transparent;
   border-radius: 3px;
   background: transparent;
-  color: #333;
+  color: var(--supamde-btn-text);
   cursor: pointer;
 }
 
 .supamde-toolbar button:hover {
-  background: #e6e6e6;
+  background: var(--supamde-btn-hover);
 }
 
 .supamde-toolbar button.active {
-  background: #d8e6ff;
-  border-color: #a8c6ff;
+  background: var(--supamde-btn-active);
 }
 
 .supamde-toolbar button svg {
@@ -47,5 +53,5 @@
   width: 1px;
   height: 20px;
   margin: 0 4px;
-  background: #d0d0d0;
+  background: var(--supamde-border);
 }
