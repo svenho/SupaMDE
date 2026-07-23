@@ -32,7 +32,13 @@ export interface ToolbarAction {
   query?: (state: EditorState) => boolean;
   icon: string;
   title: string;
-  shortcut?: string;
+  /**
+   * Anzeige-Kürzel für den Toolbar-Button-Title. Normalfall: einheitlicher String
+   * für alle Plattformen. Für Fälle, in denen macOS eine abweichende Bindung hat
+   * (z.B. redo via CM6-`historyKeymap`: `Mod-y` non-Mac, `Mod-Shift-z` auf Mac),
+   * ein `{ default, mac }`-Objekt verwenden.
+   */
+  shortcut?: string | { default: string; mac: string };
 }
 
 /** Erzeugt die query für eine absolute Überschrift `level`. */
@@ -103,7 +109,10 @@ export const BUILTIN_ACTIONS: Record<string, ToolbarAction> = {
   table: { command: table, icon: 'table', title: 'Tabelle' },
 
   undo: { command: undo, icon: 'undo', title: 'Rückgängig', shortcut: 'Mod-z' },
-  redo: { command: redo, icon: 'redo', title: 'Wiederholen', shortcut: 'Mod-y' },
+  // Auf Mac bindet CM6s historyKeymap redo an Mod-Shift-z statt Mod-y (siehe
+  // editor/extensions.ts) — das plattformabhängige Kürzel-Objekt sorgt dafür, dass
+  // der Toolbar-Button-Title auf Mac das tatsächlich wirksame Kürzel anzeigt.
+  redo: { command: redo, icon: 'redo', title: 'Wiederholen', shortcut: { default: 'Mod-y', mac: 'Mod-Shift-z' } },
 };
 
 /** Liefert die Action zu einem Built-in-Namen, oder undefined. */
