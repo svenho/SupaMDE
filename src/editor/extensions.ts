@@ -8,6 +8,7 @@ import type { ResolvedOptions } from '../options';
 import { highlightExtension } from './highlight';
 import { supaTheme } from './theme';
 import { supaKeymap } from '../commands/keymap';
+import { updateListenerExtension, type UpdateSink } from '../ui/update-listener';
 
 /**
  * Übersetzt normalisierte Optionen in die CM6-Extension-Liste. Jede easyMDE-
@@ -15,7 +16,7 @@ import { supaKeymap } from '../commands/keymap';
  * bewusst nicht enthalten — es ist eine View-Konstruktor-Option, keine Extension.
  * GFM-Extensions sind aktiviert, um GitHub Flavored Markdown (Strikethrough, Tabellen, etc.) zu parsen.
  */
-export function buildExtensions(resolved: ResolvedOptions): Extension[] {
+export function buildExtensions(resolved: ResolvedOptions, sink?: UpdateSink): Extension[] {
   const extensions: Extension[] = [
     markdown({ extensions: GFM }),
     highlightExtension,
@@ -31,6 +32,9 @@ export function buildExtensions(resolved: ResolvedOptions): Extension[] {
   }
   if (resolved.placeholder !== null) {
     extensions.push(placeholder(resolved.placeholder));
+  }
+  if (sink) {
+    extensions.push(updateListenerExtension(sink));
   }
 
   return extensions;

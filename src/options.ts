@@ -1,3 +1,6 @@
+import type { ToolbarOption } from './ui/toolbar-config';
+import type { StatusOption } from './ui/statusbar';
+
 /** Öffentliche Konfigurationsoptionen für SupaMDE (Kern-Set, M1). */
 export interface SupaMDEOptions {
   /** Das Textarea-Element, an das der Editor gebunden wird. */
@@ -14,6 +17,10 @@ export interface SupaMDEOptions {
   indentUnit?: number;
   /** Startwert; überschreibt den Textarea-Inhalt, falls gesetzt. */
   initialValue?: string;
+  /** Toolbar-Konfiguration: false (aus), oder Liste aus Built-in-Namen/Custom-Buttons. */
+  toolbar?: ToolbarOption;
+  /** Statusbar-Konfiguration: false (aus), oder Liste aus Built-in-Namen/Custom-Items. */
+  status?: StatusOption;
 }
 
 /** Normalisierte, immer vollständig belegte Optionen für die Extension-Erzeugung. */
