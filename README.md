@@ -21,7 +21,22 @@ Später als npm-Paket:
 npm install supamde
 ```
 
-CodeMirror 6 ist mitgebündelt — es muss nicht separat installiert werden.
+### CodeMirror 6 als Peer Dependencies
+
+SupaMDE bündelt CodeMirror 6 **nicht** mit — die CM6/Lezer-Pakete sind
+Peer Dependencies und müssen im Projekt selbst installiert werden. So teilt
+sich SupaMDE dieselbe CM6-Instanz wie dein übriger Code (npm dedupet über die
+Version), und es entstehen keine doppelten oder inkompatiblen CM6-Kopien:
+
+```bash
+npm install \
+  @codemirror/view @codemirror/state @codemirror/commands \
+  @codemirror/language @codemirror/lang-markdown \
+  @lezer/common @lezer/highlight @lezer/markdown
+```
+
+Die Einbindung erfolgt über einen Bundler (Vite, esbuild, Rollup, webpack …),
+der die Bare-Imports auflöst. SupaMDE wird als ESM ausgeliefert.
 
 ## Grundnutzung
 
@@ -133,7 +148,7 @@ dargestellt. Analog lassen sich alle anderen Tags anpassen — z. B. `t.strong`
 npm install
 npm run dev        # Vite-Dev-Server (example/)
 npm run test:run   # Vitest (einmalig)
-npm run build      # Library-Build (ESM + UMD) + Typdeklarationen
+npm run build      # Library-Build (ESM-only) + Typdeklarationen
 npm run lint       # ESLint
 npm run typecheck  # TypeScript ohne Emit
 ```
