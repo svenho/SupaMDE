@@ -38,7 +38,8 @@ Teilen auseinander. Verifizierter Stand (2026-07-23):
 |---|---|---|---|
 | Überschrift 1–6 | `Ctrl-Alt-1…6` | *kein `shortcut`* | Title zeigt **keinen** Hotkey, obwohl einer gebunden ist |
 | Blockzitat | `Mod-'` **+** `Ctrl-Alt-Q` | `Mod-'` | Zweitkürzel wird nicht angezeigt (akzeptabel) |
-| undo / redo | via `historyKeymap` (`Mod-Z`, `Mod-Y`, `Mod-Shift-Z`) | `Mod-Z` / `Mod-Y` | **stimmt** — CM6 bindet diese Kürzel |
+| undo | via `historyKeymap` (`Mod-Z`) | `Mod-z` | **stimmt** — CM6 bindet `⌘Z`/`Ctrl+Z` |
+| redo | via `historyKeymap` (`Mod-Y`, **Mac: `Mod-Shift-Z`**) | `{ default: 'Mod-y', mac: 'Mod-Shift-z' }` | **korrigiert in F6** — CM6 bindet redo auf Mac an `⌘⇧Z`, nicht `⌘Y`; das plattformabhängige `shortcut`-Feld zeigt jetzt die real gebundene Taste (Mac `⌘⇧Z`, sonst `Ctrl+Y`) |
 
 **Entscheidung für diese Nachbesserung:** Die Doppelpflege wird aufgelöst — **`actions.ts`
 wird die Single Source of Truth** (Task F2b). `keymap.ts` leitet die aus Toolbar-Aktionen
