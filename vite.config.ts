@@ -7,11 +7,13 @@ export default defineConfig({
     lib: {
       entry: resolve(import.meta.dirname, 'src/index.ts'),
       name: 'SupaMDE',
-      fileName: (format) => (format === 'es' ? 'supamde.mjs' : 'supamde.js'),
-      formats: ['es', 'umd'],
+      fileName: () => 'supamde.mjs',
+      formats: ['es'],
     },
     sourcemap: true,
     rollupOptions: {
+      // CM6/Lezer sind Peer Dependencies — nicht ins Bundle ziehen.
+      external: /^@(codemirror|lezer)\//,
       output: {
         exports: 'named',
       },
