@@ -9,6 +9,7 @@ import { highlightExtension } from './highlight';
 import { Math } from './math';
 import { supaTheme } from './theme';
 import { supaKeymap } from '../commands/keymap';
+import { updateListenerExtension, type UpdateSink } from '../ui/update-listener';
 
 /**
  * Übersetzt normalisierte Optionen in die CM6-Extension-Liste. Jede easyMDE-
@@ -18,7 +19,7 @@ import { supaKeymap } from '../commands/keymap';
  * `Math` erkennt `$…$`/`$$…$$` als eigene Knoten, damit LaTeX-Inhalt nicht als
  * Markdown (Fett, Links, …) interpretiert wird.
  */
-export function buildExtensions(resolved: ResolvedOptions): Extension[] {
+export function buildExtensions(resolved: ResolvedOptions, sink?: UpdateSink): Extension[] {
   const extensions: Extension[] = [
     markdown({ extensions: [GFM, Math] }),
     highlightExtension,
@@ -34,6 +35,9 @@ export function buildExtensions(resolved: ResolvedOptions): Extension[] {
   }
   if (resolved.placeholder !== null) {
     extensions.push(placeholder(resolved.placeholder));
+  }
+  if (sink) {
+    extensions.push(updateListenerExtension(sink));
   }
 
   return extensions;
