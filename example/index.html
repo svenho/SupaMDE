@@ -40,13 +40,7 @@ Ein [Link](https://example.org).
         toolbar: [
           'bold', 'italic', 'strikethrough', 'code', '|',
           'quote', 'unordered-list', 'ordered-list', 'check-list', '|',
-          'link', 'image', 'table', '|', 'undo', 'redo', '|',
-          {
-            name: 'shout',
-            title: 'In Großbuchstaben',
-            className: 'supamde-custom-shout',
-            action: (ed) => ed.setValue(ed.getValue().toUpperCase()),
-          },
+          'link', 'image', 'table', '|', 'undo', 'redo',
         ],
         status: ['lines', 'words', 'cursor'],
       });
