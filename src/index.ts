@@ -1,3 +1,6 @@
+import './ui/toolbar.css';
+import './ui/statusbar.css';
+
 import type { EditorView } from '@codemirror/view';
 import type { EditorState } from '@codemirror/state';
 import { VERSION } from './version';
