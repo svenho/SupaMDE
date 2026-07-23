@@ -1,0 +1,51 @@
+.supamde-container {
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.supamde-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-bottom: 1px solid #d0d0d0;
+  background: #f7f7f7;
+  flex-wrap: wrap;
+}
+
+.supamde-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: #333;
+  cursor: pointer;
+}
+
+.supamde-toolbar button:hover {
+  background: #e6e6e6;
+}
+
+.supamde-toolbar button.active {
+  background: #d8e6ff;
+  border-color: #a8c6ff;
+}
+
+.supamde-toolbar button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.supamde-separator {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: #d0d0d0;
+}
