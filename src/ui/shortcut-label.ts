@@ -21,28 +21,45 @@ function detectMac(): boolean {
 }
 
 /**
+ * Plattformabhängiges Shortcut-Kürzel: `default` gilt für alle Plattformen außer Mac,
+ * `mac` überschreibt die Anzeige (und ggf. Bindung) auf macOS. Nötig für Fälle wie
+ * redo, wo CM6s `historyKeymap` auf Mac `Mod-Shift-z` statt `Mod-y` bindet.
+ */
+export interface PlatformShortcut {
+  default: string;
+  mac: string;
+}
+
+/**
  * Formatiert einen CM6-Shortcut-String lesbar für die UI.
  *
  * Eingabeformat: CM6-kompatible Strings wie 'Mod-b', 'Shift-Mod-h', 'Mod-Alt-c', etc.
  * Segmente sind mit `-` getrennt; alle außer dem letzten sind Modifier.
  *
- * @param shortcut Der zu formatierende Shortcut-String (z.B. 'Mod-b')
+ * Alternativ akzeptiert die Funktion ein plattformabhängiges Kürzel-Objekt
+ * `{ default, mac }` — auf Mac wird dann `mac` formatiert, sonst `default`.
+ *
+ * @param shortcut Der zu formatierende Shortcut-String (z.B. 'Mod-b') oder ein
+ *   plattformabhängiges Kürzel-Objekt (z.B. `{ default: 'Mod-y', mac: 'Mod-Shift-z' }`)
  * @param isMac Optionales Flag, um Plattform zu überschreiben (Default: auto-erkannt)
  * @returns Formatierter Shortcut (z.B. '⌘B' auf Mac, 'Ctrl+B' sonst)
  */
-export function formatShortcut(shortcut: string, isMac?: boolean): string {
+export function formatShortcut(shortcut: string | PlatformShortcut, isMac?: boolean): string {
   const platform = isMac ?? detectMac();
 
+  // Bei plattformabhängigem Objekt zuerst den passenden String auflösen.
+  const resolved = typeof shortcut === 'string' ? shortcut : platform ? shortcut.mac : shortcut.default;
+
   // Shortcut in Segmente zerlegen
-  const segments = shortcut.split('-');
+  const segments = resolved.split('-');
   if (segments.length === 0) {
-    return shortcut;
+    return resolved;
   }
 
   // Letztes Segment ist die Taste; alle anderen sind Modifier
   const keySegment = segments[segments.length - 1];
   if (!keySegment) {
-    return shortcut;
+    return resolved;
   }
   const key = keySegment;
   const modifiers = segments.slice(0, -1);

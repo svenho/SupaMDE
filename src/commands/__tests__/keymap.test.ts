@@ -63,4 +63,10 @@ describe('supaKeymap', () => {
     const duplicates = [...counts.entries()].filter(([, count]) => count > 1);
     expect(duplicates).toEqual([]);
   });
+
+  it('alle abgeleiteten key-Werte sind strings (auch bei künftigen Objekt-Kürzeln robust)', () => {
+    for (const b of supaKeymap) {
+      expect(typeof b.key).toBe('string');
+    }
+  });
 });

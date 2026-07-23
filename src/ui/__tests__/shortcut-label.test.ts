@@ -56,4 +56,14 @@ describe('formatShortcut', () => {
       expect(['⌘B', 'Ctrl+B']).toContain(result);
     });
   });
+
+  describe('plattformabhängiges Kürzel-Objekt ({ default, mac })', () => {
+    it("{ default: 'Mod-y', mac: 'Mod-Shift-z' } auf Mac → '⌘⇧Z'", () => {
+      expect(formatShortcut({ default: 'Mod-y', mac: 'Mod-Shift-z' }, true)).toBe('⌘⇧Z');
+    });
+
+    it("{ default: 'Mod-y', mac: 'Mod-Shift-z' } auf non-Mac → 'Ctrl+Y'", () => {
+      expect(formatShortcut({ default: 'Mod-y', mac: 'Mod-Shift-z' }, false)).toBe('Ctrl+Y');
+    });
+  });
 });

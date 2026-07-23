@@ -1,7 +1,7 @@
 import type { KeyBinding } from '@codemirror/view';
 import { quote } from './block';
 import { unorderedListStar, continueList } from './list';
-import { BUILTIN_ACTIONS } from '../ui/actions';
+import { BUILTIN_ACTIONS, type ToolbarAction } from '../ui/actions';
 
 /**
  * Built-ins, deren `shortcut` NICHT als KeyBinding abgeleitet werden darf.
@@ -13,13 +13,25 @@ import { BUILTIN_ACTIONS } from '../ui/actions';
 const DISPLAY_ONLY = new Set(['undo', 'redo']);
 
 /**
+ * Zieht den zu bindenden `key`-String aus `ToolbarAction['shortcut']`. Bei einem
+ * plattformabhängigen Kürzel-Objekt (`{ default, mac }`) ist `default` der Bind-Key:
+ * CM6-KeyBinding-`key`-Felder sind bereits plattformneutral (z.B. `Mod-*` löst sich
+ * intern zu Cmd auf Mac / Ctrl sonst auf) — das `mac`-Feld dient nur der Anzeige im
+ * Toolbar-Title (siehe shortcut-label.ts). Robust auch für künftige, nicht per
+ * DISPLAY_ONLY ausgeschlossene Einträge mit Objekt-Kürzel.
+ */
+function bindKeyOf(shortcut: NonNullable<ToolbarAction['shortcut']>): string {
+  return typeof shortcut === 'string' ? shortcut : shortcut.default;
+}
+
+/**
  * Aus jedem Built-in mit `shortcut` (außer DISPLAY_ONLY) eine KeyBinding ableiten.
  * `BUILTIN_ACTIONS` (ui/actions.ts) ist damit die alleinige Quelle für Kürzel, die zu
  * einem Toolbar-Button gehören — keine doppelte Pflege mehr in keymap.ts.
  */
 const derived: KeyBinding[] = Object.entries(BUILTIN_ACTIONS)
   .filter(([name, action]) => action.shortcut && !DISPLAY_ONLY.has(name))
-  .map(([, action]) => ({ key: action.shortcut!, run: action.command, preventDefault: true }));
+  .map(([, action]) => ({ key: bindKeyOf(action.shortcut!), run: action.command, preventDefault: true }));
 
 /**
  * Sonderfälle OHNE Toolbar-Button — bleiben handgepflegt, da sie nicht aus
