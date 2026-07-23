@@ -4,7 +4,7 @@
 
 **Goal:** Eine konfigurierbare Toolbar und Statusbar bauen, verdrahtet über einen zentralen `EditorView.updateListener`, mit gebündelten Lucide-Icons.
 
-**Architecture:** Built-in-Buttons werden über eine Registry (`ui/actions.ts`) auf die vorhandenen M2-`SupaCommand`s abgebildet; Custom-Buttons behalten die easyMDE-`action(editor)`-Signatur. Der Aktiv-Zustand der Buttons kommt aus reinen `EditorState`-Abfragen in `commands/queries.ts` (aus den M2-Commands extrahiert). Ein einziger `updateListener` speist Toolbar-Aktiv-Zustand und Statusbar.
+**Architecture:** Built-in-Buttons werden über eine Registry (`ui/actions.ts`) auf die vorhandenen M2-`SupaCommand`s abgebildet; Custom-Buttons behalten die easyMDE-`action(editor)`-Signatur. Der Aktiv-Zustand der Buttons kommt aus reinen `EditorState`-Abfragen in `commands/queries.ts`. Diese Queries sind die **einzige Quelle** für Heading-Erkennung und die Syntaxbaum-Traversierung: `block.ts` und `inline.ts` werden so refaktoriert, dass sie auf `queries.ts` aufsetzen (echtes Extrahieren, keine Duplizierung der Regex/Traversierung). Ein einziger `updateListener` speist Toolbar-Aktiv-Zustand und Statusbar.
 
 **Tech Stack:** TypeScript (strict), CodeMirror 6, Lucide (`lucide` npm-Paket, gebündelt), Vitest + jsdom.
 
@@ -14,7 +14,7 @@
 - **Paket ist ESM-only** — keinen `require`-Einstieg hinzufügen. (Die `vite.config` baut derzeit noch ein UMD-Format mit; das ist ein bestehender Zustand außerhalb von M3 und wird hier NICHT geändert. Neue Dependencies müssen aber so gebündelt werden, dass der `npm run build` grün bleibt — siehe Task 3.)
 - Neue Module folgen dem Namensschema aus dem CM6-Design §2 (`ui/`, `features/`, `commands/`).
 - Jede reine Logik (`wordCount`, Queries, Config-Normalisierung) ist unit-getestet; DOM-nahe Module (Toolbar/Statusbar) komponenten-getestet in jsdom.
-- Command-Verhalten bleibt bei der `queries.ts`-Extraktion **identisch** — reine Refaktorierung, abgesichert durch die vorhandenen `commands/__tests__/*`.
+- Command-Verhalten bleibt bei der `queries.ts`-Extraktion **beobachtbar identisch** — reine Refaktorierung: `block.ts`/`inline.ts` rufen künftig die Query-Helfer, statt die Logik zu duplizieren. Abgesichert durch die vorhandenen `commands/__tests__/*` (die über die öffentlichen Commands `setHeading`, `bold` … testen, nicht über die internen Helfer — deshalb ohne Änderung als Sicherheitsnetz nutzbar).
 - `Mod` = `Cmd` auf macOS, `Ctrl` sonst.
 - Tests laufen mit `npx vitest run <pfad>`; die jsdom-Umgebung ist projektweit in der Vitest-Config gesetzt.
 
@@ -99,22 +99,26 @@ git commit -m "feat(features): wordCount-Utility mit Unit-Tests"
 
 ---
 
-### Task 2: Zustands-Abfragen (`queries.ts`) — Extraktion für den Aktiv-Zustand
+### Task 2: Zustands-Abfragen (`queries.ts`) — einzige Quelle für Heading-Erkennung & Node-Traversierung
 
 **Files:**
 - Create: `src/commands/queries.ts`
 - Test: `src/commands/__tests__/queries.test.ts`
-- Modify: `src/commands/inline.ts` (interne Funktion `enclosingNode` durch Query nutzen)
-- Modify: `src/commands/block.ts` (interne Funktion `currentLevel` durch Query nutzen)
+- Modify: `src/commands/block.ts` (interne `currentLevel` durch `activeHeadingLevel` ersetzen)
+- Modify: `src/commands/inline.ts` (interne `enclosingNode` auf `resolveEnclosingNode` aus `queries.ts` aufsetzen)
 
 **Interfaces:**
-- Consumes: `syntaxTree` (`@codemirror/language`), `selectedLineRange` (`../utils/text`).
+- Consumes: `syntaxTree` (`@codemirror/language`), `SyntaxNode` (`@lezer/common`), `selectedLineRange` (`../utils/text`).
 - Produces (alle auf `EditorState`):
+  - `resolveEnclosingNode(state, nodeName): SyntaxNode | null` — die **gemeinsame Traversierung**: liefert den umschließenden Knoten `nodeName` um die Hauptselektion (oder `null`). Basis für die Bool-Queries **und** für `inline.ts`' Toggle-Off (das den Knoten zum Entfernen der Marker braucht).
   - `isBold(state): boolean`, `isItalic(state): boolean`, `isStrikethrough(state): boolean`, `isInlineCode(state): boolean`
-  - `activeHeadingLevel(state): number` (0 = keins, sonst 1–6)
+  - `activeHeadingLevel(state): number` (0 = keins, sonst 1–6) — die **einzige** Heading-Regex im Projekt.
   - `isQuote(state): boolean`, `isInUnorderedList(state): boolean`, `isInOrderedList(state): boolean`, `isInCheckList(state): boolean`
 
-**Hintergrund:** Die M2-Toggle-Commands prüfen ihren Zustand intern und dispatchen. Für den Aktiv-Zustand der Toolbar brauchen wir dieselbe Prüfung **ohne Dispatch**, auf `EditorState` statt `EditorView`. Inline-Toggles brauchen den Syntaxbaum (`enclosingNode`); Block/Listen-Queries prüfen den Zeilentext der ersten Selektionszeile per Regex/`startsWith` (deckungsgleich mit der Command-Logik).
+**Hintergrund:** Die M2-Toggle-Commands prüfen ihren Zustand intern und dispatchen. Bisher steckt dieselbe Logik doppelt in `block.ts` (`currentLevel`) und `inline.ts` (`enclosingNode`). Diese Task macht `queries.ts` zur **einzigen Quelle**:
+- **Heading:** `activeHeadingLevel(state)` ersetzt `currentLevel(view)` vollständig — `block.ts` ruft künftig `activeHeadingLevel(view.state)`.
+- **Inline:** `resolveEnclosingNode(state, name)` ist die gemeinsame Traversierung. Die Bool-Query (`isBold` …) ist `resolveEnclosingNode(state, name) !== null`; `inline.ts`' internes `enclosingNode(view, spec)` wird zu einem dünnen Wrapper `resolveEnclosingNode(view.state, spec.node)` (es braucht die Node weiterhin zum Entfernen der Marker in `unwrap`).
+- **Block/Listen** (`isQuote`, `isInUnorderedList` …) prüfen den Zeilentext der ersten Selektionszeile per Regex/`startsWith`, deckungsgleich mit `list.ts`/`toggleLinePrefix` — hier gibt es keinen gemeinsam nutzbaren Helfer in den Commands (die arbeiten zeilenweise über den ganzen Bereich), deshalb bleibt diese Read-Only-Variante eigenständig, aber unter denselben Regexen.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -126,6 +130,7 @@ import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { GFM } from '@lezer/markdown';
 import {
+  resolveEnclosingNode,
   isBold,
   isItalic,
   isStrikethrough,
@@ -145,6 +150,19 @@ function stateAt(doc: string, pos = Math.floor(doc.length / 2)): EditorState {
     extensions: [markdown({ extensions: GFM })],
   });
 }
+
+describe('resolveEnclosingNode', () => {
+  it('liefert den umschließenden Knoten', () => {
+    const doc = 'ein **fetter** text';
+    const node = resolveEnclosingNode(stateAt(doc, doc.indexOf('fetter') + 2), 'StrongEmphasis');
+    expect(node).not.toBeNull();
+    expect(node!.name).toBe('StrongEmphasis');
+  });
+
+  it('liefert null, wenn kein solcher Knoten umschließt', () => {
+    expect(resolveEnclosingNode(stateAt('nur klartext', 3), 'StrongEmphasis')).toBeNull();
+  });
+});
 
 describe('inline queries', () => {
   it('isBold erkennt Cursor in **fett**', () => {
@@ -219,17 +237,25 @@ import { syntaxTree } from '@codemirror/language';
 import type { SyntaxNode } from '@lezer/common';
 import { selectedLineRange } from '../utils/text';
 
-/** True, wenn ein Knoten namens `nodeName` die Hauptselektion umschließt. */
-function hasEnclosingNode(state: EditorState, nodeName: string): boolean {
+/**
+ * Die gemeinsame Syntaxbaum-Traversierung: liefert den Knoten namens `nodeName`,
+ * der die Hauptselektion umschließt (oder `null`). EINZIGE Quelle dieser
+ * Traversierung im Projekt — `inline.ts` setzt hierauf auf (es braucht die Node
+ * zum Entfernen der Marker), die Bool-Queries sind `!== null` darüber.
+ */
+export function resolveEnclosingNode(
+  state: EditorState,
+  nodeName: string,
+): SyntaxNode | null {
   const sel = state.selection.main;
   let node: SyntaxNode | null = syntaxTree(state).resolveInner(sel.from, 1);
   while (node) {
     if (node.name === nodeName && node.from <= sel.from && node.to >= sel.to) {
-      return true;
+      return node;
     }
     node = node.parent;
   }
-  return false;
+  return null;
 }
 
 /** Text der ersten von der Selektion berührten Zeile. */
@@ -239,25 +265,31 @@ function firstSelectedLineText(state: EditorState): string {
 }
 
 export function isBold(state: EditorState): boolean {
-  return hasEnclosingNode(state, 'StrongEmphasis');
+  return resolveEnclosingNode(state, 'StrongEmphasis') !== null;
 }
 
 export function isItalic(state: EditorState): boolean {
-  return hasEnclosingNode(state, 'Emphasis');
+  return resolveEnclosingNode(state, 'Emphasis') !== null;
 }
 
 export function isStrikethrough(state: EditorState): boolean {
-  return hasEnclosingNode(state, 'Strikethrough');
+  return resolveEnclosingNode(state, 'Strikethrough') !== null;
 }
 
 export function isInlineCode(state: EditorState): boolean {
-  return hasEnclosingNode(state, 'InlineCode');
+  return resolveEnclosingNode(state, 'InlineCode') !== null;
 }
 
-/** Aktuelle Heading-Ebene der ersten Selektionszeile (0 = keine). */
+/**
+ * Aktuelle Heading-Ebene der ersten Selektionszeile (0 = keine). EINZIGE
+ * Heading-Regex im Projekt — `block.ts` (`setHeading`, `headingSmaller`,
+ * `headingBigger`) ruft diese Funktion statt einer eigenen `currentLevel`.
+ * `match[0].length - 1` = #-Zeichen ohne das trennende Leerzeichen (identisch
+ * zur bisherigen `currentLevel`-Semantik).
+ */
 export function activeHeadingLevel(state: EditorState): number {
   const match = /^(#{1,6}) /.exec(firstSelectedLineText(state));
-  return match ? match[1].length : 0;
+  return match ? match[0].length - 1 : 0;
 }
 
 export function isQuote(state: EditorState): boolean {
@@ -284,23 +316,69 @@ export function isInCheckList(state: EditorState): boolean {
 Run: `npx vitest run src/commands/__tests__/queries.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Refaktoriere `inline.ts`, damit es die Query nutzt**
+- [ ] **Step 5: Refaktoriere `block.ts` — `currentLevel` durch `activeHeadingLevel` ersetzen**
 
-In `src/commands/inline.ts` bleibt die interne `enclosingNode`/`unwrap`-Logik unverändert (sie liefert den Knoten zum Entfernen der Marker, nicht nur ein Bool). **Keine funktionale Änderung nötig** — die Query ist die state-basierte Read-Only-Variante und dupliziert die Traversierung bewusst nicht in `inline.ts` zurück. Verifiziere nur, dass die vorhandenen Inline-Command-Tests weiter grün sind.
+In `src/commands/block.ts` die lokale `currentLevel`-Funktion **entfernen** und stattdessen die Query nutzen. Import ergänzen:
+
+```typescript
+import { activeHeadingLevel } from './queries';
+```
+
+Die drei Aufrufstellen umstellen (aus `currentLevel(view)` wird `activeHeadingLevel(view.state)`):
+
+```typescript
+export function setHeading(level: HeadingLevel): SupaCommand {
+  return (view) => applyHeading(view, activeHeadingLevel(view.state) === level ? 0 : level);
+}
+
+export const headingSmaller: SupaCommand = (view) => {
+  const next = Math.min(activeHeadingLevel(view.state) + 1, 6);
+  return applyHeading(view, next);
+};
+
+export const headingBigger: SupaCommand = (view) => {
+  const next = Math.max(activeHeadingLevel(view.state) - 1, 0);
+  return applyHeading(view, next);
+};
+```
+
+Die lokale `currentLevel`-Funktion und ihre Regex sind danach gelöscht. Verifiziere, dass die vorhandenen Heading-Tests weiter grün sind (sie testen über `setHeading` etc., nicht über `currentLevel`):
+
+Run: `npx vitest run src/commands/__tests__/block.test.ts`
+Expected: PASS (unverändert — reine Refaktorierung, gleiche Semantik).
+
+- [ ] **Step 6: Refaktoriere `inline.ts` — `enclosingNode` auf `resolveEnclosingNode` aufsetzen**
+
+In `src/commands/inline.ts` die interne `enclosingNode`-Funktion so umbauen, dass sie die gemeinsame Traversierung nutzt (die `unwrap`-Logik bleibt, sie braucht die Node weiterhin). Import ergänzen:
+
+```typescript
+import { resolveEnclosingNode } from './queries';
+```
+
+Die lokale `enclosingNode` durch einen dünnen Wrapper ersetzen — der `syntaxTree`/`SyntaxNode`-Traversierungscode entfällt, `spec` wird nur noch für `spec.node` gebraucht:
+
+```typescript
+/** Sucht den umschließenden Knoten `spec.node` um die Selektion (teilt die Traversierung mit queries.ts). */
+function enclosingNode(view: EditorView, spec: InlineSpec): SyntaxNode | null {
+  return resolveEnclosingNode(view.state, spec.node);
+}
+```
+
+Danach ist der direkte `syntaxTree`-Import in `inline.ts` nur noch nötig, falls er anderweitig verwendet wird — prüfen und den ungenutzten Import entfernen (ESLint/`npm run lint` meldet ihn sonst). `SyntaxNode` bleibt importiert (Rückgabetyp von `enclosingNode` und Parameter von `unwrap`).
 
 Run: `npx vitest run src/commands/__tests__/inline.test.ts`
-Expected: PASS (unverändert).
+Expected: PASS (unverändert — reine Refaktorierung, gleiche Marker-Semantik).
 
-- [ ] **Step 6: Verifiziere block.ts-Tests weiter grün**
+- [ ] **Step 7: Lint + restliche Command-Tests grün**
 
-Run: `npx vitest run src/commands/__tests__/block.test.ts src/commands/__tests__/list.test.ts`
-Expected: PASS (unverändert — `queries.ts` ist rein additiv).
+Run: `npm run lint && npx vitest run src/commands/__tests__/list.test.ts`
+Expected: kein Lint-Fehler (keine ungenutzten Imports in `block.ts`/`inline.ts`); `list.test.ts` unverändert grün.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/commands/queries.ts src/commands/__tests__/queries.test.ts
-git commit -m "feat(commands): reine EditorState-Queries für Toolbar-Aktiv-Zustand"
+git add src/commands/queries.ts src/commands/__tests__/queries.test.ts src/commands/block.ts src/commands/inline.ts
+git commit -m "feat(commands): EditorState-Queries als einzige Quelle für Heading/Node-Traversierung"
 ```
 
 ---
@@ -479,6 +557,10 @@ git commit -m "feat(ui): gebündeltes Lucide-Icon-Modul (renderIcon/hasIcon)"
   - `interface ToolbarAction { command: SupaCommand; query?: (state: EditorState) => boolean; icon: string; title: string; shortcut?: string; }`
   - `BUILTIN_ACTIONS: Record<string, ToolbarAction>` — Registry Built-in-Name → Action.
   - `getAction(name: string): ToolbarAction | undefined`
+
+**Bewusste Grenzen dieser Task (dokumentiert, damit sie beim Ausführen nicht wie Versehen wirken):**
+- **`unorderedListStar` (`* `-Bullet)** aus `list.ts` bekommt **keinen** eigenen Toolbar-Button. Der Button `unordered-list` bildet nur die Default-Variante (`- `) ab; die Star-Variante bleibt per Tastenkürzel erreichbar. Grund: ein zweiter Bullet-Button wäre für Nutzer verwirrend (gleiches Icon, gleiche Semantik).
+- **`undo`/`redo` haben keine `query`** und damit **keinen Disabled-Zustand** — die Buttons sind immer klickbar, auch bei leerer History (ein Klick ist dann ein harmloser No-op). Ein ausgegrauter Zustand (wie in easyMDE) käme frühestens in einem späteren Meilenstein, da er zusätzlich den CM6-History-Zustand abfragen müsste. Für M3 bewusst ausgeklammert.
 
 - [ ] **Step 1: Write the failing test**
 
