@@ -1,7 +1,7 @@
 import type { EditorView } from '@codemirror/view';
 import type { DocChange, SupaCommand } from './types';
 import { stripLinePrefix } from './prefixes';
-import { selectedLineRange, toggleLinePrefix } from '../utils/text';
+import { dispatchLineChanges, selectedLineRange, toggleLinePrefix } from '../utils/text';
 
 /** Ein ungeordneter Bullet-Marker am Zeilenanfang (`- ` oder `* `). */
 const BULLET_PREFIX = /^[-*] /;
@@ -37,7 +37,7 @@ function toggleBulletList(view: EditorView, marker: '- ' | '* '): boolean {
   }
 
   if (changes.length === 0) return false;
-  view.dispatch({ changes });
+  dispatchLineChanges(view, changes);
   return true;
 }
 
@@ -74,7 +74,7 @@ export const orderedList: SupaCommand = (view) => {
       counter++;
     }
   }
-  view.dispatch({ changes });
+  dispatchLineChanges(view, changes);
   return true;
 };
 

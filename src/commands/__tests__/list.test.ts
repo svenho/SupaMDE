@@ -27,6 +27,14 @@ describe('unorderedList — Spiegelstrich "- " (AC-L1, Default)', () => {
     expect(view.state.doc.toString()).toBe('- a\n- b');
     view.destroy();
   });
+
+  it('platziert den Cursor hinter den Marker in einer leeren Zeile', () => {
+    const view = viewWith('', 0);
+    unorderedList(view);
+    expect(view.state.doc.toString()).toBe('- ');
+    expect(view.state.selection.main.head).toBe(2);
+    view.destroy();
+  });
 });
 
 describe('unorderedListStar — Sternchen "* " (Shift+Alt+Cmd+L)', () => {
@@ -61,6 +69,14 @@ describe('orderedList (AC-L2)', () => {
     expect(view.state.doc.toString()).toBe('1. a\n2. b\n3. c');
     view.destroy();
   });
+
+  it('platziert den Cursor hinter den Marker in einer leeren Zeile', () => {
+    const view = viewWith('', 0);
+    orderedList(view);
+    expect(view.state.doc.toString()).toBe('1. ');
+    expect(view.state.selection.main.head).toBe(3);
+    view.destroy();
+  });
 });
 
 describe('checkList (AC-L3)', () => {
@@ -68,6 +84,14 @@ describe('checkList (AC-L3)', () => {
     const view = viewWith('a', 0, 1);
     checkList(view);
     expect(view.state.doc.toString()).toBe('- [ ] a');
+    view.destroy();
+  });
+
+  it('platziert den Cursor hinter den Marker in einer leeren Zeile', () => {
+    const view = viewWith('', 0);
+    checkList(view);
+    expect(view.state.doc.toString()).toBe('- [ ] ');
+    expect(view.state.selection.main.head).toBe(6);
     view.destroy();
   });
 });

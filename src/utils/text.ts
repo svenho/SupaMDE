@@ -2,6 +2,21 @@ import type { EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import type { DocChange } from '../commands/types';
 
+/**
+ * Dispatcht zeilenweise Präfix-Änderungen und mappt die bestehende Selektion mit
+ * Rechts-Bias (`assoc: 1`) durch die Änderungen. Ohne diesen Bias lässt CM6 den
+ * Cursor an einer Einfügegrenze VOR dem eingefügten Marker stehen — auf einer
+ * leeren Zeile (Cursor == Zeilenanfang == Einfüge-`from`) bliebe er dadurch auf
+ * Spalte 1 statt hinter dem frisch gesetzten Marker.
+ */
+export function dispatchLineChanges(view: EditorView, changes: DocChange[]): void {
+  const changeSet = view.state.changes(changes);
+  view.dispatch({
+    changes: changeSet,
+    selection: view.state.selection.map(changeSet, 1),
+  });
+}
+
 /** Der volle Zeilenbereich, den die Hauptselektion berührt. */
 export interface LineRange {
   /** Doc-Offset am Anfang der ersten berührten Zeile. */
@@ -55,7 +70,7 @@ export function toggleLinePrefix(view: EditorView, prefix: string): boolean {
   }
 
   if (changes.length === 0) return false;
-  view.dispatch({ changes });
+  dispatchLineChanges(view, changes);
   return true;
 }
 
