@@ -38,7 +38,7 @@ describe('createStatusbar', () => {
     const sb = createStatusbar(['cursor'])!;
     sb.update(stateOf('abc\ndef', 5), full); // Zeile 2, Spalte 2
     const text = sb.dom.querySelector('.supamde-status-cursor')!.textContent!;
-    expect(text).toContain('2');
+    expect(text).toBe('2:2');
   });
 
   it('autosave-Slot rendert leer (M3-No-op)', () => {
