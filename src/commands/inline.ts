@@ -1,7 +1,7 @@
 import type { EditorView } from '@codemirror/view';
-import { syntaxTree } from '@codemirror/language';
 import type { SyntaxNode } from '@lezer/common';
 import type { SupaCommand } from './types';
+import { resolveEnclosingNode } from './queries';
 import { wrapSelection } from '../utils/text';
 
 /** Lezer-Knoten je Inline-Formatierung + zugehöriger Marker-Kindname. */
@@ -16,17 +16,9 @@ interface InlineSpec {
   after: string;
 }
 
-/** Sucht einen umschließenden Knoten `spec.node` um die Selektion. */
+/** Sucht den umschließenden Knoten `spec.node` um die Selektion (teilt die Traversierung mit queries.ts). */
 function enclosingNode(view: EditorView, spec: InlineSpec): SyntaxNode | null {
-  const sel = view.state.selection.main;
-  let node: SyntaxNode | null = syntaxTree(view.state).resolveInner(sel.from, 1);
-  while (node) {
-    if (node.name === spec.node && node.from <= sel.from && node.to >= sel.to) {
-      return node;
-    }
-    node = node.parent;
-  }
-  return null;
+  return resolveEnclosingNode(view.state, spec.node);
 }
 
 /** Entfernt die Marker-Kinder eines Formatierungs-Knotens (Toggle-Off). */

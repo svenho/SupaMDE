@@ -65,6 +65,7 @@
     "@codemirror/view": "^6.43.6",
     "@lezer/common": "^1.2.3",
     "@lezer/highlight": "^1.2.3",
-    "@lezer/markdown": "^1.7.2"
+    "@lezer/markdown": "^1.7.2",
+    "lucide": "^1.25.0"
   }
 }

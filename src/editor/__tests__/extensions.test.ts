@@ -4,6 +4,7 @@ import { EditorView } from '@codemirror/view';
 import { indentUnit, syntaxTree } from '@codemirror/language';
 import { buildExtensions } from '../extensions';
 import type { ResolvedOptions } from '../../options';
+import { resolveOptions } from '../../options';
 
 const base: ResolvedOptions = {
   lineWrapping: true,
@@ -107,6 +108,17 @@ describe('buildExtensions', () => {
     expect(view.state.doc.toString()).toBe('ab');
     undo(view);
     expect(view.state.doc.toString()).toBe('a');
+    view.destroy();
+  });
+
+  it('ruft den sink bei einer Doc-Änderung', () => {
+    const calls: boolean[] = [];
+    const ext = buildExtensions(resolveOptions({}), {
+      onUpdate: (u) => calls.push(u.docChanged),
+    });
+    const view = new EditorView({ state: EditorState.create({ doc: '', extensions: ext }) });
+    view.dispatch({ changes: { from: 0, insert: 'x' } });
+    expect(calls.some(Boolean)).toBe(true);
     view.destroy();
   });
 });

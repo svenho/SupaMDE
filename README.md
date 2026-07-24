@@ -3,9 +3,9 @@
 Ein moderner, einbettbarer Markdown-Editor auf Basis von **CodeMirror 6** — die
 modernisierte Neufassung von [easyMDE](https://github.com/Ionaru/easy-markdown-editor).
 
-> **Status:** In Entwicklung. Aktueller Meilenstein: **M2 — Aktionen**
-> (Formatierungs-Commands per Tastenkürzel, Undo/Redo). Die grafische Toolbar,
-> Preview und weitere Features folgen in späteren Meilensteinen.
+> **Status:** In Entwicklung. Aktueller Meilenstein: **M3 — Toolbar & Statusbar**
+> (grafische Toolbar mit Aktiv-Zuständen, Statusbar mit Zeilen/Wörter/Cursor).
+> Preview, Autosave und weitere Features folgen in späteren Meilensteinen.
 
 ## Installation
 
@@ -60,20 +60,52 @@ der die Bare-Imports auflöst. SupaMDE wird als ESM ausgeliefert.
 | `indentUnit`   | `number`              | `2`             | Einrücktiefe in Leerzeichen.               |
 | `initialValue` | `string`              | Textarea-Inhalt | Startwert (überschreibt Textarea).         |
 
+## Toolbar & Statusbar (M3)
+
+| Option    | Typ                                          | Default                       | Bedeutung                                        |
+| --------- | -------------------------------------------- | ----------------------------- | ------------------------------------------------ |
+| `toolbar` | `false \| Array<string \| CustomButton>`     | Default-Toolbar               | Toolbar-Aufbau. `false` blendet sie aus.         |
+| `status`  | `false \| Array<string \| CustomStatusItem>` | `['lines', 'words', 'cursor']`| Statusbar-Items. `false` blendet sie aus.        |
+
+**Built-in-Toolbar-Buttons:** `bold`, `italic`, `strikethrough`, `code`,
+`heading-smaller`, `heading-bigger`, `heading-1`…`heading-6`, `quote`, `code-block`,
+`horizontal-rule`, `clean-block`, `unordered-list`, `ordered-list`, `check-list`,
+`link`, `image`, `table`, `undo`, `redo`. `'|'` fügt einen Separator ein.
+
+**Custom-Buttons** behalten die easyMDE-Signatur:
+
+```js
+{
+  name: 'shout',
+  title: 'In Großbuchstaben',
+  className: 'fa fa-bullhorn',       // optionale eigene Icon-Klasse
+  action: (editor) => editor.setValue(editor.getValue().toUpperCase()),
+}
+```
+
+**Statusbar-Items:** `lines`, `words`, `cursor` (und `autosave`, ab M5 mit Inhalt).
+Custom-Items via `{ className, defaultValue, onUpdate, onActivity }`.
+
+**Icons:** Die Built-in-Buttons nutzen gebündelte
+[Lucide](https://lucide.dev)-SVG-Icons — es muss **kein** Icon-Font eingebunden
+werden. Custom-Buttons können über `className` weiterhin eigene Icon-Fonts
+(z. B. FontAwesome) verwenden.
+
 ## API (M1)
 
 | Methode                        | Beschreibung                                             |
 | ------------------------------ | -------------------------------------------------------- |
 | `value()` / `getValue()`       | Aktuellen Inhalt als String lesen.                       |
 | `value(val)` / `setValue(val)` | Gesamten Inhalt ersetzen.                                |
+| `updateStatusBar(name, content)` | Inhalt eines Statusbar-Items setzen (M3).              |
 | `toTextArea()`                 | Editor abbauen, ursprüngliche Textarea wiederherstellen. |
 | `codemirror`                   | Die zugrunde liegende CodeMirror-6-`EditorView`.         |
 
 ## Tastenkürzel (M2)
 
 Alle Formatierungs-Aktionen sind als CodeMirror-6-Commands umgesetzt und per
-Tastenkürzel erreichbar (`Mod` = `Cmd` auf macOS, `Ctrl` sonst). Eine grafische
-Toolbar folgt in M3.
+Tastenkürzel erreichbar (`Mod` = `Cmd` auf macOS, `Ctrl` sonst). Seit M3 sind alle
+Aktionen auch über die grafische Toolbar per Klick erreichbar.
 
 | Kürzel                                | Aktion                                 |
 | ------------------------------------- | -------------------------------------- |
@@ -92,7 +124,7 @@ Toolbar folgt in M3.
 
 `Enter` in einer Listenzeile setzt die Liste fort; in einer leeren Listenzeile
 beendet es sie. `Durchstreichen`, `Inline-Code`, `Trennlinie` und `Tabelle` sind
-als Commands vorhanden und werden mit der Toolbar (M3) auch per Klick erreichbar.
+über die Toolbar per Klick erreichbar.
 
 > **Hinweis (deutsche Mac-Tastatur):** `Mod-'` (Blockzitat) liegt hier auf
 > `Cmd+Shift+#` und wird je nach Browser nicht zuverlässig erkannt. Nutze

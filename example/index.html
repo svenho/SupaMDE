@@ -3,18 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SupaMDE — M2 Aktionen</title>
+    <title>SupaMDE — M3 Toolbar & Statusbar</title>
     <style>
       body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
     </style>
   </head>
   <body>
     <h1>SupaMDE</h1>
-    <p>M2: Live formatierender Editor mit Tastenkürzeln. Probiere
-      <kbd>Strg/Cmd</kbd>+<kbd>B</kbd> (fett), <kbd>Strg/Cmd</kbd>+<kbd>I</kbd> (kursiv),
-      <kbd>Strg/Cmd</kbd>+<kbd>K</kbd> (Link), <kbd>Strg/Cmd</kbd>+<kbd>'</kbd> (Zitat),
-      <kbd>Strg/Cmd</kbd>+<kbd>L</kbd> (Liste), <kbd>Strg/Cmd</kbd>+<kbd>Z</kbd> (undo).
-      Enter in einer Listenzeile setzt die Liste fort.</p>
+    <p>M3: grafische Toolbar (Klick-Aktionen mit Aktiv-Zustand) und Statusbar
+      (Zeilen, Wörter, Cursor). Die Icons sind gebündelt — kein CDN nötig.</p>
     <form>
       <textarea id="editor">
 # Überschrift 1
@@ -39,6 +36,13 @@ Ein [Link](https://example.org).
       const editor = new SupaMDE({
         element: document.getElementById('editor'),
         placeholder: 'Schreibe etwas Markdown …',
+        // Default-Toolbar + ein eigener Button, der die Wortzahl in die Statusbar schreibt
+        toolbar: [
+          'bold', 'italic', 'strikethrough', 'code', '|',
+          'quote', 'unordered-list', 'ordered-list', 'check-list', '|',
+          'link', 'image', 'table', '|', 'undo', 'redo',
+        ],
+        status: ['lines', 'words', 'cursor'],
       });
       // eslint-disable-next-line no-console
       console.log('SupaMDE-Version:', SupaMDE.version, editor.getValue());

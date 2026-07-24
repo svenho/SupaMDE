@@ -1,17 +1,10 @@
 import type { EditorView } from '@codemirror/view';
 import type { DocChange, SupaCommand } from './types';
 import { stripLinePrefix } from './prefixes';
+import { activeHeadingLevel } from './queries';
 import { selectedLineRange, toggleLinePrefix, wrapSelection } from '../utils/text';
 
 type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
-
-/** Liefert das aktuelle Heading-Level der ersten Selektionszeile (0 = keins). */
-function currentLevel(view: EditorView): number {
-  const { firstLine } = selectedLineRange(view.state);
-  const text = view.state.doc.line(firstLine).text;
-  const match = /^(#{1,6}) /.exec(text);
-  return match ? match[0].length - 1 : 0;
-}
 
 /** Setzt jede Selektionszeile auf `level` #-Zeichen; `level === 0` entfernt sie. */
 function applyHeading(view: EditorView, level: number): boolean {
@@ -32,18 +25,18 @@ function applyHeading(view: EditorView, level: number): boolean {
 
 /** Setzt ein absolutes Heading-Level; erneutes Setzen desselben Levels entfernt es. */
 export function setHeading(level: HeadingLevel): SupaCommand {
-  return (view) => applyHeading(view, currentLevel(view) === level ? 0 : level);
+  return (view) => applyHeading(view, activeHeadingLevel(view.state) === level ? 0 : level);
 }
 
 /** Verkleinert die Überschrift (mehr #, Grenze 6); aus Klartext wird H1. */
 export const headingSmaller: SupaCommand = (view) => {
-  const next = Math.min(currentLevel(view) + 1, 6);
+  const next = Math.min(activeHeadingLevel(view.state) + 1, 6);
   return applyHeading(view, next);
 };
 
 /** Vergrößert die Überschrift (weniger #); H1 → Klartext, bleibt bei Klartext. */
 export const headingBigger: SupaCommand = (view) => {
-  const next = Math.max(currentLevel(view) - 1, 0);
+  const next = Math.max(activeHeadingLevel(view.state) - 1, 0);
   return applyHeading(view, next);
 };
 
