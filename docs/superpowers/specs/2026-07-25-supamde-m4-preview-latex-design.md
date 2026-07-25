@@ -290,8 +290,14 @@ syncSideBySidePreviewScroll?: boolean;             // Default true
 onToggleFullScreen?: (active: boolean) => void;
 ```
 
-Diese Optionen werden in `resolveOptions` mit Defaults belegt bzw. an die
-zuständigen Module durchgereicht.
+Diese Optionen werden **nicht** in `resolveOptions` normalisiert (das behandelt
+ausschließlich die Felder, die zu CM6-Extensions werden — `lineWrapping`,
+`tabSize`, …). Die Render-/Preview-Optionen werden an die zuständigen Module
+durchgereicht; ihre Normalisierung (insb. der `singleLineBreaks ?? true`-Default)
+lebt gebündelt in `renderOptionsFrom`/`markdownToHtml` (`markdown/parse.ts`) — die
+eine Quelle der Wahrheit für die Render-Config. Zwei getrennte Normalisierungs-
+Ebenen (Editor-Config in `resolveOptions` vs. Render-Config in `parse.ts`) sind
+hier bewusst getrennt.
 
 ### 7.3 KaTeX als optionale Peer-Dependency
 

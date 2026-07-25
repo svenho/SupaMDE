@@ -946,7 +946,19 @@ const ICONS: Record<string, IconNode> = {
 
 - [ ] **Step 5: `toolbar.ts` — `buildItem` und `update` nach `kind` verzweigen**
 
-In `buildItem` den `item.kind === 'builtin'`-Zweig anpassen: statt `action.command(view)` nach `action.kind` unterscheiden. Die Toolbar bekommt `editor: unknown` schon durchgereicht — für `view`-Aktionen als `SupaLike` behandeln.
+`buildItem` hat aktuell ZWEI Zweige: `item.kind === 'builtin'` **und** einen
+`else`-Zweig für `item.kind === 'custom'` (easyMDE-kompatible Custom-Buttons,
+getestet in `toolbar.test.ts`). **Nur der `builtin`-Zweig wird angepasst** — statt
+`action.command(view)` nach `action.kind` unterscheiden. Die Toolbar bekommt
+`editor: unknown` schon durchgereicht — für `view`-Aktionen als `SupaLike`
+behandeln.
+>
+> **⚠️ WICHTIG — `custom`-Zweig NICHT anfassen:** Der bestehende `else`-Zweig
+> (`item.kind === 'custom'`, `button.action(editor)`) bleibt **unverändert
+> erhalten**. Das Snippet unten zeigt die ganze `if/else`-Struktur mit dem
+> unveränderten `custom`-Zweig, damit klar ist, dass NUR der `builtin`-Block
+> ersetzt wird — der `custom`-Block darf nicht versehentlich überschrieben werden
+> (sonst brechen die Custom-Button-Tests).
 
 ```ts
 if (item.kind === 'builtin') {
@@ -974,6 +986,19 @@ if (item.kind === 'builtin') {
       viewButtons.push({ el: btn, active: action.active });
     }
   }
+} else {
+  // UNVERÄNDERT: Custom-Button-Zweig (item.kind === 'custom') — exakt wie bisher.
+  const { button } = item;
+  btn.title = button.title ?? button.name;
+  btn.dataset.action = button.name;
+  if (button.className) {
+    const icon = document.createElement('i');
+    icon.className = button.className;
+    btn.appendChild(icon);
+  } else {
+    btn.textContent = button.name;
+  }
+  btn.addEventListener('click', () => button.action(editor));
 }
 ```
 
@@ -1015,7 +1040,30 @@ Am Ende der `DEFAULT_TOOLBAR`-Liste (nach `'redo'`) ergänzen:
 
 - [ ] **Step 7: bestehende Toolbar-Tests anpassen + neue prüfen**
 
-Falls bestehende Tests auf `action.command`/`action.query` ohne `kind` zugreifen, auf die Union anpassen (z.B. `if (action.kind === 'command')`). Dann:
+**Pflicht-Anpassung `src/ui/__tests__/actions.test.ts`** (NICHT optional — dieser
+Test greift garantiert auf die alte Shape zu und bricht sonst den Typecheck):
+
+- Zeile ~9: `expect(typeof bold?.command).toBe('function')` — `command` liegt nach
+  dem Union-Umbau nur noch auf dem `kind: 'command'`-Zweig. Auf `kind` einschränken:
+  ```ts
+  const bold = getAction('bold');
+  expect(bold?.kind).toBe('command');
+  if (bold?.kind === 'command') {
+    expect(typeof bold.command).toBe('function');
+  }
+  expect(bold?.title.length).toBeGreaterThan(0);
+  ```
+- Der Block „*Toggle-Aktionen haben eine query …*" (`getAction('bold')?.query`
+  etc.): `query` liegt ebenfalls nur auf dem `command`-Zweig. Pro Zugriff auf
+  `kind === 'command'` einschränken (oder eine kleine Helferzeile
+  `const asCmd = (n: string) => { const a = getAction(n); return a?.kind === 'command' ? a : undefined; };`
+  einführen und `asCmd('bold')?.query` schreiben).
+- Der Block „*jede registrierte Action hat ein bekanntes Icon*" iteriert über
+  `BUILTIN_ACTIONS` und greift nur `action.icon` ab — `icon` liegt auf **beiden**
+  Union-Zweigen, dieser Test bleibt **unverändert** gültig.
+
+Danach falls weitere Tests (`toolbar.test.ts` etc.) auf `action.command`/`.query`
+ohne `kind` zugreifen, analog auf die Union einschränken. Dann:
 
 Run: `npx vitest run src/ui/__tests__/actions.test.ts src/ui/__tests__/toolbar.test.ts src/ui/__tests__/toolbar-config.test.ts src/ui/__tests__/icons.test.ts`
 Expected: PASS (alle). Bei Fehlern in Altbestand-Tests: Zugriffe auf `ToolbarAction` an die Union anpassen.
@@ -1119,6 +1167,15 @@ Quelle der Wahrheit, nicht in `resolveOptions`. Zwei getrennte Normalisierungs-
 Ebenen (Editor-Config vs. Render-Config) sind hier gewollt, kein Stilbruch.
 `resolveOptions` bleibt unverändert. (In `options.test.ts` nur prüfen, dass die
 neuen Felder typseitig existieren/optional sind — kein neuer Default nötig.)
+
+> **Bewusste Abweichung von der Spec (§7.2):** Die Design-Spek formuliert „*Diese
+> Optionen werden in `resolveOptions` mit Defaults belegt bzw. durchgereicht*".
+> Der Plan weicht hier ab und normalisiert die Render-Optionen NICHT in
+> `resolveOptions`, sondern gebündelt in `renderOptionsFrom`/`markdownToHtml`
+> (Begründung oben: Trennung Editor-Config ↔ Render-Config, eine Quelle der
+> Wahrheit für den `singleLineBreaks`-Default). Diese Abweichung ist gewollt und
+> die bessere Architektur; die Spec §7.2 wurde entsprechend nachgezogen, damit
+> beide Dokumente konsistent sind.
 
 - [ ] **Step 4: `index.ts` verdrahten**
 
@@ -1433,6 +1490,22 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - [ ] **Volle Suite grün:** `npx vitest run`
 - [ ] **Typecheck sauber:** `npm run typecheck`
 - [ ] **Lint sauber:** `npm run lint`
-- [ ] **Build erfolgreich, KaTeX extern:** `npm run build` — danach prüfen, dass `dist/supamde.mjs` KaTeX **nicht** enthält (z.B. `grep -c "renderToString" dist/supamde.mjs` sollte 0 sein bzw. nur den Import-Aufruf zeigen).
+- [ ] **Build erfolgreich, KaTeX extern:** `npm run build` — danach prüfen, dass
+  KaTeX **nicht** ins Bundle gewandert ist.
+  > **Nicht** auf `renderToString` grep-en: SupaMDE ruft `katex.renderToString`
+  > selbst auf (`render()` in `katex-marked.ts`), dieser String steht also IMMER
+  > im Bundle — ein `grep -c "renderToString"` = 0 ist unmöglich und wäre ein
+  > falscher Check. Extern heißt: KaTeX **darf nur als Import referenziert**, aber
+  > nicht inline-gebündelt sein. Prüfen über den KaTeX-Font-/Style-Rumpf, der bei
+  > gebündeltem KaTeX auftauchen würde:
+  > ```bash
+  > # 0 erwartet: KaTeX-interne Marker dürfen NICHT im Bundle stehen (= nicht gebündelt).
+  > grep -c "katex-mathml\|__defineKatex\|renderToDomTree" dist/supamde.mjs
+  > # >0 erwartet: KaTeX bleibt ein externer Import (bare specifier), nicht inline.
+  > grep -c "from *[\"']katex[\"']\|import *[\"']katex[\"']" dist/supamde.mjs
+  > ```
+  > Ergänzend: `dist/supamde.mjs` sollte klein bleiben (KaTeX allein ist ~270 kB
+  > min) — ein plötzlicher Größensprung ist das deutlichste Signal für versehentlich
+  > gebündeltes KaTeX.
 - [ ] **Example manuell:** `npm run dev` — Side-by-Side + Formeln + Fullscreen + Scroll-Sync + „$5"-Fall wie in Task 6 Step 2.
 - [ ] **Definition of Done (Spec §10)** erfüllt.
