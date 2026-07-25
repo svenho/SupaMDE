@@ -13,7 +13,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       // CM6/Lezer sind Peer Dependencies — nicht ins Bundle ziehen.
-      external: /^@(codemirror|lezer)\//,
+      external: /^(@(codemirror|lezer)\/|katex($|\/))/,
       output: {
         exports: 'named',
       },
