@@ -3,9 +3,9 @@
 Ein moderner, einbettbarer Markdown-Editor auf Basis von **CodeMirror 6** — die
 modernisierte Neufassung von [easyMDE](https://github.com/Ionaru/easy-markdown-editor).
 
-> **Status:** In Entwicklung. Aktueller Meilenstein: **M3 — Toolbar & Statusbar**
-> (grafische Toolbar mit Aktiv-Zuständen, Statusbar mit Zeilen/Wörter/Cursor).
-> Preview, Autosave und weitere Features folgen in späteren Meilensteinen.
+> **Status:** In Entwicklung. Aktueller Meilenstein: **M4 — LaTeX-Live-Vorschau
+> & Fullscreen** (Side-by-Side-Vorschau mit Markdown+LaTeX-Rendering, Fullscreen).
+> Autosave und Bild-Upload folgen in M5.
 
 ## Installation
 
@@ -37,6 +37,23 @@ npm install \
 
 Die Einbindung erfolgt über einen Bundler (Vite, esbuild, Rollup, webpack …),
 der die Bare-Imports auflöst. SupaMDE wird als ESM ausgeliefert.
+
+### KaTeX (optional, für Formeln in der Vorschau)
+
+Die Live-Vorschau rendert LaTeX-Formeln (`$…$`, `$$…$$`, `\begin{align}` in
+`$$`) über **KaTeX**. KaTeX ist eine **optionale** Peer-Dependency — ist es
+nicht installiert, zeigt die Vorschau reines Markdown und lässt Formeln als
+Text stehen. Zum Aktivieren:
+
+```bash
+npm install katex
+```
+
+Zusätzlich das KaTeX-CSS (inkl. Schriften) in der Host-Seite einbinden, z.B.:
+
+```html
+<link rel="stylesheet" href="/node_modules/katex/dist/katex.min.css">
+```
 
 ## Grundnutzung
 
@@ -91,6 +108,16 @@ Custom-Items via `{ className, defaultValue, onUpdate, onActivity }`.
 werden. Custom-Buttons können über `className` weiterhin eigene Icon-Fonts
 (z. B. FontAwesome) verwenden.
 
+## Optionen (Preview/Fullscreen, M4)
+
+| Option                         | Typ                               | Default | Bedeutung                                             |
+| ------------------------------ | --------------------------------- | ------- | ----------------------------------------------------- |
+| `previewRender`                | `(text) => string`                | —       | Ersetzt den eingebauten Markdown-Renderer komplett.   |
+| `previewClass`                 | `string \| string[]`              | —       | Zusätzliche CSS-Klassen aufs Vorschau-Panel.          |
+| `renderingConfig.singleLineBreaks` | `boolean`                     | `true`  | Einfacher Zeilenumbruch → `<br>`.                     |
+| `syncSideBySidePreviewScroll`  | `boolean`                         | `true`  | Bidirektionaler Scroll-Sync im Side-by-Side.          |
+| `onToggleFullScreen`           | `(active) => void`                | —       | Callback bei Fullscreen-Wechsel.                      |
+
 ## API (M1)
 
 | Methode                        | Beschreibung                                             |
@@ -100,6 +127,11 @@ werden. Custom-Buttons können über `className` weiterhin eigene Icon-Fonts
 | `updateStatusBar(name, content)` | Inhalt eines Statusbar-Items setzen (M3).              |
 | `toTextArea()`                 | Editor abbauen, ursprüngliche Textarea wiederherstellen. |
 | `codemirror`                   | Die zugrunde liegende CodeMirror-6-`EditorView`.         |
+| `toggleSideBySide()`            | Side-by-Side-Vorschau an/aus.                            |
+| `isSideBySideActive()`          | `true` wenn Side-by-Side aktiv (M4).                     |
+| `toggleFullScreen()`            | Fullscreen-Modus an/aus (M4).                            |
+| `isFullscreenActive()`          | `true` wenn Fullscreen aktiv (M4).                       |
+| `markdown(text)`                | Text als Markdown mit KaTeX rendern (M4).                |
 
 ## Tastenkürzel (M2)
 
@@ -122,6 +154,8 @@ Aktionen auch über die grafische Toolbar per Klick erreichbar.
 | `Mod-E`                               | Blockformat entfernen                  |
 | `Mod-Z` / `Mod-Y`                     | Rückgängig / Wiederholen               |
 | `Tab` / `Shift-Tab`                   | Zeile ein- / ausrücken                 |
+| `F9`                                  | Side-by-Side-Vorschau an/aus (M4)      |
+| `F11`                                 | Fullscreen-Modus an/aus (M4)           |
 
 `Enter` in einer Listenzeile setzt die Liste fort; in einer leeren Listenzeile
 beendet es sie. `Durchstreichen`, `Inline-Code`, `Trennlinie` und `Tabelle` sind
