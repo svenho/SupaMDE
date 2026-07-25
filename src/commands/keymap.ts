@@ -30,9 +30,18 @@ function bindKeyOf(shortcut: NonNullable<ToolbarAction['shortcut']>): string {
  * Aus jedem Built-in mit `shortcut` (außer DISPLAY_ONLY) eine KeyBinding ableiten.
  * `BUILTIN_ACTIONS` (ui/actions.ts) ist damit die alleinige Quelle für Kürzel, die zu
  * einem Toolbar-Button gehören — keine doppelte Pflege mehr in keymap.ts.
+ *
+ * Nur `kind: 'command'`-Actions liefern eine CM6-`run`-Funktion (`(view) => boolean`).
+ * `kind: 'view'`-Actions (side-by-side/fullscreen) sind Instanz-Aktionen auf
+ * `SupaLike`, keine CM6-Commands — ihr `shortcut` wird stattdessen in Task 5 direkt
+ * verdrahtet (SupaMDE-eigener Keydown-Handler auf F9/F11), nicht über diesen
+ * CM6-Keymap.
  */
 const derived: KeyBinding[] = Object.entries(BUILTIN_ACTIONS)
-  .filter(([name, action]) => action.shortcut && !DISPLAY_ONLY.has(name))
+  .filter(
+    (entry): entry is [string, Extract<ToolbarAction, { kind: 'command' }>] =>
+      entry[1].kind === 'command' && !!entry[1].shortcut && !DISPLAY_ONLY.has(entry[0]),
+  )
   .map(([, action]) => ({ key: bindKeyOf(action.shortcut!), run: action.command, preventDefault: true }));
 
 /**

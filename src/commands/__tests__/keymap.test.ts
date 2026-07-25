@@ -57,7 +57,11 @@ describe('supaKeymap', () => {
   it('leitet Kürzel aus BUILTIN_ACTIONS ab (dieselbe Command-Instanz, z.B. bold)', () => {
     const boldBinding = supaKeymap.find((b) => b.key === 'Mod-b');
     expect(boldBinding).toBeDefined();
-    expect(boldBinding?.run).toBe(BUILTIN_ACTIONS['bold']?.command);
+    const bold = BUILTIN_ACTIONS['bold'];
+    expect(bold?.kind).toBe('command');
+    if (bold?.kind === 'command') {
+      expect(boldBinding?.run).toBe(bold.command);
+    }
   });
 
   it('enthält undo/redo NICHT (Bindung erfolgt via CM6 historyKeymap)', () => {

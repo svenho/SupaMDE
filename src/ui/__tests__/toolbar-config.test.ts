@@ -33,9 +33,9 @@ describe('resolveToolbar', () => {
     warn.mockRestore();
   });
 
-  it('DEFAULT_TOOLBAR enthält keine M4-Aktionen (preview/side-by-side/fullscreen)', () => {
-    for (const forbidden of ['preview', 'side-by-side', 'fullscreen']) {
-      expect(DEFAULT_TOOLBAR).not.toContain(forbidden);
-    }
+  it('DEFAULT_TOOLBAR enthält side-by-side und fullscreen, aber keine separate preview-Aktion', () => {
+    expect(DEFAULT_TOOLBAR).toContain('side-by-side');
+    expect(DEFAULT_TOOLBAR).toContain('fullscreen');
+    expect(DEFAULT_TOOLBAR).not.toContain('preview');
   });
 });

@@ -3,6 +3,7 @@ import type { EditorState } from '@codemirror/state';
 import { resolveToolbar, type ResolvedToolbarItem, type ToolbarOption } from './toolbar-config';
 import { renderIcon } from './icons';
 import { formatShortcut } from './shortcut-label';
+import type { SupaLike } from './actions';
 
 /** Ein gerendertes Toolbar-Widget mit reaktivem Aktiv-Zustand. */
 export interface Toolbar {
@@ -17,12 +18,35 @@ interface ActiveButton {
   query: (state: EditorState) => boolean;
 }
 
+/** Ein view-Button samt seiner active-Funktion, um bei update() .active zu setzen. */
+interface ViewButton {
+  el: HTMLButtonElement;
+  active: (editor: SupaLike) => boolean;
+}
+
+/**
+ * Laufzeit-Typwächter: erfüllt `editor` strukturell `SupaLike`? Nötig, weil
+ * `createToolbar` ein `editor: unknown` entgegennimmt (Custom-Buttons erlauben
+ * beliebige Werte) und `SupaMDE` die vier Methoden erst mit Task 5 bereitstellt.
+ */
+function isSupaLike(editor: unknown): editor is SupaLike {
+  return (
+    typeof editor === 'object' &&
+    editor !== null &&
+    typeof (editor as Partial<SupaLike>).toggleSideBySide === 'function' &&
+    typeof (editor as Partial<SupaLike>).toggleFullScreen === 'function' &&
+    typeof (editor as Partial<SupaLike>).isSideBySideActive === 'function' &&
+    typeof (editor as Partial<SupaLike>).isFullscreenActive === 'function'
+  );
+}
+
 /** Baut den DOM-Knoten für einen aufgelösten Toolbar-Eintrag. */
 function buildItem(
   view: EditorView,
   item: ResolvedToolbarItem,
   editor: unknown,
   activeButtons: ActiveButton[],
+  viewButtons: ViewButton[],
 ): HTMLElement {
   if (item.kind === 'separator') {
     const sep = document.createElement('i');
@@ -42,14 +66,24 @@ function buildItem(
     btn.setAttribute('aria-label', label);
     btn.dataset.action = name;
     btn.appendChild(renderIcon(action.icon));
-    btn.addEventListener('click', () => {
-      view.focus();
-      action.command(view);
-    });
-    if (action.query) {
-      activeButtons.push({ el: btn, query: action.query });
+    if (action.kind === 'command') {
+      const cmd = action.command;
+      btn.addEventListener('click', () => {
+        view.focus();
+        cmd(view);
+      });
+      if (action.query) {
+        activeButtons.push({ el: btn, query: (state) => action.query!(state) });
+      }
+    } else {
+      const run = action.run;
+      btn.addEventListener('click', () => run(editor as SupaLike));
+      if (action.active) {
+        viewButtons.push({ el: btn, active: action.active });
+      }
     }
   } else {
+    // UNVERÄNDERT: Custom-Button-Zweig (item.kind === 'custom') — exakt wie bisher.
     const { button } = item;
     btn.title = button.title ?? button.name;
     btn.dataset.action = button.name;
@@ -82,13 +116,24 @@ export function createToolbar(
   dom.className = 'supamde-toolbar';
 
   const activeButtons: ActiveButton[] = [];
+  const viewButtons: ViewButton[] = [];
   for (const item of items) {
-    dom.appendChild(buildItem(view, item, editor, activeButtons));
+    dom.appendChild(buildItem(view, item, editor, activeButtons, viewButtons));
   }
 
   const update = (state: EditorState): void => {
     for (const { el, query } of activeButtons) {
       el.classList.toggle('active', query(state));
+    }
+    // `editor` implementiert SupaLike erst, sobald die Instanz (SupaMDE, Task 5)
+    // toggleSideBySide/toggleFullScreen/isSideBySideActive/isFullscreenActive
+    // bereitstellt. Bis dahin (bzw. bei einem Host ohne diese Methoden) still
+    // überspringen statt zu werfen — verhindert einen crashenden Toolbar-Update
+    // allein durch das Vorhandensein der view-Buttons in DEFAULT_TOOLBAR.
+    if (isSupaLike(editor)) {
+      for (const { el, active } of viewButtons) {
+        el.classList.toggle('active', active(editor));
+      }
     }
   };
 

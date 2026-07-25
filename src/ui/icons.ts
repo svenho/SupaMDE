@@ -17,6 +17,8 @@ import {
   Table,
   Undo,
   Redo,
+  Columns2,
+  Fullscreen,
   type IconNode,
 } from 'lucide';
 
@@ -42,6 +44,8 @@ const ICONS: Record<string, IconNode> = {
   table: Table,
   undo: Undo,
   redo: Redo,
+  'side-by-side': Columns2,
+  fullscreen: Fullscreen,
 };
 
 /** Ob ein Icon-Name bekannt ist. */

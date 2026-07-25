@@ -30,4 +30,11 @@ describe('icons', () => {
       expect(hasIcon(name), name).toBe(true);
     }
   });
+
+  it('kennt die M4-Icons side-by-side und fullscreen', () => {
+    expect(hasIcon('side-by-side')).toBe(true);
+    expect(hasIcon('fullscreen')).toBe(true);
+    expect(() => renderIcon('side-by-side')).not.toThrow();
+    expect(() => renderIcon('fullscreen')).not.toThrow();
+  });
 });

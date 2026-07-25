@@ -11,10 +11,7 @@ export interface CustomToolbarButton {
 /** Die `toolbar`-Option: false, oder Liste aus Built-in-Namen/Custom-Buttons. */
 export type ToolbarOption = false | Array<string | CustomToolbarButton>;
 
-/**
- * Default-Toolbar — NUR M1/M2-Aktionen. Preview/SideBySide/Fullscreen kommen mit
- * M4. `'|'` ist ein Separator.
- */
+/** Default-Toolbar. `'|'` ist ein Separator. */
 export const DEFAULT_TOOLBAR: string[] = [
   'bold',
   'italic',
@@ -40,6 +37,9 @@ export const DEFAULT_TOOLBAR: string[] = [
   '|',
   'undo',
   'redo',
+  '|',
+  'side-by-side',
+  'fullscreen',
 ];
 
 /** Aufgelöster Toolbar-Eintrag. */
