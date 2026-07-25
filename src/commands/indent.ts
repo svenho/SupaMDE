@@ -1,6 +1,7 @@
 import { getIndentUnit } from '@codemirror/language';
 import type { SupaCommand } from './types';
 import { mapSelectedLines } from '../utils/text';
+import { dedentWidth } from './prefixes';
 
 /**
  * Rückt alle von der Hauptselektion berührten Zeilen um ein `indentUnit` ein
@@ -16,5 +17,20 @@ export const indentLines: SupaCommand = (view) => {
   mapSelectedLines(view, (line) => ({ from: line.from, to: line.from, insert: indent }));
   // Immer `true`: die Taste wird in jedem Fall konsumiert, damit der Browser
   // den Fokus nicht aus dem Editor bewegt.
+  return true;
+};
+
+/**
+ * Rückt alle von der Hauptselektion berührten Zeilen um bis zu ein `indentUnit`
+ * aus. Zeilen ohne führenden Whitespace bleiben unverändert — der Command gibt
+ * dennoch `true` zurück, damit `Shift-Tab` die Taste konsumiert und den Fokus
+ * nicht aus dem Editor bewegt.
+ */
+export const dedentLines: SupaCommand = (view) => {
+  const unit = getIndentUnit(view.state);
+  mapSelectedLines(view, (line) => {
+    const width = dedentWidth(line.text, unit);
+    return width > 0 ? { from: line.from, to: line.from + width, insert: '' } : null;
+  });
   return true;
 };

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { indentLines } from '../indent';
+import { indentLines, dedentLines } from '../indent';
 
 function viewWith(doc: string, anchor = 0, head = anchor): EditorView {
   const state = EditorState.create({
@@ -60,6 +60,58 @@ describe('indentLines — Tab', () => {
     const view = viewWith('', 0);
     expect(indentLines(view)).toBe(true);
     expect(view.state.doc.toString()).toBe('  ');
+    view.destroy();
+  });
+});
+
+describe('dedentLines — Shift-Tab', () => {
+  it('entfernt ein indentUnit führender Leerzeichen', () => {
+    const view = viewWith('    - Punkt', 6);
+    expect(dedentLines(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('  - Punkt');
+    view.destroy();
+  });
+
+  it('entfernt bei nur einem führenden Leerzeichen genau dieses', () => {
+    const view = viewWith(' a', 2);
+    dedentLines(view);
+    expect(view.state.doc.toString()).toBe('a');
+    view.destroy();
+  });
+
+  it('lässt eine Zeile ohne führenden Whitespace unverändert, gibt aber true zurück', () => {
+    const view = viewWith('- Punkt', 3);
+    expect(dedentLines(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('- Punkt');
+    view.destroy();
+  });
+
+  it('entfernt ein führendes Tab-Zeichen als ganze Einrückstufe', () => {
+    const view = viewWith('\ta', 2);
+    dedentLines(view);
+    expect(view.state.doc.toString()).toBe('a');
+    view.destroy();
+  });
+
+  it('rückt alle von der Selektion berührten Zeilen aus', () => {
+    const view = viewWith('  a\n  b', 0, 7);
+    dedentLines(view);
+    expect(view.state.doc.toString()).toBe('a\nb');
+    view.destroy();
+  });
+
+  it('mischt unveränderte und ausgerückte Zeilen korrekt', () => {
+    const view = viewWith('a\n  b', 0, 5);
+    dedentLines(view);
+    expect(view.state.doc.toString()).toBe('a\nb');
+    view.destroy();
+  });
+
+  it('macht ein vorheriges indentLines rückgängig', () => {
+    const view = viewWith('- Punkt', 0);
+    indentLines(view);
+    dedentLines(view);
+    expect(view.state.doc.toString()).toBe('- Punkt');
     view.destroy();
   });
 });

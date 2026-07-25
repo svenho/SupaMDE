@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { selectedLineRange, toggleLinePrefix, wrapSelection, mapSelectedLines } from '../text';
-import { stripLinePrefix } from '../../commands/prefixes';
+import { stripLinePrefix, dedentWidth } from '../../commands/prefixes';
 
 function viewWith(doc: string, anchor = 0, head = anchor): EditorView {
   const state = EditorState.create({
@@ -99,5 +99,20 @@ describe('stripLinePrefix', () => {
 
   it('liefert null ohne bekanntes Präfix', () => {
     expect(stripLinePrefix('Klartext')).toBeNull();
+  });
+});
+
+describe('dedentWidth', () => {
+  it('zählt bis zu unit-viele führende Leerzeichen', () => {
+    expect(dedentWidth('    - Punkt', 2)).toBe(2);
+    expect(dedentWidth(' a', 2)).toBe(1);
+  });
+
+  it('liefert 0 ohne führenden Whitespace', () => {
+    expect(dedentWidth('- Punkt', 2)).toBe(0);
+  });
+
+  it('zählt ein führendes Tab-Zeichen als eine volle Stufe', () => {
+    expect(dedentWidth('\ta', 2)).toBe(1);
   });
 });
