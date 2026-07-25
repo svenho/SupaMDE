@@ -39,9 +39,11 @@ LaTeX-Live-Vorschau für den beschriebenen Workflow. easyMDE-Optionen werden nur
 - **B-Umschalt-Layout** (Editor *oder* Vorschau, Fläche getauscht) — der
   Workflow will das Ergebnis *neben*, nicht *statt* dem Quelltext.
 - **Inline-WYSIWYG (C)** — Formeln im Editor selbst rendern (eigene
-  CM6-Decorations). Großes, eigenes Thema.
-- easyMDE-Rendering-Optionen jenseits des Kern-Sets: `codeSyntaxHighlighting`/
-  `hljs`, `maxHeight`, `sideBySideFullscreen`-Zwangskopplung, `sanitizerFunction`.
+  CM6-Decorations). Großes, eigenes Thema → **Folge-Meilenstein**, vorgemerkt in §8.2.
+- **Preview-Code-Syntax-Highlighting** (`codeSyntaxHighlighting`/`hljs`-Äquivalent)
+  → **Folge-Meilenstein**, vorgemerkt in §8.2.
+- Weitere easyMDE-Rendering-Optionen jenseits des Kern-Sets: `maxHeight`,
+  `sideBySideFullscreen`-Zwangskopplung, `sanitizerFunction`.
 - DOMPurify / umfangreiches HTML-Sanitizing im Kern.
 
 ---
@@ -305,13 +307,10 @@ zuständigen Module durchgereicht.
 
 ## 8. Bewusste Grenzen (YAGNI / Backlog)
 
+### 8.1 Nicht in M4 (endgültig weggelassen / anders gelöst)
+
 - **Kein B-Umschalt-Layout** (Editor *oder* Vorschau) — der Workflow will die
   Vorschau *neben* dem Quelltext.
-- **Kein Inline-WYSIWYG** (Formeln im Editor selbst gerendert) — eigenes,
-  größeres Thema (CM6-Decorations).
-- **Keine** `codeSyntaxHighlighting`/`hljs`-Preview-Highlighting-Option
-  (externe Abhängigkeit, selten kritisch; In-Editor-`HighlightStyle` aus M1
-  bleibt davon unberührt).
 - **Kein** `maxHeight`-Handling im Kern (in CM6 besser per Theme
   `.cm-scroller { max-height }` lösbar).
 - **Keine** `sideBySideFullscreen`-Zwangskopplung — Fullscreen und Side-by-Side
@@ -319,6 +318,32 @@ zuständigen Module durchgereicht.
 - **Kein** DOMPurify / erweitertes Sanitizing im Kern (`previewRender` als
   Fluchtluke).
 - **E2E-Tests (Cypress)** kommen gesammelt in M6, nicht in M4.
+
+### 8.2 Geplante Folge-Meilensteine (nicht in M4, aber vorgemerkt)
+
+Zwei vom Auftraggeber gewünschte Erweiterungen, bewusst **nach** M4, jeweils als
+eigenständiges Vorhaben mit eigenem Brainstorming/Spec:
+
+- **Preview-Code-Syntax-Highlighting** (kleiner Folge-Meilenstein).
+  Färbung von Fenced Code Blocks **im gerenderten Preview** (` ```js `-Blöcke mit
+  Sprach-Highlighting statt reinem monospace-`<pre>`).
+  *Ansatz:* `highlight`-Hook an marked, gespeist von einer Highlighting-Lib
+  (highlight.js oder Shiki), analog easyMDEs `codeSyntaxHighlighting`, aber als
+  optionale Peer-Dependency.
+  *Abgrenzung:* Betrifft **nur den Preview**. Das In-Editor-Highlighting der
+  Code-Blöcke (Lezer + `HighlightStyle` aus M1) existiert bereits und bleibt
+  davon unberührt.
+
+- **Integrierte Ansicht / Inline-WYSIWYG (Layout C)** (großer eigener Meilenstein).
+  Markup wird **im Editor selbst** ausgeblendet und durch die gesetzte Darstellung
+  ersetzt; die Roh-Syntax (`**`, `#`, `$…$` …) erscheint nur, wenn der Cursor im
+  betreffenden Abschnitt steht (Obsidian-/Typora-Stil). Kein separates Panel.
+  *Ansatz:* CM6-`replace`-Decorations über den Lezer-Syntaxbaum, mit
+  Cursor-in-Range-Logik zum Aussetzen der Decoration; Formeln als
+  **KaTeX-Widget-Decoration direkt im Editor** (nutzt den M4-Renderer wieder).
+  *Abgrenzung:* Eigenständige Mechanik, baut **nicht** auf marked/Panel auf.
+  Koexistiert mit der Side-by-Side-Vorschau aus M4 (ersetzt sie nicht). Dies ist
+  der „echte WYSIWYG"-Backlog-Punkt aus dem Ursprungs-Design-Dok (2026-07-17, §9).
 
 ---
 
