@@ -4,7 +4,7 @@
 
 **Goal:** Eine Side-by-Side-Live-Vorschau für Markdown mit LaTeX-Formeln (inline `$…$`, block `$$…$$`, `\begin{align}` in `$$`) plus einen Fullscreen-Modus, beide über Toolbar/API togglebar.
 
-**Architecture:** Ein reiner Markdown+KaTeX-Renderer (`markdown/`) speist ein DOM-Vorschau-Panel (`ui/preview.ts`), das über den bestehenden zentralen `updateListener`-Sink live aktualisiert wird. Fullscreen (`ui/fullscreen.ts`) ist ein reines CSS-Toggle des Containers. Die Toolbar-Action wird zur diskriminierten Union `command | view`, damit Instanz-gebundene Aktionen (Panel/Fullscreen) sauber neben CM6-Commands koexistieren. KaTeX ist eine **optionale** Peer-Dependency mit graceful degradation.
+**Architecture:** Ein reiner Markdown+KaTeX-Renderer (`markdown/`) speist ein DOM-Vorschau-Panel (`ui/preview.ts`), das über den bestehenden zentralen `updateListener`-Sink live aktualisiert wird. Fullscreen (`ui/fullscreen.ts`) ist ein reines CSS-Toggle des Containers. Die Toolbar-Action wird zur diskriminierten Union `command | view`, damit Instanz-gebundene Aktionen (Panel/Fullscreen) sauber neben CM6-Commands koexistieren. KaTeX ist eine **optionale** Peer-Dependency mit graceful degradation; sie wird **synchron** aufgelöst (`globalThis.katex` bzw. injiziertes `setKatex`), damit die durchgehend synchrone Renderkette kein Top-Level-`await`-Race bekommt.
 
 **Tech Stack:** TypeScript (strict), CodeMirror 6, `marked@18`, `katex@0.18` (optional peer), Vitest (jsdom), Vite (Library-Mode), Lucide-Icons.
 
@@ -24,14 +24,15 @@
 ## File Structure
 
 **Neu:**
-- `src/markdown/katex-marked.ts` — die zwei marked-Extensions (block/inline `$`), lädt KaTeX defensiv.
+- `src/utils/html.ts` — `escapeHtml(s)`: wiederverwendbares HTML-Escaping (nicht im Formel-Modul vergraben).
+- `src/markdown/katex-marked.ts` — die zwei marked-Extensions (block/inline `$`), löst KaTeX **synchron & defensiv** auf (`globalThis.katex` / `setKatex`, kein Top-Level-`await`).
 - `src/markdown/sanitize.ts` — `addAnchorTargetBlank`.
-- `src/markdown/parse.ts` — `markdownToHtml(text, opts)`: marked + KaTeX-Extensions + sanitize; respektiert `previewRender`.
+- `src/markdown/parse.ts` — `markdownToHtml(text, opts)` + `renderOptionsFrom(options)`: marked + KaTeX-Extensions + sanitize; respektiert `previewRender`; `renderOptionsFrom` ist die EINE Extraktions-Stelle der Render-Optionen.
 - `src/ui/preview.ts` — `createSideBySide(view, opts)`: Panel-DOM, Live-Update, Scroll-Sync, an-/abbauen.
 - `src/ui/preview.css` — Side-by-Side-Layout (Flexbox) + Formel-Feinschliff.
 - `src/ui/fullscreen.ts` — `createFullscreen(container, opts)`: CSS-Toggle + Body-Scroll-Sperre + Escape.
 - `src/ui/fullscreen.css` — `.supamde-fullscreen`.
-- Tests: je `__tests__/`-Datei zu obigen Modulen.
+- Tests: je `__tests__/`-Datei zu obigen Modulen (inkl. `src/utils/__tests__/html.test.ts`).
 
 **Geändert:**
 - `src/options.ts` — neue Optionen + Auflösung.
@@ -51,18 +52,22 @@
 ## Task 1: Markdown+KaTeX-Renderer (`markdown/`)
 
 **Files:**
+- Create: `src/utils/html.ts`
 - Create: `src/markdown/katex-marked.ts`
 - Create: `src/markdown/sanitize.ts`
 - Create: `src/markdown/parse.ts`
-- Test: `src/markdown/__tests__/parse.test.ts`
+- Test: `src/utils/__tests__/html.test.ts`, `src/markdown/__tests__/parse.test.ts`
 - Modify: `package.json` (deps), `vite.config.ts` (external)
 
 **Interfaces:**
-- Consumes: nichts aus dem Projekt (nur `marked`, optional `katex`).
+- Consumes: nur `marked` (gebündelt), `katex` optional zur Laufzeit (`globalThis.katex`/`setKatex`), `escapeHtml` aus `utils/html.ts`.
 - Produces:
+  - `escapeHtml(s: string): string` (`utils/html.ts`)
   - `markdownToHtml(text: string, opts?: RenderOptions): string`
+  - `renderOptionsFrom(o): RenderOptions` — extrahiert Render-Optionen aus den rohen Optionen (eine Quelle)
   - `interface RenderOptions { singleLineBreaks?: boolean; previewRender?: (text: string) => string; }`
   - `addAnchorTargetBlank(html: string): string`
+  - `setKatex(katex): void`, `isKatexAvailable(): boolean` (`katex-marked.ts`)
 
 - [ ] **Step 1: Dependencies installieren**
 
@@ -105,34 +110,82 @@ export function addAnchorTargetBlank(html: string): string {
 }
 ```
 
-- [ ] **Step 4: `katex-marked.ts` schreiben** (defensiver KaTeX-Load + zwei Extensions)
+- [ ] **Step 4a: `utils/html.ts` schreiben** (wiederverwendbares HTML-Escaping)
+
+`escapeHtml` gehört NICHT ins Formel-Modul — es ist ein generischer String-Helfer.
+Eigene kleine Utility-Datei (nicht `utils/text.ts`, das ist editor-/selektionsnah):
+
+```ts
+/** Escaped die fünf HTML-kritischen Zeichen für sichere Text-in-HTML-Einbettung. */
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+```
+
+> Test in `src/utils/__tests__/html.test.ts`: escaped alle fünf Zeichen; lässt
+> harmlosen Text unangetastet. (Wiederverwendbar auch für den Preview-Fallback
+> und künftige Renderer.)
+
+- [ ] **Step 4b: `katex-marked.ts` schreiben** (synchrone, defensive KaTeX-Auflösung + zwei Extensions)
+
+**Wichtig — KEIN Top-Level-`await import`.** Ein `await` auf Modulebene macht dieses
+Modul (und über die statische Import-Kette auch `parse.ts` → `index.ts`) zu einem
+**async Modul**. Die Renderkette ist aber synchron (`markdownToHtml` → `string`,
+vom Panel und der `markdown()`-Fassade synchron konsumiert). Ergebnis wäre ein
+Race: im Zeitfenster vor dem aufgelösten `import` ist `katexRender` noch `null`,
+und der erste Render fällt still auf Rohtext zurück — nicht-deterministisch und
+schlecht testbar.
+
+Deshalb **synchrone Auflösung** mit einer **einzigen Quelle** (`globalThis.katex`)
+plus **explizitem Injektionspunkt** (`setKatex`) für Bundler-Setups. Das deckt
+zugleich das Example ab (CDN lädt `window.katex`) — es gibt genau EINEN
+Auflösungsweg, keine CDN-vs-Bare-Import-Divergenz (siehe früherer Design-Bruch):
 
 ```ts
 import type { MarkedExtension, TokenizerAndRendererExtension } from 'marked';
+import { escapeHtml } from '../utils/html';
+
+/** Signatur von `katex.renderToString`. */
+type KatexRender = (expr: string, opts: { displayMode: boolean; throwOnError: boolean }) => string;
+/** Minimale Form des KaTeX-Objekts (global oder injiziert). */
+interface KatexLike { renderToString: KatexRender }
 
 /**
- * KaTeX defensiv auflösen: KaTeX ist eine OPTIONALE Peer-Dependency. Fehlt das
- * Paket, bleibt `katex` null und die Renderer geben den Rohtext zurück
- * (graceful degradation, Design §3.3). Der Import ist bewusst dynamisch/optional.
+ * KaTeX defensiv & SYNCHRON auflösen. KaTeX ist eine OPTIONALE Peer-Dependency
+ * (Design §3.3). Auflösungs-Reihenfolge, jedes Mal beim Rendern ausgewertet
+ * (nicht gecacht → spätere Injektion/Late-CDN-Load wirkt sofort):
+ *   1. explizit via `setKatex(...)` injiziert (Bundler-Host reicht sein KaTeX rein)
+ *   2. `globalThis.katex` (CDN-`<script>`, z.B. im Example)
+ * Fehlt beides, bleibt die Auflösung `null` → Renderer geben Rohtext zurück
+ * (graceful degradation, kein Crash).
  */
-type KatexRender = (expr: string, opts: { displayMode: boolean; throwOnError: boolean }) => string;
-let katexRender: KatexRender | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = (await import('katex')) as { default?: { renderToString: KatexRender }; renderToString?: KatexRender };
-  katexRender = mod.default?.renderToString ?? mod.renderToString ?? null;
-} catch {
-  katexRender = null;
+let injected: KatexLike | null = null;
+
+/**
+ * Injiziert eine KaTeX-Instanz (für Bundler-Setups, die `katex` als echtes
+ * Modul importieren und reinreichen). Fluchtluke — im Example/CDN-Fall nicht nötig.
+ */
+export function setKatex(katex: KatexLike | null): void {
+  injected = katex;
 }
 
-/** Rendert eine Formel; ohne KaTeX Rohtext (mit Delimitern) zurück. */
+/** Aktuelle KaTeX-Instanz oder null (synchron, ohne Import-Race). */
+function resolveKatex(): KatexLike | null {
+  if (injected) return injected;
+  const g = (globalThis as { katex?: KatexLike }).katex;
+  return g ?? null;
+}
+
+/** Rendert eine Formel; ohne KaTeX Rohtext (HTML-escaped) zurück. */
 function render(expr: string, displayMode: boolean, raw: string): string {
-  if (!katexRender) return escapeHtml(raw);
-  return katexRender(expr, { displayMode, throwOnError: false });
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const katex = resolveKatex();
+  if (!katex) return escapeHtml(raw);
+  return katex.renderToString(expr, { displayMode, throwOnError: false });
 }
 
 /** Block-Formel: $$ … $$ (mehrzeilig, \begin{align} darin). displayMode. */
@@ -179,13 +232,32 @@ export const katexMarkedExtension: MarkedExtension = {
   extensions: [blockMath, inlineMath],
 };
 
-/** Ob KaTeX verfügbar ist (für Tests/Diagnose). */
+/** Ob KaTeX aktuell verfügbar ist (für Tests/Diagnose). Synchron, ohne Race. */
 export function isKatexAvailable(): boolean {
-  return katexRender !== null;
+  return resolveKatex() !== null;
 }
 ```
 
-> **Hinweis für den Implementierer:** Top-level `await import` ist in einem ESM-Modul (`"type": "module"`) zulässig und wird von Vite/Vitest unterstützt. Falls `await` auf Modulebene im Ziel-Setup Probleme macht, alternativ das Auflösen in eine `ensureKatex()`-Funktion ziehen, die beim ersten `markdownToHtml`-Aufruf lazy lädt und cached. Der Test in Step 6 deckt beide Varianten ab.
+> **Warum synchron statt `await import`?** Der Renderpfad ist durchgehend synchron
+> (`markdownToHtml` liefert `string`; Panel und `markdown()`-Fassade konsumieren
+> synchron). Ein Top-Level-`await import('katex')` würde `katex-marked.ts` → `parse.ts`
+> → `index.ts` zu async Modulen machen und ein Auflösungs-Race erzeugen. Die
+> `resolveKatex()`-Variante ist deterministisch: keine async Propagierung, und eine
+> spät geladene KaTeX-Instanz (CDN-`defer`, nachträglicher `setKatex`) wirkt beim
+> nächsten Render sofort, weil bei jedem Render neu aufgelöst wird (kein Modul-Cache
+> auf `null`).
+>
+> **Vitest-Test-Setup:** In den Tests, die gerendertes KaTeX erwarten, `setKatex`
+> mit dem echten (devDep-)Modul speisen:
+> ```ts
+> import katex from 'katex';
+> import { setKatex } from '../katex-marked';
+> beforeAll(() => setKatex(katex));
+> afterAll(() => setKatex(null)); // Isolation: Fallback-Zweig bleibt testbar
+> ```
+> Für den Fallback-Zweig (`setKatex(null)` + kein `globalThis.katex`) prüfen, dass
+> Rohtext zurückkommt — genau der „nicht-aufgelöst"-Fall, der beim `await`-Ansatz
+> nicht deterministisch testbar wäre.
 
 - [ ] **Step 5: `parse.ts` schreiben**
 
@@ -202,6 +274,25 @@ export interface RenderOptions {
 }
 
 /**
+ * Baut `RenderOptions` aus den (rohen) SupaMDE-Optionen — die EINE Stelle, an
+ * der die Render-Relevanten Felder aus `SupaMDEOptions` extrahiert werden.
+ * Panel-Verdrahtung UND `markdown()`-Fassade nutzen sie beide (keine
+ * doppelte Inline-Konstruktion, Design §3.1 „eine Quelle der Wahrheit").
+ *
+ * Typ bewusst strukturell (`Pick`), damit `parse.ts` NICHT `options.ts`
+ * importieren muss — bleibt frei von Editor-/Fassaden-Abhängigkeiten.
+ */
+export function renderOptionsFrom(o: {
+  renderingConfig?: { singleLineBreaks?: boolean };
+  previewRender?: (text: string) => string;
+}): RenderOptions {
+  return {
+    singleLineBreaks: o.renderingConfig?.singleLineBreaks,
+    previewRender: o.previewRender,
+  };
+}
+
+/**
  * Markdown → HTML. Ohne `previewRender`: marked (GFM) + KaTeX-Extensions +
  * addAnchorTargetBlank. Reine Funktion (kein DOM, kein Editor) — Basis der
  * öffentlichen `markdown()`-Methode UND der Side-by-Side-Vorschau.
@@ -215,13 +306,19 @@ export function markdownToHtml(text: string, opts: RenderOptions = {}): string {
 }
 ```
 
+> **Hinweis (Live-Performance, Punkt 7 der Review):** `new Marked(...)` pro Aufruf
+> ist bei jedem Tastenanschlag messbar. Für M4 bewusst belassen (Einfachheit,
+> reine Funktion); falls Live-Update ruckelt, die `Marked`-Instanz nach `breaks`-Wert
+> memoisieren. Als YAGNI-Notiz vermerkt, kein Umbau in M4.
+
 - [ ] **Step 6: Tests schreiben** (`src/markdown/__tests__/parse.test.ts`)
 
 ```ts
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import katex from 'katex';
 import { markdownToHtml } from '../parse';
 import { addAnchorTargetBlank } from '../sanitize';
-import { isKatexAvailable } from '../katex-marked';
+import { isKatexAvailable, setKatex } from '../katex-marked';
 
 describe('markdownToHtml — Markdown', () => {
   it('rendert einfaches Markdown zu HTML', () => {
@@ -236,26 +333,26 @@ describe('markdownToHtml — Markdown', () => {
   });
 });
 
-describe('markdownToHtml — KaTeX', () => {
-  // KaTeX ist devDep → im Test verfügbar; falls nicht, Rohtext-Fallback prüfen.
+describe('markdownToHtml — KaTeX (mit injizierter Instanz)', () => {
+  // KaTeX explizit injizieren → deterministisch verfügbar, kein Import-Race.
+  beforeAll(() => setKatex(katex));
+  afterAll(() => setKatex(null));
+
+  it('KaTeX ist injiziert und verfügbar', () => {
+    expect(isKatexAvailable()).toBe(true);
+  });
+
   it('rendert eine Block-Formel $$…$$', () => {
-    const html = markdownToHtml('$$\nE = mc^2\n$$');
-    if (isKatexAvailable()) {
-      expect(html).toContain('katex');
-    } else {
-      expect(html).toContain('E = mc^2');
-    }
+    expect(markdownToHtml('$$\nE = mc^2\n$$')).toContain('katex');
   });
 
   it('rendert eine align-Umgebung innerhalb $$', () => {
     const html = markdownToHtml('$$\n\\begin{align} a &= b \\\\ c &= d \\end{align}\n$$');
-    if (isKatexAvailable()) expect(html).toContain('katex');
+    expect(html).toContain('katex');
   });
 
   it('rendert eine Inline-Formel $…$', () => {
-    const html = markdownToHtml('Es gilt $x_5$ hier.');
-    if (isKatexAvailable()) expect(html).toContain('katex');
-    else expect(html).toContain('x_5');
+    expect(markdownToHtml('Es gilt $x_5$ hier.')).toContain('katex');
   });
 
   it('Kein-Leerzeichen-Regel: "$5 und $10" bleibt Text', () => {
@@ -266,6 +363,21 @@ describe('markdownToHtml — KaTeX', () => {
 
   it('kaputte Formel crasht nicht (throwOnError:false)', () => {
     expect(() => markdownToHtml('$\\frac{1}{$')).not.toThrow();
+  });
+});
+
+describe('markdownToHtml — KaTeX fehlt (graceful degradation)', () => {
+  // Kein setKatex, kein globalThis.katex → resolveKatex() liefert null.
+  beforeAll(() => setKatex(null));
+
+  it('ist als nicht verfügbar gemeldet', () => {
+    expect(isKatexAvailable()).toBe(false);
+  });
+
+  it('gibt Rohtext (HTML-escaped) statt Formelsatz zurück, kein Crash', () => {
+    const html = markdownToHtml('Inline $x_5$ hier.');
+    expect(html).not.toContain('class="katex"');
+    expect(html).toContain('$x_5$');
   });
 });
 
@@ -290,13 +402,16 @@ Expected: PASS (alle). Bei rotem Lauf zuerst die Kein-Leerzeichen-Regex und den 
 - [ ] **Step 8: Typecheck + Lint**
 
 Run: `npm run typecheck && npm run lint`
-Expected: sauber. (`@types/katex` liefert die Typen; die `try/catch`-Auflösung braucht evtl. eine `eslint-disable`-Zeile wie im Code gezeigt.)
+Expected: sauber. (`@types/katex` liefert die Typen. Die synchrone `resolveKatex()`-Auflösung braucht **kein** `eslint-disable` — es gibt keinen dynamischen/`require`-Import mehr; der `globalThis`-Zugriff ist typisiert.)
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/markdown package.json package-lock.json vite.config.ts
+git add src/utils/html.ts src/utils/__tests__/html.test.ts src/markdown package.json package-lock.json vite.config.ts
 git commit -m "feat(markdown): Markdown+KaTeX-Renderer mit graceful degradation
+
+Synchrone, defensive KaTeX-Auflösung (globalThis.katex/setKatex, kein
+Top-Level-await); escapeHtml als wiederverwendbare utils/html.ts.
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
@@ -688,6 +803,13 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
   - `interface SupaLike { toggleSideBySide(): void; toggleFullScreen(): void; isSideBySideActive(): boolean; isFullscreenActive(): boolean; }` (strukturelles Minimal-Interface, damit `actions.ts` nicht zirkulär `index.ts` importiert)
 
 > **Wichtig:** `actions.ts` darf `SupaMDE` aus `index.ts` NICHT importieren (Zyklus: `index.ts` → `toolbar.ts` → `actions.ts`). Deshalb ein strukturelles `SupaLike`-Interface in `actions.ts` definieren und die `SupaMDE`-Instanz strukturell durchreichen.
+>
+> **Divergenz-Falle:** Weil `SupaLike` die vier Methoden dupliziert, prüft TypeScript
+> die Übereinstimmung mit `SupaMDE` NUR an der Durchreich-Stelle (`this` als `SupaLike`).
+> Benennt jemand später eine Methode um, bricht evtl. nur *diese* eine Stelle — `SupaLike`
+> selbst bleibt still korrekt. **Gegenmittel:** In `index.ts` (Task 5) einen expliziten
+> Compile-Time-Check `SupaMDE satisfies (new (...) => SupaLike)` bzw. eine `_assert`-Zeile
+> ergänzen (siehe Task 5, Step 4), damit ein Umbenennen sofort einen Typfehler erzeugt.
 
 - [ ] **Step 1: Failing-Test schreiben** — `actions.ts`-Erweiterung (in `src/ui/__tests__/actions.test.ts` ergänzen)
 
@@ -805,6 +927,22 @@ const ICONS: Record<string, IconNode> = {
   fullscreen: Fullscreen,
 };
 ```
+
+> **Icon-Namen verifizieren (Punkt 🟢 der Review):** Existieren die Lucide-Exporte
+> `Columns2`/`Fullscreen` in der installierten Version (`lucide@^1.25`) NICHT, wirft
+> `renderIcon` erst zur Laufzeit (`unbekanntes Icon`). Deshalb im bestehenden
+> `src/ui/__tests__/icons.test.ts` explizit assertieren, dass beide neuen Namen
+> aufgelöst werden:
+> ```ts
+> it('kennt die M4-Icons side-by-side und fullscreen', () => {
+>   expect(hasIcon('side-by-side')).toBe(true);
+>   expect(hasIcon('fullscreen')).toBe(true);
+>   expect(() => renderIcon('side-by-side')).not.toThrow();
+>   expect(() => renderIcon('fullscreen')).not.toThrow();
+> });
+> ```
+> Schlägt der Import fehl, ist die Lucide-Version zu klären (Name evtl. abweichend),
+> bevor weitergebaut wird — nicht erst beim manuellen Test in Task 6.
 
 - [ ] **Step 5: `toolbar.ts` — `buildItem` und `update` nach `kind` verzweigen**
 
@@ -970,7 +1108,17 @@ Expected: FAIL ("editor.markdown is not a function" o.ä.).
   onToggleFullScreen?: (active: boolean) => void;
 ```
 
-`ResolvedOptions` + `resolveOptions` NICHT zwingend erweitern — diese Optionen werden in `index.ts` direkt aus `options` gelesen und an die Module durchgereicht (sie sind keine CM6-Extensions). `resolveOptions` bleibt unverändert. (In `options.test.ts` nur prüfen, dass die Typen existieren/optional sind — kein neuer Default nötig.)
+`ResolvedOptions` + `resolveOptions` **bewusst NICHT erweitern** — und zwar aus
+einem klaren Grund (Punkt 5 der Review): `resolveOptions` normalisiert
+ausschließlich die Felder, die zu **CM6-Extensions** werden (`lineWrapping`,
+`tabSize`, …) und die zur Editor-Erzeugung in `editor/setup.ts` gebraucht werden.
+Die Preview-/Render-Optionen sind **keine** CM6-Extensions; ihre Normalisierung
+(insb. der `singleLineBreaks ?? true`-Default) lebt gebündelt in
+`renderOptionsFrom`/`markdownToHtml` (`markdown/parse.ts`) — DORT ist die eine
+Quelle der Wahrheit, nicht in `resolveOptions`. Zwei getrennte Normalisierungs-
+Ebenen (Editor-Config vs. Render-Config) sind hier gewollt, kein Stilbruch.
+`resolveOptions` bleibt unverändert. (In `options.test.ts` nur prüfen, dass die
+neuen Felder typseitig existieren/optional sind — kein neuer Default nötig.)
 
 - [ ] **Step 4: `index.ts` verdrahten**
 
@@ -988,7 +1136,8 @@ Weitere Imports:
 ```ts
 import { createSideBySide, type SideBySide } from './ui/preview';
 import { createFullscreen, type Fullscreen } from './ui/fullscreen';
-import { markdownToHtml, type RenderOptions } from './markdown/parse';
+import { markdownToHtml, renderOptionsFrom } from './markdown/parse';
+import type { SupaLike } from './ui/actions';
 ```
 
 Felder + Konstruktor-Verdrahtung. Der bestehende Sink wird um `preview?.update` erweitert, und die DOM-Struktur bekommt eine Editor-Zeile (`view.dom` + Panel) innerhalb des Containers, damit Toolbar/Statusbar volle Breite behalten:
@@ -1015,10 +1164,8 @@ Felder + Konstruktor-Verdrahtung. Der bestehende Sink wird um `preview?.update` 
     this.toolbar = createToolbar(this.codemirror, options.toolbar, this);
     this.statusbar = createStatusbar(options.status);
 
-    const renderOpts: RenderOptions = {
-      singleLineBreaks: options.renderingConfig?.singleLineBreaks,
-      previewRender: options.previewRender,
-    };
+    // EINE Quelle für die Render-Optionen (Panel + markdown()-Fassade teilen sie).
+    const renderOpts = renderOptionsFrom(options);
     this.preview = createSideBySide(this.codemirror, {
       render: (text) => markdownToHtml(text, renderOpts),
       previewClass: options.previewClass,
@@ -1053,12 +1200,9 @@ Felder + Konstruktor-Verdrahtung. Der bestehende Sink wird um `preview?.update` 
 Neue öffentliche Methoden:
 
 ```ts
-  /** Rendert Markdown (inkl. LaTeX) zu HTML. */
+  /** Rendert Markdown (inkl. LaTeX) zu HTML. Nutzt dieselbe Render-Options-Quelle wie das Panel. */
   markdown(text: string): string {
-    return markdownToHtml(text, {
-      singleLineBreaks: this.options.renderingConfig?.singleLineBreaks,
-      previewRender: this.options.previewRender,
-    });
+    return markdownToHtml(text, renderOptionsFrom(this.options));
   }
 
   toggleSideBySide(): void {
@@ -1092,6 +1236,24 @@ Neue öffentliche Methoden:
     return textarea;
   }
 ```
+
+**Compile-Time-Check gegen SupaLike-Divergenz** (Punkt 4 der Review). Ganz unten
+in `index.ts`, nach der Klasse, eine typseitige Assertion — kostet zur Laufzeit
+nichts, erzeugt aber sofort einen Typfehler, falls jemand `toggleSideBySide` &
+Co. in `SupaMDE` umbenennt/entfernt, ohne `SupaLike` (in `actions.ts`) nachzuziehen:
+
+```ts
+// Stellt sicher, dass SupaMDE strukturell SupaLike erfüllt (die Toolbar reicht
+// `this` als SupaLike durch). Bricht der Vertrag, schlägt der Typecheck HIER fehl —
+// nicht erst indirekt an der Durchreich-Stelle in toolbar.ts.
+const _supaLikeCheck: SupaLike = null as unknown as SupaMDE;
+void _supaLikeCheck;
+```
+
+> Alternativ ohne Dummy-Variable via `satisfies` an einer Instanz möglich; die
+> `_supaLikeCheck`-Zeile ist die simpelste Form, die `verbatimModuleSyntax`/
+> `isolatedModules` (siehe tsconfig) ohne Sonderfälle akzeptiert. Ein bewusst
+> ungenutztes `void _supaLikeCheck;` verhindert den no-unused-vars-Lint.
 
 > **CSS-Nachzug:** In `preview.css` die Flex-Regel auf `.supamde-editor-row` umstellen (die Editor-Zeile ist der Flex-Container, nicht der ganze Container):
 > ```css
@@ -1133,14 +1295,24 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 - [ ] **Step 1: `example/index.html` erweitern**
 
-Im `<head>` KaTeX-CSS + JS ergänzen (KaTeX ist optionale Peer-Dep; das Example stellt sie bereit). Version an die installierte `katex`-Version (0.18.x) anpassen:
+Im `<head>` KaTeX-CSS + JS von CDN ergänzen. Das `<script>` setzt `window.katex`
+global — genau das, was `resolveKatex()` über `globalThis.katex` findet (EIN
+Auflösungsweg, siehe Task 1). Version an die installierte `katex`-Version anpassen
+(devDep-Range `^0.18.0`; hier die konkret installierte Patch-Version einsetzen,
+damit CDN und lokale Version nicht driften):
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.0/dist/katex.min.css" crossorigin="anonymous">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.0/dist/katex.min.js" crossorigin="anonymous"></script>
+<!-- KEIN defer: window.katex muss stehen, bevor das SupaMDE-Modul erstmals rendert.
+     (Mit defer würde der erste Render evtl. vor gesetztem window.katex laufen und
+     kurz Rohtext zeigen; resolveKatex() greift beim nächsten Render nach.) -->
+<script src="https://cdn.jsdelivr.net/npm/katex@0.18.0/dist/katex.min.js" crossorigin="anonymous"></script>
 ```
 
-> **Hinweis Modul-Auflösung:** Der Renderer löst KaTeX über `import('katex')` auf. Im Example-Setup (Vite dev-server) muss `katex` als Bare-Import auflösbar sein — da `katex` als devDependency installiert ist, funktioniert das im `vite`-dev-Server. Das CDN-CSS liefert die Fonts/Styles fürs Rendering. Falls das Example ohne Bundler (pures HTML) läuft, stattdessen `katex.min.js` global laden und im Renderer `globalThis.katex` als Fallback berücksichtigen — dieser Fallback ist optional und nur nötig, wenn das Example bundlerlos betrieben wird.
+> **Auflösung im Example:** Der Renderer nutzt `globalThis.katex` (vom CDN-`<script>`
+> gesetzt) — **kein** `import('katex')`, keine devDep-Auflösung im dev-Server nötig.
+> Damit funktioniert das Example identisch mit Bundler (Vite) und bundlerlos (pures
+> HTML). Das CDN-CSS liefert Fonts/Styles fürs Rendering.
 
 Den Textarea-Startinhalt um Formeln erweitern, damit die Vorschau etwas zeigt:
 
