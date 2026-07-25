@@ -542,6 +542,24 @@ export function createSideBySide(view: EditorView, opts: SideBySideOptions): Sid
   let syncingFrom: 'editor' | 'preview' | null = null;
   const scroller = view.scrollDOM;
 
+  // Das Guard-Flag NICHT allein vom Gegen-Scroll-Event löschen lassen: eine
+  // programmatische scrollTop-Zuweisung feuert KEIN scroll-Event, wenn der Wert
+  // sich nicht ändert (beide Panes am Rand, Ziel nicht scrollbar, Sub-Pixel-
+  // Rundung auf denselben Integer). Dann bliebe das Flag hängen und der nächste
+  // echte User-Scroll würde einmalig als Echo verschluckt. Deshalb zusätzlich
+  // per rAF (mit Fallback für jsdom/Nicht-Browser) im nächsten Frame freigeben.
+  const scheduleGuardReset = (from: 'editor' | 'preview'): void => {
+    const release = (): void => {
+      if (syncingFrom === from) syncingFrom = null;
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(release);
+    } else {
+      // jsdom/SSR: kein rAF → synchroner Fallback (Test-Determinismus).
+      release();
+    }
+  };
+
   const onEditorScroll = (): void => {
     if (!active || !sync) return;
     if (syncingFrom === 'preview') { syncingFrom = null; return; }
@@ -549,6 +567,7 @@ export function createSideBySide(view: EditorView, opts: SideBySideOptions): Sid
     const denom = scroller.scrollHeight - scroller.clientHeight;
     const ratio = denom > 0 ? scroller.scrollTop / denom : 0;
     dom.scrollTop = (dom.scrollHeight - dom.clientHeight) * ratio;
+    scheduleGuardReset('editor');
   };
   const onPreviewScroll = (): void => {
     if (!active || !sync) return;
@@ -557,6 +576,7 @@ export function createSideBySide(view: EditorView, opts: SideBySideOptions): Sid
     const denom = dom.scrollHeight - dom.clientHeight;
     const ratio = denom > 0 ? dom.scrollTop / denom : 0;
     scroller.scrollTop = (scroller.scrollHeight - scroller.clientHeight) * ratio;
+    scheduleGuardReset('preview');
   };
 
   if (sync) {
