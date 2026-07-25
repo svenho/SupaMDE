@@ -89,10 +89,20 @@ Toolbar folgt in M3.
 | `Mod-Alt-I`                           | Bild einfügen                          |
 | `Mod-E`                               | Blockformat entfernen                  |
 | `Mod-Z` / `Mod-Y`                     | Rückgängig / Wiederholen               |
+| `Tab` / `Shift-Tab`                   | Zeile ein- / ausrücken                 |
 
 `Enter` in einer Listenzeile setzt die Liste fort; in einer leeren Listenzeile
 beendet es sie. `Durchstreichen`, `Inline-Code`, `Trennlinie` und `Tabelle` sind
 als Commands vorhanden und werden mit der Toolbar (M3) auch per Klick erreichbar.
+
+`Tab` rückt die aktuelle Zeile um ein `indentUnit` ein, `Shift-Tab` wieder aus —
+unabhängig davon, wo der Cursor in der Zeile steht. Bei einer Selektion gilt das
+für alle berührten Zeilen. So werden Listen verschachtelt: aus `- Punkt` wird
+`  - Punkt`.
+
+> **Hinweis (Barrierefreiheit):** `Tab` wird vom Editor ausnahmslos abgefangen
+> und verlässt ihn nicht. Wer den Editor per Tastatur verlassen will, muss
+> derzeit auf andere Navigation ausweichen.
 
 > **Hinweis (deutsche Mac-Tastatur):** `Mod-'` (Blockzitat) liegt hier auf
 > `Cmd+Shift+#` und wird je nach Browser nicht zuverlässig erkannt. Nutze
