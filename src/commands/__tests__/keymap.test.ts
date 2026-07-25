@@ -35,6 +35,18 @@ describe('supaKeymap', () => {
     expect(typeof enter?.run).toBe('function');
   });
 
+  it('bindet Tab und Shift-Tab an die Ein-/Ausrückung', () => {
+    const tab = supaKeymap.find((b) => b.key === 'Tab');
+    const shiftTab = supaKeymap.find((b) => b.key === 'Shift-Tab');
+    expect(tab).toBeDefined();
+    expect(shiftTab).toBeDefined();
+    // Zwei verschiedene Commands (einrücken vs. ausrücken).
+    expect(tab?.run).not.toBe(shiftTab?.run);
+    // Tab wird ausnahmslos konsumiert (bewusst keine Escape-Hatch, siehe Spec).
+    expect(tab?.preventDefault).toBe(true);
+    expect(shiftTab?.preventDefault).toBe(true);
+  });
+
   it('jede Bindung hat eine run-Funktion', () => {
     for (const b of supaKeymap) {
       expect(typeof b.run).toBe('function');

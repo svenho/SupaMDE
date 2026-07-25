@@ -10,6 +10,7 @@ import {
 } from './block';
 import { unorderedList, unorderedListStar, orderedList, checkList, continueList } from './list';
 import { drawLink, drawImage } from './link-image';
+import { indentLines, dedentLines } from './indent';
 
 /**
  * Default-Tastenkürzel aus easyMDE (Cmd → CM6 `Mod`, plattformgerecht). Nur die
@@ -44,4 +45,9 @@ export const supaKeymap: KeyBinding[] = [
   { key: 'Mod-Alt-c', run: codeBlock, preventDefault: true },
   // Listen-Fortsetzung: greift nur in Listenzeilen, sonst false → Standard-Enter.
   { key: 'Enter', run: continueList },
+  // Ein-/Ausrücken der Zeile bzw. aller selektierten Zeilen — greift in JEDER
+  // Zeile und an jeder Cursorposition. Tab wird bewusst ausnahmslos konsumiert
+  // (keine Escape-Hatch, siehe Spec 2026-07-25).
+  { key: 'Tab', run: indentLines, preventDefault: true },
+  { key: 'Shift-Tab', run: dedentLines, preventDefault: true },
 ];
