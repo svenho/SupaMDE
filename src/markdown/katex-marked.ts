@@ -53,8 +53,9 @@ const blockMath: TokenizerAndRendererExtension = {
     if (!match || !match[1]) return undefined;
     return { type: 'blockMath', raw: match[0], text: match[1].trim() };
   },
-  renderer(token: MathToken) {
-    return render(token.text, true, token.raw);
+  renderer(token) {
+    const t = token as unknown as MathToken;
+    return render(t.text, true, t.raw);
   },
 };
 
@@ -75,8 +76,9 @@ const inlineMath: TokenizerAndRendererExtension = {
     if (!match || !match[1]) return undefined;
     return { type: 'inlineMath', raw: match[0], text: match[1] };
   },
-  renderer(token: MathToken) {
-    return render(token.text, false, token.raw);
+  renderer(token) {
+    const t = token as unknown as MathToken;
+    return render(t.text, false, t.raw);
   },
 };
 
