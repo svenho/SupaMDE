@@ -88,4 +88,16 @@ describe('createToolbar', () => {
     expect(btn.getAttribute('aria-label')).toBe('Tabelle');
     view.destroy();
   });
+
+  it('view-Buttons ohne SupaLike-editor: update() wirft nicht und warnt genau einmal', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const view = makeView();
+    // editor erfüllt SupaLike NICHT (keine der vier Methoden).
+    const toolbar = createToolbar(view, ['side-by-side', 'fullscreen'], {})!;
+    expect(() => toolbar.update(view.state)).not.toThrow();
+    expect(() => toolbar.update(view.state)).not.toThrow();
+    expect(warn).toHaveBeenCalledTimes(1);
+    view.destroy();
+    warn.mockRestore();
+  });
 });

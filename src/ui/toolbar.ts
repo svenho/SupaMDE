@@ -121,6 +121,9 @@ export function createToolbar(
     dom.appendChild(buildItem(view, item, editor, activeButtons, viewButtons));
   }
 
+  // Warnt höchstens einmal pro Toolbar-Instanz (nicht bei jedem update()-Tick).
+  let supaLikeWarned = false;
+
   const update = (state: EditorState): void => {
     for (const { el, query } of activeButtons) {
       el.classList.toggle('active', query(state));
@@ -130,9 +133,22 @@ export function createToolbar(
     // bereitstellt. Bis dahin (bzw. bei einem Host ohne diese Methoden) still
     // überspringen statt zu werfen — verhindert einen crashenden Toolbar-Update
     // allein durch das Vorhandensein der view-Buttons in DEFAULT_TOOLBAR.
-    if (isSupaLike(editor)) {
-      for (const { el, active } of viewButtons) {
-        el.classList.toggle('active', active(editor));
+    if (viewButtons.length > 0) {
+      if (isSupaLike(editor)) {
+        for (const { el, active } of viewButtons) {
+          el.classList.toggle('active', active(editor));
+        }
+      } else if (!supaLikeWarned) {
+        // Beobachtbar statt lautlos: verhindert, dass ein Tippfehler in einer der
+        // vier SupaLike-Methoden (z.B. bei künftigen Umbenennungen) die
+        // view-Buttons dauerhaft und fehlerfrei "totlaufen" lässt.
+        supaLikeWarned = true;
+        console.warn(
+          'SupaMDE: Toolbar enthält view-Buttons (side-by-side/fullscreen), aber die ' +
+            'übergebene Editor-Instanz erfüllt SupaLike nicht (toggleSideBySide/' +
+            'toggleFullScreen/isSideBySideActive/isFullscreenActive) — Aktiv-Zustand ' +
+            'dieser Buttons wird nicht aktualisiert.',
+        );
       }
     }
   };
