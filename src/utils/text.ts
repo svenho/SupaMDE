@@ -1,4 +1,4 @@
-import type { EditorState } from '@codemirror/state';
+import type { EditorState, Line } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import type { DocChange } from '../commands/types';
 
@@ -40,6 +40,24 @@ export function selectedLineRange(state: EditorState): LineRange {
     firstLine: first.number,
     lastLine: last.number,
   };
+}
+
+/**
+ * Wendet `build` auf jede von der Hauptselektion berührte Zeile an und dispatcht
+ * die gesammelten Änderungen mit Selektionserhalt (siehe `dispatchLineChanges`).
+ * `build` liefert `null` für Zeilen ohne Änderung. Bleibt jede Zeile unverändert,
+ * wird nicht dispatcht — kein leerer Undo-Schritt. Liefert, ob dispatcht wurde.
+ */
+export function mapSelectedLines(view: EditorView, build: (line: Line) => DocChange | null): boolean {
+  const range = selectedLineRange(view.state);
+  const changes: DocChange[] = [];
+  for (let n = range.firstLine; n <= range.lastLine; n++) {
+    const change = build(view.state.doc.line(n));
+    if (change !== null) changes.push(change);
+  }
+  if (changes.length === 0) return false;
+  dispatchLineChanges(view, changes);
+  return true;
 }
 
 /**
