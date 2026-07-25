@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { resolveOptions } from '../options';
+import type { SupaMDEOptions } from '../options';
 
 describe('resolveOptions', () => {
   it('setzt Defaults bei leeren Optionen', () => {
@@ -32,5 +33,38 @@ describe('resolveOptions', () => {
     const el = document.createElement('textarea');
     const r = resolveOptions({ element: el });
     expect(r).not.toHaveProperty('element');
+  });
+
+  it('resolveOptions ignoriert Preview-/Render-Optionen (sie leben in renderOptionsFrom)', () => {
+    // Diese Felder werden NICHT in resolveOptions normalisiert (siehe Doku dort) —
+    // hier nur der Nachweis, dass sie unschädlich durchgereicht werden können.
+    const r = resolveOptions({
+      previewRender: (text) => text,
+      previewClass: 'x',
+      renderingConfig: { singleLineBreaks: false },
+      syncSideBySidePreviewScroll: false,
+      onToggleFullScreen: () => {},
+    });
+    expect(r).not.toHaveProperty('previewRender');
+    expect(r).not.toHaveProperty('renderingConfig');
+  });
+});
+
+describe('SupaMDEOptions (Typ-Erweiterung, M4)', () => {
+  it('die neuen Preview-/Fullscreen-Felder sind optional (rein typseitiger Nachweis)', () => {
+    // Kompiliert nur, wenn alle Felder existieren und optional sind — kein Laufzeit-Assert nötig.
+    const opts: SupaMDEOptions = {};
+    expect(opts).toEqual({});
+
+    const full: SupaMDEOptions = {
+      previewRender: (text) => text,
+      previewClass: ['a', 'b'],
+      renderingConfig: { singleLineBreaks: true },
+      syncSideBySidePreviewScroll: true,
+      onToggleFullScreen: (active) => {
+        expect(typeof active).toBe('boolean');
+      },
+    };
+    expect(full.previewClass).toEqual(['a', 'b']);
   });
 });

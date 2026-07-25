@@ -1,5 +1,7 @@
 import './ui/toolbar.css';
 import './ui/statusbar.css';
+import './ui/preview.css';
+import './ui/fullscreen.css';
 
 import type { EditorView } from '@codemirror/view';
 import type { EditorState } from '@codemirror/state';
@@ -9,6 +11,10 @@ import { editorFromTextArea, type EditorHandle } from './editor/setup';
 import { readValue, writeValue } from './editor/value';
 import { createToolbar, type Toolbar } from './ui/toolbar';
 import { createStatusbar, type Statusbar } from './ui/statusbar';
+import { createSideBySide, type SideBySide } from './ui/preview';
+import { createFullscreen, type Fullscreen } from './ui/fullscreen';
+import { markdownToHtml, renderOptionsFrom } from './markdown/parse';
+import type { SupaLike } from './ui/actions';
 
 export type { SupaMDEOptions } from './options';
 
@@ -31,17 +37,23 @@ export class SupaMDE {
 
   private readonly handle: EditorHandle;
   private readonly container: HTMLElement;
+  private readonly editorRow: HTMLElement;
   private readonly toolbar: Toolbar | null;
   private readonly statusbar: Statusbar | null;
+  private readonly preview: SideBySide | null;
+  private readonly fullscreen: Fullscreen;
+  /** Referenz auf den F9/F11-Keydown-Handler, damit toTextArea() ihn abräumt. */
+  private readonly onViewShortcuts: (event: KeyboardEvent) => void;
 
   constructor(options: SupaMDEOptions = {}) {
     this.options = options;
 
-    // Der EINE Sink: speist Toolbar-Aktiv-Zustand und Statusbar.
+    // Der EINE Sink: speist Toolbar-Aktiv-Zustand, Statusbar UND Vorschau-Panel.
     const sink = {
       onUpdate: (u: { state: EditorState; docChanged: boolean; selectionSet: boolean }): void => {
         this.toolbar?.update(u.state);
         this.statusbar?.update(u.state, { docChanged: u.docChanged, selectionSet: u.selectionSet });
+        this.preview?.update(u.state);
       },
     };
 
@@ -51,14 +63,51 @@ export class SupaMDE {
     this.toolbar = createToolbar(this.codemirror, options.toolbar, this);
     this.statusbar = createStatusbar(options.status);
 
-    // Container um view.dom bauen: Toolbar oben, Editor Mitte, Statusbar unten.
+    // EINE Quelle für die Render-Optionen (Panel + markdown()-Fassade teilen sie).
+    const renderOpts = renderOptionsFrom(options);
+    this.preview = createSideBySide(this.codemirror, {
+      render: (text) => markdownToHtml(text, renderOpts),
+      previewClass: options.previewClass,
+      syncScroll: options.syncSideBySidePreviewScroll,
+    });
+
+    // Container um view.dom bauen: Toolbar oben, Editor-Zeile Mitte, Statusbar unten.
     this.container = document.createElement('div');
     this.container.className = 'supamde-container';
     const viewDom = this.codemirror.dom;
     viewDom.parentNode?.insertBefore(this.container, viewDom);
     if (this.toolbar) this.container.appendChild(this.toolbar.dom);
-    this.container.appendChild(viewDom);
+
+    // Editor-Zeile: Editor + Vorschau-Panel nebeneinander (Flex via CSS), damit
+    // Toolbar/Statusbar außerhalb der Flex-Zeile volle Breite behalten.
+    this.editorRow = document.createElement('div');
+    this.editorRow.className = 'supamde-editor-row';
+    this.editorRow.appendChild(viewDom);
+    this.editorRow.appendChild(this.preview.dom);
+    this.container.appendChild(this.editorRow);
+
     if (this.statusbar) this.container.appendChild(this.statusbar.dom);
+
+    this.fullscreen = createFullscreen(this.container, {
+      onToggleFullScreen: options.onToggleFullScreen,
+    });
+
+    // F9/F11 sind view-Aktionen (side-by-side/fullscreen), keine CM6-Commands —
+    // sie lassen sich nicht über die CM6-keymap (commands/keymap.ts) ableiten,
+    // da sie nicht auf der EditorView, sondern auf der SupaMDE-Instanz wirken
+    // (siehe Kommentar dort). Deshalb hier ein eigener Keydown-Handler auf dem
+    // Container, der `event.preventDefault()` für F11 aufruft, damit der Browser
+    // nicht zusätzlich ins native Vollbild wechselt.
+    this.onViewShortcuts = (event: KeyboardEvent): void => {
+      if (event.key === 'F9') {
+        event.preventDefault();
+        this.toggleSideBySide();
+      } else if (event.key === 'F11') {
+        event.preventDefault();
+        this.toggleFullScreen();
+      }
+    };
+    this.container.addEventListener('keydown', this.onViewShortcuts);
 
     // Initialer Zustand, damit Statusbar/Aktiv-Zustand sofort stimmen.
     const state = this.codemirror.state;
@@ -86,15 +135,46 @@ export class SupaMDE {
     this.statusbar?.setItem(itemName, content);
   }
 
+  /** Rendert Markdown (inkl. LaTeX) zu HTML. Nutzt dieselbe Render-Options-Quelle wie das Panel. */
+  markdown(text: string): string {
+    return markdownToHtml(text, renderOptionsFrom(this.options));
+  }
+
+  toggleSideBySide(): void {
+    this.preview?.toggle();
+    this.container.classList.toggle('supamde-sided', this.isSideBySideActive());
+    this.toolbar?.update(this.codemirror.state);
+  }
+  isSideBySideActive(): boolean {
+    return this.preview?.isActive() ?? false;
+  }
+
+  toggleFullScreen(): void {
+    this.fullscreen.toggle();
+    this.toolbar?.update(this.codemirror.state);
+  }
+  isFullscreenActive(): boolean {
+    return this.fullscreen.isActive();
+  }
+
   /** Baut den Editor zurück und stellt die ursprüngliche Textarea wieder her. */
   toTextArea(): HTMLTextAreaElement {
+    this.container.removeEventListener('keydown', this.onViewShortcuts);
     this.toolbar?.destroy();
     this.statusbar?.destroy();
+    this.preview?.destroy();
+    this.fullscreen.destroy();
     const textarea = this.handle.toTextArea();
     this.container.remove();
     return textarea;
   }
 }
+
+// Stellt sicher, dass SupaMDE strukturell SupaLike erfüllt (die Toolbar reicht
+// `this` als SupaLike durch). Bricht der Vertrag, schlägt der Typecheck HIER fehl —
+// nicht erst indirekt an der Durchreich-Stelle in toolbar.ts.
+const _supaLikeCheck: SupaLike = null as unknown as SupaMDE;
+void _supaLikeCheck;
 
 export { VERSION } from './version';
 export default SupaMDE;

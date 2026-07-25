@@ -114,3 +114,76 @@ describe('SupaMDE (Toolbar/Statusbar-Integration, M3)', () => {
     expect(ta.style.display).not.toBe('none');
   });
 });
+
+describe('SupaMDE — Preview & Fullscreen', () => {
+  function makeTextarea(value = ''): HTMLTextAreaElement {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    document.body.appendChild(ta);
+    return ta;
+  }
+
+  it('markdown() rendert Markdown+Formel zu HTML', () => {
+    const editor = new SupaMDE({ element: makeTextarea('# Hi') });
+    expect(editor.markdown('# Hi')).toContain('<h1>Hi</h1>');
+    editor.toTextArea();
+  });
+
+  it('toggleSideBySide schaltet isSideBySideActive und setzt Container-Klasse', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x') });
+    expect(editor.isSideBySideActive()).toBe(false);
+    editor.toggleSideBySide();
+    expect(editor.isSideBySideActive()).toBe(true);
+    editor.toTextArea();
+  });
+
+  it('toggleFullScreen schaltet isFullscreenActive', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x') });
+    editor.toggleFullScreen();
+    expect(editor.isFullscreenActive()).toBe(true);
+    editor.toggleFullScreen();
+    expect(editor.isFullscreenActive()).toBe(false);
+    editor.toTextArea();
+  });
+});
+
+describe('SupaMDE — F9/F11-Tastenkürzel (view-Aktionen, keine CM6-Commands)', () => {
+  function makeTextarea(value = ''): HTMLTextAreaElement {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    document.body.appendChild(ta);
+    return ta;
+  }
+
+  function fireKey(target: EventTarget, key: string): void {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+  }
+
+  it('F9 auf dem Container schaltet Side-by-Side um', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x') });
+    const container = document.querySelector('.supamde-container') as HTMLElement;
+    expect(editor.isSideBySideActive()).toBe(false);
+    fireKey(container, 'F9');
+    expect(editor.isSideBySideActive()).toBe(true);
+    editor.toTextArea();
+  });
+
+  it('F11 auf dem Container schaltet Fullscreen um', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x') });
+    const container = document.querySelector('.supamde-container') as HTMLElement;
+    expect(editor.isFullscreenActive()).toBe(false);
+    fireKey(container, 'F11');
+    expect(editor.isFullscreenActive()).toBe(true);
+    editor.toTextArea();
+  });
+
+  it('nach toTextArea() feuern F9/F11 nicht mehr', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x') });
+    const container = document.querySelector('.supamde-container') as HTMLElement;
+    editor.toTextArea();
+    fireKey(container, 'F9');
+    fireKey(container, 'F11');
+    expect(editor.isSideBySideActive()).toBe(false);
+    expect(editor.isFullscreenActive()).toBe(false);
+  });
+});

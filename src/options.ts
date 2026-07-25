@@ -21,6 +21,16 @@ export interface SupaMDEOptions {
   toolbar?: ToolbarOption;
   /** Statusbar-Konfiguration: false (aus), oder Liste aus Built-in-Namen/Custom-Items. */
   status?: StatusOption;
+  /** Ersetzt den eingebauten Markdown-Renderer der Vorschau komplett. */
+  previewRender?: (text: string) => string;
+  /** Zusätzliche CSS-Klasse(n) aufs Vorschau-Panel. */
+  previewClass?: string | string[];
+  /** marked-Feintuning für die Vorschau. */
+  renderingConfig?: { singleLineBreaks?: boolean };
+  /** Bidirektionaler Scroll-Sync im Side-by-Side (Default true). */
+  syncSideBySidePreviewScroll?: boolean;
+  /** Callback bei Fullscreen-Wechsel. */
+  onToggleFullScreen?: (active: boolean) => void;
 }
 
 /** Normalisierte, immer vollständig belegte Optionen für die Extension-Erzeugung. */

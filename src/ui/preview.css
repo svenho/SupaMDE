@@ -1,5 +1,11 @@
-/* Side-by-Side: Container-Klasse legt Editor + Panel nebeneinander. */
-.supamde-container.supamde-sided .cm-editor {
+/* Side-by-Side: die Editor-Zeile (nicht der ganze Container) ist der
+   Flex-Container, damit Toolbar/Statusbar außerhalb volle Breite behalten. */
+.supamde-editor-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+.supamde-container.supamde-sided .supamde-editor-row .cm-editor {
   width: 50%;
 }
 .supamde-preview-side {
@@ -9,10 +15,3 @@
   border-left: 1px solid var(--supamde-border, #ddd);
   box-sizing: border-box;
 }
-.supamde-container.supamde-sided {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-}
-/* Der Editor + Panel liegen in einer Flex-Zeile; Toolbar/Statusbar bleiben
-   volle Breite darüber/darunter (in index.ts außerhalb der Flex-Zeile). */
