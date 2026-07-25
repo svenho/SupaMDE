@@ -145,6 +145,25 @@ describe('SupaMDE — Preview & Fullscreen', () => {
     expect(editor.isFullscreenActive()).toBe(false);
     editor.toTextArea();
   });
+
+  it('markdown() bleibt konsistent mit dem Panel-Render-Snapshot, auch wenn this.options nachträglich mutiert wird', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x'), renderingConfig: { singleLineBreaks: true } });
+
+    // this.options ist public und mutierbar — ein Aufrufer könnte renderingConfig
+    // nachträglich ändern. markdown() darf sich davon NICHT beeinflussen lassen,
+    // sondern muss denselben (einmalig im Konstruktor berechneten) Snapshot nutzen
+    // wie das Side-by-Side-Panel — sonst würden beide auseinanderlaufen.
+    (editor.options as { renderingConfig?: { singleLineBreaks?: boolean } }).renderingConfig = {
+      singleLineBreaks: false,
+    };
+
+    const withBreaks = 'Zeile eins\nZeile zwei';
+    // Referenzwert: wie markdownToHtml mit dem URSPRÜNGLICHEN Snapshot rendern würde
+    // (singleLineBreaks: true → <br> bei einfachem Zeilenumbruch).
+    expect(editor.markdown(withBreaks)).toContain('<br>');
+
+    editor.toTextArea();
+  });
 });
 
 describe('SupaMDE — F9/F11-Tastenkürzel (view-Aktionen, keine CM6-Commands)', () => {
@@ -185,5 +204,21 @@ describe('SupaMDE — F9/F11-Tastenkürzel (view-Aktionen, keine CM6-Commands)',
     fireKey(container, 'F11');
     expect(editor.isSideBySideActive()).toBe(false);
     expect(editor.isFullscreenActive()).toBe(false);
+  });
+
+  it('F9 aus dem fokussierten Editor (contentDOM) schaltet Side-by-Side um', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x') });
+    expect(editor.isSideBySideActive()).toBe(false);
+    fireKey(editor.codemirror.contentDOM, 'F9');
+    expect(editor.isSideBySideActive()).toBe(true);
+    editor.toTextArea();
+  });
+
+  it('F11 aus dem fokussierten Editor (contentDOM) schaltet Fullscreen um', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x') });
+    expect(editor.isFullscreenActive()).toBe(false);
+    fireKey(editor.codemirror.contentDOM, 'F11');
+    expect(editor.isFullscreenActive()).toBe(true);
+    editor.toTextArea();
   });
 });

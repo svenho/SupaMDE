@@ -13,7 +13,7 @@ import { createToolbar, type Toolbar } from './ui/toolbar';
 import { createStatusbar, type Statusbar } from './ui/statusbar';
 import { createSideBySide, type SideBySide } from './ui/preview';
 import { createFullscreen, type Fullscreen } from './ui/fullscreen';
-import { markdownToHtml, renderOptionsFrom } from './markdown/parse';
+import { markdownToHtml, renderOptionsFrom, type RenderOptions } from './markdown/parse';
 import type { SupaLike } from './ui/actions';
 
 export type { SupaMDEOptions } from './options';
@@ -44,6 +44,13 @@ export class SupaMDE {
   private readonly fullscreen: Fullscreen;
   /** Referenz auf den F9/F11-Keydown-Handler, damit toTextArea() ihn abräumt. */
   private readonly onViewShortcuts: (event: KeyboardEvent) => void;
+  /**
+   * EINMALIG im Konstruktor berechneter Render-Options-Snapshot — Panel UND
+   * `markdown()` nutzen GENAU dieses Feld (nicht `renderOptionsFrom(this.options)`
+   * bei jedem Aufruf neu), damit beide auch bei einer nachträglichen Mutation von
+   * `this.options` konsistent bleiben (eine Quelle der Wahrheit, kein stiller Split).
+   */
+  private readonly renderOpts: RenderOptions;
 
   constructor(options: SupaMDEOptions = {}) {
     this.options = options;
@@ -64,9 +71,9 @@ export class SupaMDE {
     this.statusbar = createStatusbar(options.status);
 
     // EINE Quelle für die Render-Optionen (Panel + markdown()-Fassade teilen sie).
-    const renderOpts = renderOptionsFrom(options);
+    this.renderOpts = renderOptionsFrom(options);
     this.preview = createSideBySide(this.codemirror, {
-      render: (text) => markdownToHtml(text, renderOpts),
+      render: (text) => markdownToHtml(text, this.renderOpts),
       previewClass: options.previewClass,
       syncScroll: options.syncSideBySidePreviewScroll,
     });
@@ -135,9 +142,9 @@ export class SupaMDE {
     this.statusbar?.setItem(itemName, content);
   }
 
-  /** Rendert Markdown (inkl. LaTeX) zu HTML. Nutzt dieselbe Render-Options-Quelle wie das Panel. */
+  /** Rendert Markdown (inkl. LaTeX) zu HTML. Teilt exakt denselben Render-Options-Snapshot wie das Panel. */
   markdown(text: string): string {
-    return markdownToHtml(text, renderOptionsFrom(this.options));
+    return markdownToHtml(text, this.renderOpts);
   }
 
   toggleSideBySide(): void {
