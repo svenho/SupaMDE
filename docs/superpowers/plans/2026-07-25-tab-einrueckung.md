@@ -4,7 +4,7 @@
 
 **Goal:** `Tab` rückt die Cursorzeile bzw. alle selektierten Zeilen ein, `Shift-Tab` rückt sie aus — unabhängig von der Cursorposition in der Zeile.
 
-**Architecture:** Ein neues Command-Modul `src/commands/indent.ts` mit zwei Commands (`indentLines`, `dedentLines`), die dem Muster der bestehenden Command-Module folgen: Zeilenbereich über `selectedLineRange`, `DocChange[]` bauen, über `dispatchLineChanges` absetzen. Die Einrücktiefe kommt aus `getIndentUnit(state)` (`@codemirror/language`). Zwei neue Bindings in `src/commands/keymap.ts`.
+**Architecture:** Ein neuer Helfer `mapSelectedLines` in `src/utils/text.ts` bündelt das Schleifen-Muster (Zeilenbereich ermitteln, `DocChange` pro Zeile bauen, dispatchen), das in `toggleLinePrefix`, `toggleBulletList` und `orderedList` bereits dreifach existiert. Ein neues Command-Modul `src/commands/indent.ts` mit zwei Commands (`indentLines`, `dedentLines`) nutzt diesen Helfer. Die Einrücktiefe kommt aus `getIndentUnit(state)` (`@codemirror/language`). Der führende-Whitespace-Scanner `dedentWidth` wandert nach `src/commands/prefixes.ts`, der zentralen Stelle für Zeilen-Präfix-Erkennung. Zwei neue Bindings in `src/commands/keymap.ts`.
 
 **Tech Stack:** TypeScript 5.9, CodeMirror 6 (`@codemirror/state`, `@codemirror/view`, `@codemirror/language`), Vitest, ESLint, Prettier.
 
@@ -14,6 +14,7 @@
 
 - **Sprache:** Alle Code-Kommentare und Testbeschreibungen auf Deutsch, mit korrekten Umlauten. Commit-Messages ohne Umlaute (Projekt-Konvention, siehe `git log`).
 - **Eingerückt wird mit Leerzeichen**, `getIndentUnit(state)`-viele. Nie Tab-Zeichen einfügen.
+- **Asymmetrie bewusst:** `indentLines` fügt nie Tabs ein, `dedentLines` entfernt ein führendes Tab-Zeichen aber als ganze Stufe. Grund: Fremd-Dokumente (z. B. aus anderen Editoren importiert) können Tab-Einrückung enthalten; das Ausrücken muss damit umgehen können, ohne dass SupaMDE selbst je Tabs erzeugt. Keine Inkonsistenz, die später "repariert" werden sollte.
 - **Immer am Zeilenanfang** einfügen/entfernen, nie an der Cursorposition.
 - **Beide Commands geben immer `true` zurück**, auch bei No-op. Das konsumiert die Taste.
 - **Keine Escape-Hatch.** `Tab` wird ausnahmslos abgefangen; kein Escape-dann-Tab-Ausstieg. Bewusste Entscheidung, in der Spec dokumentiert.
@@ -25,6 +26,10 @@
 
 | Datei | Verantwortung |
 | --- | --- |
+| `src/utils/text.ts` (ändern) | Neuer Helfer `mapSelectedLines`, den `indent.ts` sowie (unverändert, aber wieder-nutzbar) `toggleLinePrefix` nutzen. |
+| `src/utils/__tests__/text.test.ts` (ändern) | Tests für `mapSelectedLines`. |
+| `src/commands/prefixes.ts` (ändern) | Neuer Helfer `dedentWidth` neben `stripLinePrefix`. |
+| `src/utils/__tests__/text.test.ts` (ändern) | Tests für `dedentWidth`, im selben Stil wie die dort bereits vorhandenen `stripLinePrefix`-Tests. |
 | `src/commands/indent.ts` (neu) | Die beiden Commands `indentLines` und `dedentLines`. |
 | `src/commands/__tests__/indent.test.ts` (neu) | Verhaltenstests für beide Commands. |
 | `src/commands/keymap.ts` (ändern) | Zwei Bindings: `Tab`, `Shift-Tab`. |
@@ -32,6 +37,92 @@
 | `README.md` (ändern) | Tastenkürzel-Tabelle um Tab/Shift-Tab ergänzen. |
 
 Unberührt bleiben `src/options.ts` und `src/editor/extensions.ts` — `indentUnit` und `tabSize` sind dort bereits vorhanden und werden über die Facet automatisch wirksam.
+
+`toggleLinePrefix` wird in diesem Plan NICHT auf `mapSelectedLines` umgestellt — das wäre eine Refaktorierung an bestehendem, ungetestetem Verhalten außerhalb des Tab-Scopes. Der Helfer wird so geschrieben, dass eine spätere Umstellung möglich ist, aber nicht Teil dieser Tasks.
+
+---
+
+### Task 0: Helfer `mapSelectedLines` in `utils/text.ts`
+
+**Files:**
+- Modify: `src/utils/text.ts`
+- Test: `src/utils/__tests__/text.test.ts`
+
+**Interfaces:**
+- Consumes: `selectedLineRange`, `dispatchLineChanges` (beide bereits in `text.ts`); `Line` aus `@codemirror/state`.
+- Produces: `mapSelectedLines(view: EditorView, build: (line: Line) => DocChange | null): boolean` — wendet `build` auf jede von der Hauptselektion berührte Zeile an, dispatcht die gesammelten Änderungen und liefert, ob überhaupt etwas geändert wurde. Liefert `build` für jede Zeile `null`, wird nichts dispatcht (kein leerer Undo-Schritt).
+
+- [ ] **Step 1: Failing Test ergänzen**
+
+In `src/utils/__tests__/text.test.ts` nach dem `selectedLineRange`-Block einfügen:
+
+```ts
+describe('mapSelectedLines', () => {
+  it('wendet build auf jede berührte Zeile an und dispatcht die Änderungen', () => {
+    const view = viewWith('a\nb\nc', 0, 3);
+    const changed = mapSelectedLines(view, (line) => ({ from: line.from, to: line.from, insert: '+' }));
+    expect(changed).toBe(true);
+    expect(view.state.doc.toString()).toBe('+a\n+b\nc');
+    view.destroy();
+  });
+
+  it('liefert false und dispatcht nichts, wenn build überall null liefert', () => {
+    const view = viewWith('a\nb', 0, 3);
+    const changed = mapSelectedLines(view, () => null);
+    expect(changed).toBe(false);
+    expect(view.state.doc.toString()).toBe('a\nb');
+    view.destroy();
+  });
+});
+```
+
+Import ergänzen: `mapSelectedLines` zum bestehenden Import aus `'../text'` hinzufügen.
+
+- [ ] **Step 2: Tests laufen lassen, Fehlschlag bestätigen**
+
+Run: `npx vitest run src/utils/__tests__/text.test.ts`
+Expected: FAIL — `mapSelectedLines` ist kein Export von `../text`.
+
+- [ ] **Step 3: `mapSelectedLines` in `src/utils/text.ts` ergänzen**
+
+Nach `selectedLineRange` einfügen:
+
+Import-Zeile am Dateianfang von `src/utils/text.ts` ergänzen: `Line` zum bestehenden `import type { EditorState } from '@codemirror/state';` hinzufügen (`import type { EditorState, Line } from '@codemirror/state';`).
+
+```ts
+/**
+ * Wendet `build` auf jede von der Hauptselektion berührte Zeile an und dispatcht
+ * die gesammelten Änderungen mit Selektionserhalt (siehe `dispatchLineChanges`).
+ * `build` liefert `null` für Zeilen ohne Änderung. Bleibt jede Zeile unverändert,
+ * wird nicht dispatcht — kein leerer Undo-Schritt. Liefert, ob dispatcht wurde.
+ */
+export function mapSelectedLines(view: EditorView, build: (line: Line) => DocChange | null): boolean {
+  const range = selectedLineRange(view.state);
+  const changes: DocChange[] = [];
+  for (let n = range.firstLine; n <= range.lastLine; n++) {
+    const change = build(view.state.doc.line(n));
+    if (change !== null) changes.push(change);
+  }
+  if (changes.length === 0) return false;
+  dispatchLineChanges(view, changes);
+  return true;
+}
+```
+
+- [ ] **Step 4: Tests laufen lassen, Erfolg bestätigen**
+
+Run: `npx vitest run src/utils/__tests__/text.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Committen**
+
+```bash
+git add src/utils/text.ts src/utils/__tests__/text.test.ts
+git commit -m "feat: mapSelectedLines-Helfer fuer zeilenweise Doc-Aenderungen
+
+Buendelt das Schleifen-Muster (Zeilenbereich ermitteln, DocChange pro
+Zeile, dispatchen), das indent.ts als naechstes braucht."
+```
 
 ---
 
@@ -42,7 +133,7 @@ Unberührt bleiben `src/options.ts` und `src/editor/extensions.ts` — `indentUn
 - Test: `src/commands/__tests__/indent.test.ts`
 
 **Interfaces:**
-- Consumes: `selectedLineRange(state: EditorState): LineRange` und `dispatchLineChanges(view: EditorView, changes: DocChange[]): void` aus `src/utils/text.ts`; `SupaCommand` und `DocChange` aus `src/commands/types.ts`; `getIndentUnit(state: EditorState): number` aus `@codemirror/language`.
+- Consumes: `mapSelectedLines(view: EditorView, build: (line: Line) => DocChange | null): boolean` aus `src/utils/text.ts` (Task 0); `SupaCommand` und `DocChange` aus `src/commands/types.ts`; `getIndentUnit(state: EditorState): number` aus `@codemirror/language`.
 - Produces: `indentLines: SupaCommand` — rückt alle von der Hauptselektion berührten Zeilen um ein `indentUnit` ein, gibt immer `true` zurück.
 
 - [ ] **Step 1: Testdatei mit den ersten failing tests anlegen**
@@ -99,10 +190,11 @@ describe('indentLines — Tab', () => {
     view.destroy();
   });
 
-  it('erhält die Selektion über demselben Text', () => {
+  it('lässt die Selektion beide Zeilen weiter berühren, inklusive neuer Einrückung', () => {
     const view = viewWith('ab\ncd', 0, 5);
     indentLines(view);
     const { from, to } = view.state.selection.main;
+    expect(from).toBeLessThan(to);
     expect(view.state.doc.sliceString(from, to)).toBe('ab\n  cd');
     view.destroy();
   });
@@ -116,7 +208,7 @@ describe('indentLines — Tab', () => {
 });
 ```
 
-Zum Selektionserhalt-Test: `dispatchLineChanges` mappt die Selektion mit Rechts-Bias. Der Anker steht bei 0 (Zeilenanfang von `ab`) und wandert bei einer Einfügung an genau dieser Position hinter die eingefügten Leerzeichen — die Selektion beginnt danach bei `ab`, nicht bei den neuen Leerzeichen. Der erwartete Slice `'ab\n  cd'` bildet das ab: derselbe ursprüngliche Text, plus die Einrückung der zweiten Zeile, die innerhalb der Selektion liegt.
+Zum Selektionstest: `dispatchLineChanges` mappt die Selektion mit Rechts-Bias. Der Anker steht bei 0 (Zeilenanfang von `ab`) und wandert bei einer Einfügung an genau dieser Position hinter die eingefügten Leerzeichen — die Selektion beginnt danach bei `ab`, nicht bei den neuen Leerzeichen. Der Slice `'ab\n  cd'` ist NICHT identisch mit dem ursprünglich selektierten Text (`'ab\ncd'`) — er enthält zusätzlich die neu eingefügte Einrückung der zweiten Zeile, die innerhalb der Selektion liegt. Der Test heißt deshalb bewusst nicht "Selektion bleibt über demselben Text", sondern prüft nur, dass die Selektion nicht kollabiert (`from < to`) und weiterhin beide Zeilen umfasst.
 
 - [ ] **Step 2: Tests laufen lassen, Fehlschlag bestätigen**
 
@@ -127,8 +219,8 @@ Expected: FAIL — `Failed to resolve import "../indent"`.
 
 ```ts
 import { getIndentUnit } from '@codemirror/language';
-import type { DocChange, SupaCommand } from './types';
-import { dispatchLineChanges, selectedLineRange } from '../utils/text';
+import type { SupaCommand } from './types';
+import { mapSelectedLines } from '../utils/text';
 
 /**
  * Rückt alle von der Hauptselektion berührten Zeilen um ein `indentUnit` ein
@@ -140,17 +232,8 @@ import { dispatchLineChanges, selectedLineRange } from '../utils/text';
  * Leerzeichen-Einrückung, deshalb braucht es keinen Listen-Sonderfall.
  */
 export const indentLines: SupaCommand = (view) => {
-  const { state } = view;
-  const range = selectedLineRange(state);
-  const indent = ' '.repeat(getIndentUnit(state));
-
-  const changes: DocChange[] = [];
-  for (let n = range.firstLine; n <= range.lastLine; n++) {
-    const line = state.doc.line(n);
-    changes.push({ from: line.from, to: line.from, insert: indent });
-  }
-
-  dispatchLineChanges(view, changes);
+  const indent = ' '.repeat(getIndentUnit(view.state));
+  mapSelectedLines(view, (line) => ({ from: line.from, to: line.from, insert: indent }));
   // Immer `true`: die Taste wird in jedem Fall konsumiert, damit der Browser
   // den Fokus nicht aus dem Editor bewegt.
   return true;
@@ -174,17 +257,41 @@ immer am Zeilenanfang und unabhaengig von der Cursorposition."
 
 ---
 
-### Task 2: `dedentLines` ergänzen
+### Task 2: `dedentWidth` in `prefixes.ts` und `dedentLines` ergänzen
 
 **Files:**
-- Modify: `src/commands/indent.ts`
+- Modify: `src/commands/prefixes.ts` (neuer Helfer `dedentWidth`)
+- Modify: `src/commands/indent.ts` (neuer Command `dedentLines`)
 - Test: `src/commands/__tests__/indent.test.ts`
 
 **Interfaces:**
-- Consumes: dieselben Helfer wie Task 1.
-- Produces: `dedentLines: SupaCommand` — entfernt pro berührter Zeile bis zu ein `indentUnit` führenden Whitespace, gibt immer `true` zurück.
+- Consumes: `mapSelectedLines` (Task 0), `getIndentUnit` wie Task 1.
+- Produces:
+  - `dedentWidth(text: string, unit: number): number` in `src/commands/prefixes.ts` — zählt den zu entfernenden führenden Whitespace einer Zeile (siehe Step 3a).
+  - `dedentLines: SupaCommand` in `src/commands/indent.ts` — entfernt pro berührter Zeile bis zu ein `indentUnit` führenden Whitespace, gibt immer `true` zurück.
 
-- [ ] **Step 1: Failing tests für `dedentLines` ergänzen**
+`dedentWidth` steht bewusst in `prefixes.ts`, nicht in `indent.ts`: `prefixes.ts` ist laut eigenem Doc-Kommentar die zentrale Stelle für Zeilen-Präfix-Erkennung, damit sich Module nicht in ihren Regexes/Scannern auseinanderentwickeln. Führender Whitespace ist so ein Präfix, und eine spätere Toolbar- oder Listen-Funktion, die dieselbe Frage stellt, findet ihn dort statt ihn zu duplizieren.
+
+- [ ] **Step 1: Failing tests für `dedentWidth` und `dedentLines` ergänzen**
+
+`stripLinePrefix` wird aktuell in `src/utils/__tests__/text.test.ts` getestet (dort existiert bereits ein `import { stripLinePrefix } from '../../commands/prefixes';`), nicht in einer eigenen `prefixes.test.ts`. `dedentWidth`-Tests dort im selben Stil ergänzen: den Import um `dedentWidth` erweitern (`import { stripLinePrefix, dedentWidth } from '../../commands/prefixes';`) und folgenden Block nach dem `stripLinePrefix`-Describe-Block einfügen:
+
+```ts
+describe('dedentWidth', () => {
+  it('zählt bis zu unit-viele führende Leerzeichen', () => {
+    expect(dedentWidth('    - Punkt', 2)).toBe(2);
+    expect(dedentWidth(' a', 2)).toBe(1);
+  });
+
+  it('liefert 0 ohne führenden Whitespace', () => {
+    expect(dedentWidth('- Punkt', 2)).toBe(0);
+  });
+
+  it('zählt ein führendes Tab-Zeichen als eine volle Stufe', () => {
+    expect(dedentWidth('\ta', 2)).toBe(1);
+  });
+});
+```
 
 Den Import in `src/commands/__tests__/indent.test.ts` erweitern:
 
@@ -250,12 +357,12 @@ describe('dedentLines — Shift-Tab', () => {
 
 - [ ] **Step 2: Tests laufen lassen, Fehlschlag bestätigen**
 
-Run: `npx vitest run src/commands/__tests__/indent.test.ts`
-Expected: FAIL — `dedentLines is not a function` bzw. ein Import-Fehler; die Tests aus Task 1 bleiben grün.
+Run: `npx vitest run src/commands/__tests__/indent.test.ts src/utils/__tests__/text.test.ts`
+Expected: FAIL — `dedentLines is not a function` bzw. Import-Fehler für `dedentWidth`; die Tests aus Task 1 und Task 0 bleiben grün.
 
-- [ ] **Step 3: `dedentLines` in `src/commands/indent.ts` ergänzen**
+- [ ] **Step 3a: `dedentWidth` in `src/commands/prefixes.ts` ergänzen**
 
-Ans Dateiende anfügen:
+Ans Dateiende von `src/commands/prefixes.ts` anfügen:
 
 ```ts
 /**
@@ -264,13 +371,25 @@ Ans Dateiende anfügen:
  * zählt als eine vollständige Einrückstufe und wird als Ganzes entfernt.
  * `0`, wenn die Zeile nicht mit Whitespace beginnt.
  */
-function dedentWidth(text: string, unit: number): number {
+export function dedentWidth(text: string, unit: number): number {
   if (text.startsWith('\t')) return 1;
   let width = 0;
   while (width < unit && text[width] === ' ') width++;
   return width;
 }
+```
 
+- [ ] **Step 3b: `dedentLines` in `src/commands/indent.ts` ergänzen**
+
+Import-Zeile in `indent.ts` erweitern:
+
+```ts
+import { dedentWidth } from './prefixes';
+```
+
+Ans Dateiende anfügen:
+
+```ts
 /**
  * Rückt alle von der Hauptselektion berührten Zeilen um bis zu ein `indentUnit`
  * aus. Zeilen ohne führenden Whitespace bleiben unverändert — der Command gibt
@@ -278,40 +397,33 @@ function dedentWidth(text: string, unit: number): number {
  * nicht aus dem Editor bewegt.
  */
 export const dedentLines: SupaCommand = (view) => {
-  const { state } = view;
-  const range = selectedLineRange(state);
-  const unit = getIndentUnit(state);
-
-  const changes: DocChange[] = [];
-  for (let n = range.firstLine; n <= range.lastLine; n++) {
-    const line = state.doc.line(n);
+  const unit = getIndentUnit(view.state);
+  mapSelectedLines(view, (line) => {
     const width = dedentWidth(line.text, unit);
-    if (width > 0) {
-      changes.push({ from: line.from, to: line.from + width, insert: '' });
-    }
-  }
-
-  if (changes.length > 0) dispatchLineChanges(view, changes);
+    return width > 0 ? { from: line.from, to: line.from + width, insert: '' } : null;
+  });
   return true;
 };
 ```
 
-Der `if`-Guard vor `dispatchLineChanges` verhindert eine leere Transaktion, die sonst einen überflüssigen Undo-Schritt in der History erzeugen würde.
+`mapSelectedLines` (Task 0) übernimmt den `if (changes.length > 0)`-Guard bereits zentral — kein Duplikat hier nötig.
 
 - [ ] **Step 4: Tests laufen lassen, Erfolg bestätigen**
 
-Run: `npx vitest run src/commands/__tests__/indent.test.ts`
-Expected: PASS — 14 Tests grün.
+Run: `npx vitest run src/commands/__tests__/indent.test.ts src/utils/__tests__/text.test.ts`
+Expected: PASS — 14 Tests in `indent.test.ts` grün, plus die neuen `dedentWidth`-Tests.
 
 - [ ] **Step 5: Committen**
 
 ```bash
-git add src/commands/indent.ts src/commands/__tests__/indent.test.ts
+git add src/commands/prefixes.ts src/commands/indent.ts src/commands/__tests__/indent.test.ts src/utils/__tests__/text.test.ts
 git commit -m "feat: dedentLines-Command fuer Shift-Tab
 
 Entfernt bis zu ein indentUnit fuehrenden Whitespace pro Zeile;
 fuehrendes Tab-Zeichen zaehlt als ganze Stufe. Zeilen am linken Rand
-bleiben unveraendert, die Taste wird dennoch konsumiert."
+bleiben unveraendert, die Taste wird dennoch konsumiert.
+dedentWidth liegt in prefixes.ts, der zentralen Stelle fuer
+Zeilen-Praefix-Erkennung."
 ```
 
 ---

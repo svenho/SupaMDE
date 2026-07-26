@@ -24,3 +24,16 @@ export function stripLinePrefix(text: string): { prefix: string; rest: string } 
   }
   return null;
 }
+
+/**
+ * Zählt den zu entfernenden führenden Whitespace einer Zeile: bis zu `unit`
+ * Leerzeichen, weniger wenn weniger vorhanden sind. Ein führendes Tab-Zeichen
+ * zählt als eine vollständige Einrückstufe und wird als Ganzes entfernt.
+ * `0`, wenn die Zeile nicht mit Whitespace beginnt.
+ */
+export function dedentWidth(text: string, unit: number): number {
+  if (text.startsWith('\t')) return 1;
+  let width = 0;
+  while (width < unit && text[width] === ' ') width++;
+  return width;
+}
