@@ -1,5 +1,6 @@
 import type { ToolbarOption } from './ui/toolbar-config';
 import type { StatusOption } from './ui/statusbar';
+import type { KeyBinding } from '@codemirror/view';
 
 /** Öffentliche Konfigurationsoptionen für SupaMDE (Kern-Set, M1). */
 export interface SupaMDEOptions {
@@ -17,6 +18,8 @@ export interface SupaMDEOptions {
   indentUnit?: number;
   /** Startwert; überschreibt den Textarea-Inhalt, falls gesetzt. */
   initialValue?: string;
+  /** Eigene Tastenkürzel; haben Vorrang vor den SupaMDE-Defaults bei Konflikten. */
+  extraKeys?: KeyBinding[];
   /** Toolbar-Konfiguration: false (aus), oder Liste aus Built-in-Namen/Custom-Buttons. */
   toolbar?: ToolbarOption;
   /** Statusbar-Konfiguration: false (aus), oder Liste aus Built-in-Namen/Custom-Items. */
@@ -40,6 +43,7 @@ export interface ResolvedOptions {
   autofocus: boolean;
   tabSize: number;
   indentUnit: number;
+  extraKeys: KeyBinding[];
 }
 
 /** Füllt fehlende Optionen mit Defaults und liefert eine vollständige Form. */
@@ -50,5 +54,6 @@ export function resolveOptions(options: SupaMDEOptions): ResolvedOptions {
     autofocus: options.autofocus ?? false,
     tabSize: options.tabSize ?? 2,
     indentUnit: options.indentUnit ?? 2,
+    extraKeys: options.extraKeys ?? [],
   };
 }

@@ -12,6 +12,7 @@ const base: ResolvedOptions = {
   autofocus: false,
   tabSize: 2,
   indentUnit: 2,
+  extraKeys: [],
 };
 
 /** Baut einen State aus den Extensions — schlägt fehl, wenn Extensions inkompatibel sind. */
