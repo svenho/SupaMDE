@@ -5,7 +5,12 @@
   flex-direction: row;
   align-items: stretch;
 }
+.supamde-editor-row .cm-editor {
+  flex: 1;
+  min-width: 0;
+}
 .supamde-container.supamde-sided .supamde-editor-row .cm-editor {
+  flex: 0 0 50%;
   width: 50%;
 }
 .supamde-preview-side {
