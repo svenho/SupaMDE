@@ -92,6 +92,20 @@ describe('buildExtensions', () => {
     expect(hasStrike).toBe(true);
   });
 
+  it('parst $...$ als InlineMath-Knoten und nicht als StrongEmphasis', () => {
+    const state = EditorState.create({ doc: '$a **b** c$', extensions: buildExtensions(base) });
+    let hasInlineMath = false;
+    let hasStrongEmphasis = false;
+    syntaxTree(state).iterate({
+      enter: (node) => {
+        if (node.name === 'InlineMath') hasInlineMath = true;
+        if (node.name === 'StrongEmphasis') hasStrongEmphasis = true;
+      },
+    });
+    expect(hasInlineMath).toBe(true);
+    expect(hasStrongEmphasis).toBe(false);
+  });
+
   it('bindet History ein: eine Änderung ist per undo rücknehmbar', async () => {
     const { EditorState } = await import('@codemirror/state');
     const { EditorView } = await import('@codemirror/view');

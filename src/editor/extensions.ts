@@ -6,6 +6,7 @@ import { markdown } from '@codemirror/lang-markdown';
 import { GFM } from '@lezer/markdown';
 import type { ResolvedOptions } from '../options';
 import { highlightExtension } from './highlight';
+import { Math } from './math';
 import { supaTheme } from './theme';
 import { supaKeymap } from '../commands/keymap';
 
@@ -14,10 +15,12 @@ import { supaKeymap } from '../commands/keymap';
  * Option wird hier zur echten Extension (kein Flag-Layer). `autofocus` ist
  * bewusst nicht enthalten — es ist eine View-Konstruktor-Option, keine Extension.
  * GFM-Extensions sind aktiviert, um GitHub Flavored Markdown (Strikethrough, Tabellen, etc.) zu parsen.
+ * `Math` erkennt `$…$`/`$$…$$` als eigene Knoten, damit LaTeX-Inhalt nicht als
+ * Markdown (Fett, Links, …) interpretiert wird.
  */
 export function buildExtensions(resolved: ResolvedOptions): Extension[] {
   const extensions: Extension[] = [
-    markdown({ extensions: GFM }),
+    markdown({ extensions: [GFM, Math] }),
     highlightExtension,
     history(),
     keymap.of([...supaKeymap, ...historyKeymap, ...defaultKeymap]),
