@@ -27,5 +27,8 @@ pnpm-debug.log*
 .idea/
 *.swp
 
+# Git-Worktrees (lokale Isolation für Feature-Arbeit)
+.worktrees/
+
 # Mein privates Nexxt-File
 NEXXT.md
