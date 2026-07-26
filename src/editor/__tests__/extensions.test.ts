@@ -137,35 +137,31 @@ describe('buildExtensions', () => {
     view.destroy();
   });
 
-  it('extraKeys überschreiben ein bestehendes SupaMDE-Default-Binding (Mod-b)', () => {
+  it.each([
+    {
+      name: 'überschreiben ein bestehendes SupaMDE-Default-Binding (Mod-b)',
+      key: 'Mod-b',
+      eventInit: { key: 'b', code: 'KeyB', ctrlKey: true, bubbles: true },
+      expected: 'custom',
+    },
+    {
+      name: 'ergänzen ein neues, bisher unbelegtes Binding',
+      key: 'Mod-Alt-z',
+      eventInit: { key: 'z', code: 'KeyZ', ctrlKey: true, altKey: true, bubbles: true },
+      expected: 'neu',
+    },
+  ])('extraKeys $name', ({ key, eventInit, expected }) => {
     const calls: string[] = [];
     const view = new EditorView({
       state: stateFrom({
         ...base,
-        extraKeys: [{ key: 'Mod-b', run: () => { calls.push('custom'); return true; } }],
+        extraKeys: [{ key, run: () => { calls.push(expected); return true; } }],
       }),
     });
     view.dom.ownerDocument.body.appendChild(view.dom);
     view.focus();
-    const event = new KeyboardEvent('keydown', { key: 'b', code: 'KeyB', ctrlKey: true, bubbles: true });
-    view.contentDOM.dispatchEvent(event);
-    expect(calls).toEqual(['custom']);
-    view.destroy();
-  });
-
-  it('extraKeys ergänzen ein neues, bisher unbelegtes Binding', () => {
-    const calls: string[] = [];
-    const view = new EditorView({
-      state: stateFrom({
-        ...base,
-        extraKeys: [{ key: 'Mod-Alt-z', run: () => { calls.push('neu'); return true; } }],
-      }),
-    });
-    view.dom.ownerDocument.body.appendChild(view.dom);
-    view.focus();
-    const event = new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, altKey: true, bubbles: true });
-    view.contentDOM.dispatchEvent(event);
-    expect(calls).toEqual(['neu']);
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    expect(calls).toEqual([expected]);
     view.destroy();
   });
 });
