@@ -1,6 +1,6 @@
 {
   "name": "supamde",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Ein moderner, einbettbarer Markdown-Editor auf Basis von CodeMirror 6 — die modernisierte Neufassung von easyMDE.",
   "type": "module",
   "license": "MIT",
