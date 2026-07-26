@@ -67,16 +67,16 @@ Zusätzlich das KaTeX-CSS (inkl. Schriften) in der Host-Seite einbinden, z.B.:
 
 ## Optionen (Kern-Set, M1)
 
-| Option         | Typ                   | Default         | Bedeutung                                  |
-| -------------- | --------------------- | --------------- | ------------------------------------------ |
-| `element`      | `HTMLTextAreaElement` | —               | **Pflicht.** Die zu ersetzende Textarea.   |
-| `lineWrapping` | `boolean`             | `true`          | Zeilenumbruch statt horizontalem Scrollen. |
-| `placeholder`  | `string`              | —               | Platzhaltertext im leeren Editor.          |
-| `autofocus`    | `boolean`             | `false`         | Fokussiert den Editor nach Erzeugung.      |
-| `tabSize`      | `number`              | `2`             | Tab-Breite in Spalten.                     |
-| `indentUnit`   | `number`              | `2`             | Einrücktiefe in Leerzeichen.               |
-| `initialValue` | `string`              | Textarea-Inhalt | Startwert (überschreibt Textarea).         |
-| `extraKeys`    | `KeyBinding[]`        | `[]`            | Eigene CodeMirror-6-Tastenkürzel; haben Vorrang vor den SupaMDE-Defaults. |
+| Option         | Typ                   | Default         | Bedeutung                                   |
+| -------------- | --------------------- | --------------- | -------------------------------------------- |
+| `element`      | `HTMLTextAreaElement` | —               | **Pflicht.** Die zu ersetzende Textarea.      |
+| `lineWrapping` | `boolean`             | `true`          | Zeilenumbruch statt horizontalem Scrollen.    |
+| `placeholder`  | `string`              | —               | Platzhaltertext im leeren Editor.             |
+| `autofocus`    | `boolean`             | `false`         | Fokussiert den Editor nach Erzeugung.         |
+| `tabSize`      | `number`              | `2`             | Tab-Breite in Spalten.                        |
+| `indentUnit`   | `number`              | `2`             | Einrücktiefe in Leerzeichen.                  |
+| `initialValue` | `string`              | Textarea-Inhalt | Startwert (überschreibt Textarea).            |
+| `extraKeys`    | `KeyBinding[]`        | `[]`            | Eigene CM6-Tastenkürzel; Vorrang vor Defaults. |
 
 ## Toolbar & Statusbar (M3)
 
