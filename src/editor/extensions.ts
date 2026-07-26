@@ -24,7 +24,7 @@ export function buildExtensions(resolved: ResolvedOptions, sink?: UpdateSink): E
     markdown({ extensions: [GFM, Math] }),
     highlightExtension,
     history(),
-    keymap.of([...supaKeymap, ...historyKeymap, ...defaultKeymap]),
+    keymap.of([...resolved.extraKeys, ...supaKeymap, ...historyKeymap, ...defaultKeymap]),
     supaTheme,
     EditorState.tabSize.of(resolved.tabSize),
     indentUnit.of(' '.repeat(resolved.indentUnit)),

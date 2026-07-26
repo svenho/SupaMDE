@@ -11,7 +11,15 @@ describe('resolveOptions', () => {
       autofocus: false,
       tabSize: 2,
       indentUnit: 2,
+      extraKeys: [],
     });
+  });
+
+  it('übernimmt gesetzte extraKeys unverändert', () => {
+    const run = () => true;
+    const extraKeys = [{ key: 'Mod-b', run }];
+    const r = resolveOptions({ extraKeys });
+    expect(r.extraKeys).toEqual(extraKeys);
   });
 
   it('übernimmt gesetzte User-Werte', () => {

@@ -17,6 +17,7 @@ import { markdownToHtml, renderOptionsFrom, type RenderOptions } from './markdow
 import type { SupaLike } from './ui/actions';
 
 export type { SupaMDEOptions } from './options';
+export type { KeyBinding } from '@codemirror/view';
 
 /**
  * SupaMDE — moderner Markdown-Editor auf Basis von CodeMirror 6.

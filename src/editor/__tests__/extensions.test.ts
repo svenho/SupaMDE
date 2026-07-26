@@ -12,6 +12,7 @@ const base: ResolvedOptions = {
   autofocus: false,
   tabSize: 2,
   indentUnit: 2,
+  extraKeys: [],
 };
 
 /** Baut einen State aus den Extensions — schlägt fehl, wenn Extensions inkompatibel sind. */
@@ -133,6 +134,38 @@ describe('buildExtensions', () => {
     const view = new EditorView({ state: EditorState.create({ doc: '', extensions: ext }) });
     view.dispatch({ changes: { from: 0, insert: 'x' } });
     expect(calls.some(Boolean)).toBe(true);
+    view.destroy();
+  });
+
+  it('extraKeys überschreiben ein bestehendes SupaMDE-Default-Binding (Mod-b)', () => {
+    const calls: string[] = [];
+    const view = new EditorView({
+      state: stateFrom({
+        ...base,
+        extraKeys: [{ key: 'Mod-b', run: () => { calls.push('custom'); return true; } }],
+      }),
+    });
+    view.dom.ownerDocument.body.appendChild(view.dom);
+    view.focus();
+    const event = new KeyboardEvent('keydown', { key: 'b', code: 'KeyB', ctrlKey: true, bubbles: true });
+    view.contentDOM.dispatchEvent(event);
+    expect(calls).toEqual(['custom']);
+    view.destroy();
+  });
+
+  it('extraKeys ergänzen ein neues, bisher unbelegtes Binding', () => {
+    const calls: string[] = [];
+    const view = new EditorView({
+      state: stateFrom({
+        ...base,
+        extraKeys: [{ key: 'Mod-Alt-z', run: () => { calls.push('neu'); return true; } }],
+      }),
+    });
+    view.dom.ownerDocument.body.appendChild(view.dom);
+    view.focus();
+    const event = new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, altKey: true, bubbles: true });
+    view.contentDOM.dispatchEvent(event);
+    expect(calls).toEqual(['neu']);
     view.destroy();
   });
 });

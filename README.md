@@ -67,15 +67,16 @@ Zusätzlich das KaTeX-CSS (inkl. Schriften) in der Host-Seite einbinden, z.B.:
 
 ## Optionen (Kern-Set, M1)
 
-| Option         | Typ                   | Default         | Bedeutung                                  |
-| -------------- | --------------------- | --------------- | ------------------------------------------ |
-| `element`      | `HTMLTextAreaElement` | —               | **Pflicht.** Die zu ersetzende Textarea.   |
-| `lineWrapping` | `boolean`             | `true`          | Zeilenumbruch statt horizontalem Scrollen. |
-| `placeholder`  | `string`              | —               | Platzhaltertext im leeren Editor.          |
-| `autofocus`    | `boolean`             | `false`         | Fokussiert den Editor nach Erzeugung.      |
-| `tabSize`      | `number`              | `2`             | Tab-Breite in Spalten.                     |
-| `indentUnit`   | `number`              | `2`             | Einrücktiefe in Leerzeichen.               |
-| `initialValue` | `string`              | Textarea-Inhalt | Startwert (überschreibt Textarea).         |
+| Option         | Typ                   | Default         | Bedeutung                                   |
+| -------------- | --------------------- | --------------- | -------------------------------------------- |
+| `element`      | `HTMLTextAreaElement` | —               | **Pflicht.** Die zu ersetzende Textarea.      |
+| `lineWrapping` | `boolean`             | `true`          | Zeilenumbruch statt horizontalem Scrollen.    |
+| `placeholder`  | `string`              | —               | Platzhaltertext im leeren Editor.             |
+| `autofocus`    | `boolean`             | `false`         | Fokussiert den Editor nach Erzeugung.         |
+| `tabSize`      | `number`              | `2`             | Tab-Breite in Spalten.                        |
+| `indentUnit`   | `number`              | `2`             | Einrücktiefe in Leerzeichen.                  |
+| `initialValue` | `string`              | Textarea-Inhalt | Startwert (überschreibt Textarea).            |
+| `extraKeys`    | `KeyBinding[]`        | `[]`            | Eigene CM6-Tastenkürzel; Vorrang vor Defaults. |
 
 ## Toolbar & Statusbar (M3)
 
@@ -173,6 +174,31 @@ für alle berührten Zeilen. So werden Listen verschachtelt: aus `- Punkt` wird
 > **Hinweis (deutsche Mac-Tastatur):** `Mod-'` (Blockzitat) liegt hier auf
 > `Cmd+Shift+#` und wird je nach Browser nicht zuverlässig erkannt. Nutze
 > stattdessen das layout-unabhängige `Ctrl-Alt-Q`.
+
+### Eigene Tastenkürzel
+
+Über `extraKeys` lassen sich beliebige CodeMirror-6-`KeyBinding`s ergänzen.
+CM6 wertet Tastenkürzel in Registrierungsreihenfolge aus — der erste
+passende Eintrag gewinnt. `extraKeys` steht **vor** den SupaMDE-Defaults,
+wodurch sich sowohl neue Kürzel als auch Überschreibungen bestehender
+Defaults gleich verhalten:
+
+```ts
+import SupaMDE, { type KeyBinding } from 'supamde';
+import { insertNewlineAndIndent } from '@codemirror/commands';
+
+const extraKeys: KeyBinding[] = [
+  // Override: ersetzt das eingebaute Mod-B (fett)
+  { key: 'Mod-b', run: (view) => { /* eigene Aktion */ return true; } },
+  // Neu: bisher unbelegter Key
+  { key: 'Mod-Enter', run: insertNewlineAndIndent },
+];
+
+const editor = new SupaMDE({
+  element: document.getElementById('editor'),
+  extraKeys,
+});
+```
 
 ## Formatierung anpassen
 
