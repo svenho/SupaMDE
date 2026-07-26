@@ -1,4 +1,5 @@
 import type { KeyBinding } from '@codemirror/view';
+import { deleteLine, copyLineUp, copyLineDown, moveLineUp, moveLineDown } from '@codemirror/commands';
 import { bold, italic } from './inline';
 import {
   setHeading,
@@ -50,4 +51,10 @@ export const supaKeymap: KeyBinding[] = [
   // (keine Escape-Hatch, siehe Spec 2026-07-25).
   { key: 'Tab', run: indentLines, preventDefault: true },
   { key: 'Shift-Tab', run: dedentLines, preventDefault: true },
+  // Zeilenoperationen nach VS-Code-Konvention (Löschen/Duplizieren/Verschieben).
+  { key: 'Shift-Mod-k', run: deleteLine, preventDefault: true },
+  { key: 'Shift-Alt-ArrowDown', run: copyLineDown, preventDefault: true },
+  { key: 'Shift-Alt-ArrowUp', run: copyLineUp, preventDefault: true },
+  { key: 'Alt-ArrowDown', run: moveLineDown, preventDefault: true },
+  { key: 'Alt-ArrowUp', run: moveLineUp, preventDefault: true },
 ];
