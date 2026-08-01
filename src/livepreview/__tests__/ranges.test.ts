@@ -26,8 +26,38 @@ describe('computeHiddenRanges — inaktive Knoten', () => {
     expect(hiddenTexts('`code` x', 7)).toEqual(['`', '`']);
   });
 
+  it('lässt die Zäune eines Fenced Code Blocks sichtbar', () => {
+    // CodeMark tritt in @lezer/markdown NICHT nur beim Inline-Code-Backtick
+    // auf, sondern auch bei den Zäunen eines FencedCode-Blocks. Verifiziert:
+    // FencedCode[0,22] mit CodeMark[0,3] und CodeMark[19,22], CodeInfo[3,5].
+    // Cursor am Dokumentende → außerhalb des Blocks.
+    const doc = '```js\nconst x = 1;\n```\n\nText';
+    expect(hiddenTexts(doc, doc.length)).toEqual([]);
+  });
+
+  it('blendet Inline-Code-Marker weiterhin aus (Regressionsschutz)', () => {
+    // Stellt sicher, dass der Fix für Fenced-Code-Zäune den eigentlichen
+    // Inline-Code-Fall (CodeMark mit Elternknoten InlineCode) nicht abschaltet.
+    expect(hiddenTexts('`code` x', 7)).toEqual(['`', '`']);
+  });
+
   it('blendet "# " bei Überschrift inklusive Leerzeichen aus', () => {
     // Cursor in Zeile 2, also außerhalb der Überschrift
+    expect(hiddenTexts('# Titel\nx', 8)).toEqual(['# ']);
+  });
+
+  it('lässt die Unterstreichung einer Setext-Überschrift sichtbar', () => {
+    // HeaderMark deckt in @lezer/markdown NICHT nur den ATX-Präfix ("# ") ab,
+    // sondern auch die Unterstreichung einer Setext-Überschrift. Verifiziert:
+    // SetextHeading1[0,11] mit HeaderMark[6,11]. Cursor am Dokumentende, also
+    // außerhalb der Überschrift.
+    const doc = 'Titel\n=====\n\nText';
+    expect(hiddenTexts(doc, doc.length)).toEqual([]);
+  });
+
+  it('blendet ATX-Überschriften-Marker weiterhin aus (Regressionsschutz)', () => {
+    // Stellt sicher, dass der Fix für Setext-Unterstreichungen den eigentlichen
+    // ATX-Fall (HeaderMark mit Elternknoten ATXHeading1…6) nicht abschaltet.
     expect(hiddenTexts('# Titel\nx', 8)).toEqual(['# ']);
   });
 
@@ -155,17 +185,17 @@ describe('computeHiddenRanges — konfigurierbare Marker-Mengen', () => {
     // Nur Inline-Code, keine Emphasis: die ** bleiben stehen.
     const state = stateWith('**a** `b` x', 10);
     const ranges = computeHiddenRanges(state, whole(state), {
-      inline: new Set(['CodeMark']),
-      block: new Set(),
+      inline: new Map([['CodeMark', undefined]]),
+      block: new Map(),
     });
     expect(ranges.map((r) => state.doc.sliceString(r.from, r.to))).toEqual(['`', '`']);
   });
 
   it('liefert bei leeren Mengen gar nichts', () => {
     const state = stateWith('**a** # b', 9);
-    expect(computeHiddenRanges(state, whole(state), { inline: new Set(), block: new Set() })).toEqual(
-      [],
-    );
+    expect(
+      computeHiddenRanges(state, whole(state), { inline: new Map(), block: new Map() }),
+    ).toEqual([]);
   });
 
   it('nutzt ohne dritten Parameter die Default-Mengen', () => {

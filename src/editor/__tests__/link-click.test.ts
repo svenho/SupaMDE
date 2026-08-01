@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { stateWith, viewWith, cleanup } from '../../__tests__/helpers';
 import { linkUrlAt, linkClickExtension, handleLinkMousedown } from '../link-click';
 
@@ -95,5 +95,46 @@ describe('linkClickExtension', () => {
     window.open = original;
     cleanup(view);
     expect(opened).toEqual([]);
+  });
+
+  it('öffnet den Link in einem neuen Tab, wenn Modifier gedrückt ist und ein Link unter dem Zeiger liegt', () => {
+    // posAtCoords ist in jsdom ohne echtes Layout unzuverlässig, daher wird die
+    // Position hier gestubbt (Position 2 liegt in "Text" von "[Text](https://example.com)").
+    const original = window.open;
+    const openSpy = vi.fn().mockReturnValue(null);
+    window.open = openSpy;
+
+    const view = linkView('[Text](https://example.com)');
+    vi.spyOn(view, 'posAtCoords').mockReturnValue(2);
+    const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true, ctrlKey: true });
+
+    expect(handleLinkMousedown(event, view)).toBe(true);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    // Argumente einzeln prüfen: Reihenfolge und Inhalt sind sicherheitsrelevant
+    // (fehlendes "noopener,noreferrer" gäbe der geöffneten Seite Zugriff auf window.opener).
+    expect(openSpy.mock.calls[0]?.[0]).toBe('https://example.com');
+    expect(openSpy.mock.calls[0]?.[1]).toBe('_blank');
+    expect(openSpy.mock.calls[0]?.[2]).toBe('noopener,noreferrer');
+
+    window.open = original;
+    cleanup(view);
+  });
+
+  it('öffnet nichts bei einer javascript:-URL, obwohl Modifier gedrückt und Link unter dem Zeiger ist', () => {
+    // Sicherheits-Gegentest zum positiven Pfad: ein präpariertes Dokument darf
+    // trotz Modifier keinen Code ausführen.
+    const original = window.open;
+    const openSpy = vi.fn().mockReturnValue(null);
+    window.open = openSpy;
+
+    const view = linkView('[Klick](javascript:alert(1))');
+    vi.spyOn(view, 'posAtCoords').mockReturnValue(2);
+    const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true, ctrlKey: true });
+
+    expect(handleLinkMousedown(event, view)).toBe(false);
+    expect(openSpy).not.toHaveBeenCalled();
+
+    window.open = original;
+    cleanup(view);
   });
 });

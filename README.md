@@ -150,8 +150,9 @@ const editor = new SupaMDE({
 Der Wechsel erhält Dokument, Cursor, Selektion, Undo-Historie und Scrollposition.
 
 **Was im Live-Modus ausgeblendet wird:** die Marker von Fett, Kursiv,
-Durchgestrichen, Inline-Code, Überschriften und Blockzitaten. Listen-Marker und
-Link-Syntax bleiben sichtbar.
+Durchgestrichen, Inline-Code, ATX-Überschriften (`#` … `######`) und
+Blockzitaten. Fenced Code Blocks und Setext-Überschriften (Unterstreichung mit
+`=`/`-`) bleiben vollständig sichtbar, ebenso Listen-Marker und Link-Syntax.
 
 Der Text bleibt in beiden Modi editierbarer Markdown-Quelltext — kopierter Text
 enthält immer das vollständige Markup.

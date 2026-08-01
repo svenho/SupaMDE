@@ -8,12 +8,38 @@ export interface HiddenRange {
   to: number;
 }
 
-/** Welche Lezer-Knotennamen als Markup gelten. */
+/**
+ * Bedingung an den Elternknoten eines Markers, unter der er als Markup zählt.
+ * `undefined` heißt: jeder Elternknoten genügt (keine Einschränkung).
+ *
+ * Nötig, weil manche Lezer-Knotennamen mehrdeutig sind: `CodeMark` markiert
+ * sowohl den Backtick von Inline-Code (Elternknoten `InlineCode`) als auch die
+ * Zäune eines Fenced Code Blocks (Elternknoten `FencedCode`); `HeaderMark`
+ * markiert sowohl das `#`-Präfix einer ATX-Überschrift (Elternknoten
+ * `ATXHeading1`…`ATXHeading6`) als auch die Unterstreichung einer
+ * Setext-Überschrift (Elternknoten `SetextHeading1`/`SetextHeading2`). Ohne
+ * diese Prüfung würden Fenced Code Blocks und Setext-Überschriften fälschlich
+ * als Markup behandelt und im Live-Modus unvollständig bzw. mit einer
+ * leeren Zeile dargestellt.
+ */
+export type ParentFilter = (parentName: string) => boolean;
+
+/** Welche Lezer-Knotennamen als Markup gelten, mit optionaler Elternknoten-Bedingung. */
 export interface MarkSets {
   /** Marker, die exakt ihren eigenen Bereich ausblenden. */
-  inline: ReadonlySet<string>;
+  inline: ReadonlyMap<string, ParentFilter | undefined>;
   /** Marker, deren angrenzendes Leerzeichen mit ausgeblendet wird. */
-  block: ReadonlySet<string>;
+  block: ReadonlyMap<string, ParentFilter | undefined>;
+}
+
+/** Baut aus einfachen Knotennamen eine `MarkSets`-Menge ohne Elternknoten-Einschränkung. */
+function withoutParentFilter(names: readonly string[]): ReadonlyMap<string, ParentFilter | undefined> {
+  return new Map(names.map((name) => [name, undefined]));
+}
+
+/** Ob `parentName` mit `prefix` beginnt (z. B. `ATXHeading` für `ATXHeading1`…`ATXHeading6`). */
+function hasPrefix(prefix: string): ParentFilter {
+  return (parentName) => parentName.startsWith(prefix);
 }
 
 /**
@@ -21,12 +47,23 @@ export interface MarkSets {
  * `@lezer/markdown`-Parser (mit `[GFM, Math]`) verifiziert; `StrikethroughMark`
  * hat bewusst einen eigenen Namen und ist NICHT `EmphasisMark`.
  *
+ * `CodeMark` gilt nur mit Elternknoten `InlineCode` als Markup (Fenced Code
+ * Blocks bleiben vollständig sichtbar), `HeaderMark` nur mit einem
+ * `ATXHeading*`-Elternknoten (Setext-Unterstreichungen bleiben sichtbar).
+ * Siehe `ParentFilter` für die Begründung.
+ *
  * Exportiert und als Parameter durchgereicht, damit sich der Umfang erweitern
  * lässt (Listen-Marker, Link-Syntax), ohne diese Datei zu editieren.
  */
 export const DEFAULT_MARK_SETS: MarkSets = {
-  inline: new Set(['EmphasisMark', 'StrikethroughMark', 'CodeMark']),
-  block: new Set(['HeaderMark', 'QuoteMark']),
+  inline: new Map<string, ParentFilter | undefined>([
+    ...withoutParentFilter(['EmphasisMark', 'StrikethroughMark']),
+    ['CodeMark', (parentName) => parentName === 'InlineCode'],
+  ]),
+  block: new Map<string, ParentFilter | undefined>([
+    ...withoutParentFilter(['QuoteMark']),
+    ['HeaderMark', hasPrefix('ATXHeading')],
+  ]),
 };
 
 /** Ob `parent` einen der Selektionsbereiche berührt (Grenzen zählen als Berührung). */
@@ -102,6 +139,11 @@ export function computeHiddenRanges(
 
         const parent = nodeRef.node.parent;
         if (!parent) return;
+
+        // Elternknoten-Bedingung prüfen (z. B. CodeMark nur unter InlineCode).
+        const filter = isBlock ? marks.block.get(name) : marks.inline.get(name);
+        if (filter && !filter(parent.name)) return;
+
         if (isActive(parent, selection)) return;
 
         result.push(
