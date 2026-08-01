@@ -213,10 +213,15 @@ Markdown-Links (`[Text](url)`), Autolinks (`<url>`) und bei nackten URLs, die
 GFM automatisch erkennt (`https://…`, `http://…`, `www.…` und E-Mail-Adressen
 wie `foo@example.com`). Bei `www.`-Adressen wird `https://` ergänzt, bei
 E-Mail-Adressen `mailto:` — jeweils nur, wenn noch kein Schema im Text steht.
-Nur `http:`-, `https:`- und (nach dieser Ergänzung) `mailto:`-URLs werden
-geöffnet. Hinweis zur Parser-Grenze: GFM erkennt nackte URLs/`www.`-Adressen
-nur kleingeschrieben — `HTTPS://EXAMPLE.COM` als Fließtext wird nicht erkannt
-(Markdown-Links und Autolinks sind davon nicht betroffen).
+Nur `http://`-, `https://`- und (nach dieser Ergänzung) `mailto:`-URLs werden
+geöffnet; `https:`/`http:` ohne die beiden Schrägstriche zählen NICHT als
+gültiges Schema. Steht eine E-Mail-ähnliche Zeichenfolge als Teil einer
+größeren URL im Text (z. B. der Benutzerteil in `https://admin@github.com/…`),
+wird sie NICHT zu `mailto:` normalisiert. Cmd/Strg+Klick auf eine solche
+Adresse öffnet dann nichts — niemals ungewollt das Mailprogramm. Hinweis zur
+Parser-Grenze: GFM erkennt nackte URLs/`www.`-Adressen nur kleingeschrieben —
+`HTTPS://EXAMPLE.COM` als Fließtext wird nicht erkannt (Markdown-Links und
+Autolinks sind davon nicht betroffen).
 
 Steht der Mauszeiger bei gedrücktem `Cmd`/`Strg` über einem klickbaren Link,
 wird er zur Klickhand (`cursor: pointer`) — wie in VS Code.

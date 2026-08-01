@@ -59,6 +59,17 @@ describe('linkUrlAt', () => {
     const state = stateWith('[T](HTTPS://example.com)');
     expect(linkUrlAt(state, 1)).toBe('HTTPS://example.com');
   });
+
+  it('verwirft https:-URLs ohne "//" (kein vollständiges Schema)', () => {
+    // Regression: SAFE_SCHEME darf "//" nach https:/http: nicht optional machen.
+    const state = stateWith('[Klick](https:evil.com)');
+    expect(linkUrlAt(state, 2)).toBeNull();
+  });
+
+  it('verwirft http:-URLs ohne "//" (kein vollständiges Schema)', () => {
+    const state = stateWith('[K](http:evil.com)');
+    expect(linkUrlAt(state, 1)).toBeNull();
+  });
 });
 
 describe('linkUrlAt — nackte URLs (GFM-Autoerkennung ohne Link/Autolink-Knoten)', () => {
@@ -150,33 +161,73 @@ describe('linkUrlAt — nackte URLs (GFM-Autoerkennung ohne Link/Autolink-Knoten
     const state = stateWith('WWW.Example.COM hier');
     expect(linkUrlAt(state, 5)).toBeNull();
   });
+
+  describe('URLs mit Benutzerteil werden NIE zu mailto: normalisiert', () => {
+    // Regression: GFM erzeugt für "https://admin@github.com/repo" einen
+    // URL-Knoten NUR für den Teilstring "admin@github.com" (ab dem Zeichen
+    // nach dem letzten "/" des Schemas) — der Knoten selbst sieht aus wie
+    // eine nackte E-Mail-Adresse. Ohne Kontextprüfung würde daraus fälschlich
+    // "mailto:admin@github.com". An JEDER Position im Dokument muss das
+    // Ergebnis daher entweder null oder die echte https-URL sein, NIE mailto:.
+    const documents = [
+      'https://admin@github.com/repo',
+      'https://user:pass@host.com/path',
+      'Siehe https://admin@github.com/repo hier',
+    ];
+
+    it.each(documents)('an keiner Position in %s entsteht ein mailto:-Link', (doc) => {
+      const state = stateWith(doc);
+      for (let pos = 0; pos <= doc.length; pos++) {
+        const url = linkUrlAt(state, pos);
+        expect(url?.startsWith('mailto:')).not.toBe(true);
+      }
+    });
+  });
 });
 
 describe('normalizeBareUrl — reine Normalisierungsfunktion', () => {
   it('lässt https-URLs unverändert', () => {
-    expect(normalizeBareUrl('https://example.com')).toBe('https://example.com');
+    expect(normalizeBareUrl('https://example.com', undefined)).toBe('https://example.com');
   });
 
   it('lässt http-URLs unverändert', () => {
-    expect(normalizeBareUrl('http://example.com')).toBe('http://example.com');
+    expect(normalizeBareUrl('http://example.com', undefined)).toBe('http://example.com');
   });
 
   it('ergänzt bei www.-Text das Schema https://', () => {
-    expect(normalizeBareUrl('www.example.com')).toBe('https://www.example.com');
+    expect(normalizeBareUrl('www.example.com', undefined)).toBe('https://www.example.com');
   });
 
   it('ergänzt bei einer nackten E-Mail-Adresse das Präfix mailto:', () => {
-    expect(normalizeBareUrl('foo@example.com')).toBe('mailto:foo@example.com');
+    expect(normalizeBareUrl('foo@example.com', undefined)).toBe('mailto:foo@example.com');
+  });
+
+  it('ergänzt das Präfix auch, wenn davor ein Leerzeichen steht', () => {
+    expect(normalizeBareUrl('foo@example.com', ' ')).toBe('mailto:foo@example.com');
   });
 
   it('verdoppelt das Präfix nicht, wenn mailto: bereits vorhanden ist', () => {
-    expect(normalizeBareUrl('mailto:foo@example.com')).toBe('mailto:foo@example.com');
+    expect(normalizeBareUrl('mailto:foo@example.com', undefined)).toBe('mailto:foo@example.com');
   });
 
   it('behandelt eine URL mit Benutzerteil (user@host) NICHT als E-Mail', () => {
     // Schema-Prüfung muss VOR der @-Heuristik greifen, sonst würde daraus
     // fälschlich "mailto:https://user@host/pfad".
-    expect(normalizeBareUrl('https://user@host/pfad')).toBe('https://user@host/pfad');
+    expect(normalizeBareUrl('https://user@host/pfad', undefined)).toBe('https://user@host/pfad');
+  });
+
+  it.each(['/', ':', '@', '.'])(
+    'liefert null, wenn direkt davor "%s" steht (Knoten ist Teil einer größeren URL)',
+    (precedingChar) => {
+      // Simuliert den Fall, dass GFM bei einer URL mit Benutzerteil nur den
+      // Teilstring ab dem Benutzernamen als URL-Knoten erzeugt — das
+      // Zeichen davor verrät, dass der Knoten NICHT eigenständig ist.
+      expect(normalizeBareUrl('admin@github.com', precedingChar)).toBeNull();
+    },
+  );
+
+  it('ergänzt mailto: weiterhin am Dokumentanfang (kein Vorgängerzeichen)', () => {
+    expect(normalizeBareUrl('foo@example.com', undefined)).toBe('mailto:foo@example.com');
   });
 });
 

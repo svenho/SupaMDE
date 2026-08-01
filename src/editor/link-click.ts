@@ -4,21 +4,42 @@ import { syntaxTree } from '@codemirror/language';
 import type { SyntaxNode } from '@lezer/common';
 
 /**
- * Nur diese normalisierten Schemata werden geöffnet — `javascript:` und `data:`
- * sind Angriffsvektoren. `mailto:` ist erlaubt, weil es erst NACH der
- * Normalisierung geprüft wird (siehe `normalizeBareUrl`) und daher nicht von
- * beliebigem Linktext erzeugt werden kann.
+ * Nur diese Schemata werden geöffnet — `javascript:` und `data:` sind
+ * Angriffsvektoren. `http`/`https` erzwingen zwingend "//" — ohne das wäre
+ * z.B. "https:evil.com" (kein vollständiger Schema-Trenner) fälschlich
+ * erlaubt. Dieselbe Konstante dient zwei Zwecken (bewusst EINE einzige
+ * Quelle, damit beide nicht wieder auseinanderdriften können — genau das
+ * war zuvor die Ursache einer Sicherheitslücke):
+ * 1. In `linkUrlAt` als finale Allowlist-Prüfung.
+ * 2. In `normalizeBareUrl`, um zu erkennen, ob im Dokumenttext bereits ein
+ *    Schema steht (dann keine Normalisierung, keine Verdopplung).
+ * `mailto:` ist Teil der Allowlist — unkritisch, weil es nur bei explizit im
+ * Dokument stehendem `mailto:`-Text oder nach der `normalizeBareUrl`-Prüfung
+ * greift und nicht von beliebigem Linktext erzeugt werden kann.
  */
-const SAFE_SCHEME = /^(https?|mailto):/i;
-
-/** Ein Schema, das bereits explizit im Dokumenttext steht. */
-const EXPLICIT_SCHEME = /^(https?:\/\/|mailto:)/i;
+const SAFE_SCHEME = /^(https?:\/\/|mailto:)/i;
 
 /** Erkennt eine (mutmaßliche) E-Mail-Adresse ohne Schema, z.B. "foo@example.com". */
 const BARE_EMAIL = /^[^\s@]+@[^\s@]+$/;
 
 /** Erkennt eine nackte www.-Adresse ohne Schema, z.B. "www.example.com". */
 const BARE_WWW = /^www\./i;
+
+/**
+ * Zeichen, die — unmittelbar vor einem `URL`-Knoten stehend — verraten, dass
+ * dieser Knoten NICHT eigenständig ist, sondern Teil einer größeren URL im
+ * Dokument. Hintergrund: GFM erzeugt für eine nackte URL mit Benutzerteil
+ * (z.B. `https://admin@github.com/repo`) einen `URL`-Knoten NUR für den
+ * Teilstring ab dem Benutzernamen (`admin@github.com`) — dieser Teilstring
+ * sieht für sich genommen aus wie eine nackte E-Mail-Adresse. Ohne diese
+ * Kontextprüfung würde `normalizeBareUrl` daraus fälschlich
+ * `mailto:admin@github.com` machen, obwohl im Dokument nie eine E-Mail-Adresse
+ * stand — ein Klick hätte dann das Mailprogramm statt die Website geöffnet.
+ * `/`, `:`, `@` und `.` decken die Fortsetzung eines Schemas (`https://`,
+ * `http:`), eines weiteren Benutzerteils (`user:pass@`) oder eines
+ * vorangehenden Hostnamen-Teils ab.
+ */
+const URL_CONTINUATION_CHARS = new Set(['/', ':', '@', '.']);
 
 /**
  * Normalisiert den Text eines nackten `URL`-Knotens (GFM-Autoerkennung ohne
@@ -28,17 +49,26 @@ const BARE_WWW = /^www\./i;
  *   bleibt der Text unverändert (keine Verdopplung).
  * - `www.example.com` bekommt das Schema `https://` vorangestellt.
  * - Eine nackte E-Mail-Adresse (`@` enthalten, kein Schema) bekommt das
- *   Präfix `mailto:` vorangestellt. Die Schema-Prüfung läuft ZUERST, damit
- *   z.B. `https://user@host/pfad` (URL mit Benutzerteil) nicht fälschlich
- *   als E-Mail behandelt wird.
+ *   Präfix `mailto:` vorangestellt — ABER NUR, wenn `precedingChar` (das
+ *   Dokumentzeichen unmittelbar vor dem Knoten) keine Fortsetzung einer
+ *   größeren URL anzeigt (siehe `URL_CONTINUATION_CHARS`). Die Schema-Prüfung
+ *   läuft dabei ZUERST, damit z.B. `https://user@host/pfad` (URL mit
+ *   Benutzerteil, hier bereits vollständig im Knoten enthalten) nicht
+ *   fälschlich als E-Mail behandelt wird.
+ * - Erkennt die Kontextprüfung eine Fortsetzung, liefert die Funktion `null`
+ *   (konservativ: lieber kein Link öffnen als versehentlich das Mailprogramm).
  * - Alles andere (z.B. bereits vollständige http/https-URLs) bleibt unverändert.
  *
- * Reine Funktion — ohne DOM/Editor-State testbar.
+ * Reine Funktion — ohne DOM/Editor-State testbar. `precedingChar` ist
+ * `undefined`, wenn der Knoten am Dokumentanfang steht.
  */
-export function normalizeBareUrl(text: string): string {
-  if (EXPLICIT_SCHEME.test(text)) return text;
+export function normalizeBareUrl(text: string, precedingChar: string | undefined): string | null {
+  if (SAFE_SCHEME.test(text)) return text;
   if (BARE_WWW.test(text)) return `https://${text}`;
-  if (BARE_EMAIL.test(text)) return `mailto:${text}`;
+  if (BARE_EMAIL.test(text)) {
+    if (precedingChar !== undefined && URL_CONTINUATION_CHARS.has(precedingChar)) return null;
+    return `mailto:${text}`;
+  }
   return text;
 }
 
@@ -92,7 +122,12 @@ export function linkUrlAt(state: EditorState, pos: number): string | null {
 
   const bareUrl = enclosingBareUrl(resolved);
   if (bareUrl) {
-    const text = normalizeBareUrl(state.doc.sliceString(bareUrl.from, bareUrl.to));
+    // Zeichen unmittelbar vor dem Knoten: entscheidet, ob eine nackte
+    // E-Mail-Adresse eigenständig ist oder Teil einer größeren URL (siehe
+    // Doc-Kommentar von `normalizeBareUrl`). `undefined` am Dokumentanfang.
+    const precedingChar = bareUrl.from > 0 ? state.doc.sliceString(bareUrl.from - 1, bareUrl.from) : undefined;
+    const text = normalizeBareUrl(state.doc.sliceString(bareUrl.from, bareUrl.to), precedingChar);
+    if (text === null) return null;
     return SAFE_SCHEME.test(text) ? text : null;
   }
 
