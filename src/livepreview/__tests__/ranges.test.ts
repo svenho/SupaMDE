@@ -182,7 +182,7 @@ describe('computeHiddenRanges — Rückgabe-Vertrag', () => {
   });
 
   it('liefert überlappungsfreie Bereiche', () => {
-    const state = stateWith('**a** *b* ~~c~~ `d` k', 20);
+    const state = stateWith('**a** *b* ~~c~~ `d` x', 20);
     const ranges = computeHiddenRanges(state, whole(state));
     for (let i = 1; i < ranges.length; i++) {
       expect(ranges[i]!.from).toBeGreaterThanOrEqual(ranges[i - 1]!.to);
