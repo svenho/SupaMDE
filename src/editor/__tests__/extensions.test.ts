@@ -5,15 +5,9 @@ import { indentUnit, syntaxTree } from '@codemirror/language';
 import { buildExtensions } from '../extensions';
 import type { ResolvedOptions } from '../../options';
 import { resolveOptions } from '../../options';
+import { makeResolved } from '../../__tests__/helpers';
 
-const base: ResolvedOptions = {
-  lineWrapping: true,
-  placeholder: null,
-  autofocus: false,
-  tabSize: 2,
-  indentUnit: 2,
-  extraKeys: [],
-};
+const base: ResolvedOptions = makeResolved();
 
 /** Baut einen State aus den Extensions — schlägt fehl, wenn Extensions inkompatibel sind. */
 function stateFrom(resolved: ResolvedOptions) {

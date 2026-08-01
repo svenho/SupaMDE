@@ -1,6 +1,7 @@
 import type { ToolbarOption } from './ui/toolbar-config';
 import type { StatusOption } from './ui/statusbar';
 import type { KeyBinding } from '@codemirror/view';
+import { EDITOR_MODES, type EditorMode } from './livepreview';
 
 /** Öffentliche Konfigurationsoptionen für SupaMDE (Kern-Set, M1). */
 export interface SupaMDEOptions {
@@ -20,6 +21,11 @@ export interface SupaMDEOptions {
   initialValue?: string;
   /** Eigene Tastenkürzel; haben Vorrang vor den SupaMDE-Defaults bei Konflikten. */
   extraKeys?: KeyBinding[];
+  /**
+   * Darstellungsmodus: `'source'` zeigt das Markdown-Markup (Default),
+   * `'live'` blendet es aus und zeigt es nur am Cursor (Obsidian-Stil).
+   */
+  editorMode?: EditorMode;
   /** Toolbar-Konfiguration: false (aus), oder Liste aus Built-in-Namen/Custom-Buttons. */
   toolbar?: ToolbarOption;
   /** Statusbar-Konfiguration: false (aus), oder Liste aus Built-in-Namen/Custom-Items. */
@@ -44,6 +50,19 @@ export interface ResolvedOptions {
   tabSize: number;
   indentUnit: number;
   extraKeys: KeyBinding[];
+  editorMode: EditorMode;
+}
+
+/**
+ * Prüft den Modus-Wert und fällt bei Unsinn auf `'source'` zurück. Bewusst kein
+ * Wurf: Ein falscher DARSTELLUNGSmodus darf den Editor nicht am Starten hindern
+ * (gleiches Muster wie `resolveToolbar` bei unbekannten Aktionsnamen).
+ */
+function resolveEditorMode(mode: EditorMode | undefined): EditorMode {
+  if (mode === undefined) return 'source';
+  if (EDITOR_MODES.includes(mode)) return mode;
+  console.warn(`SupaMDE: unbekannter editorMode "${String(mode)}" — nutze "source".`);
+  return 'source';
 }
 
 /** Füllt fehlende Optionen mit Defaults und liefert eine vollständige Form. */
@@ -55,5 +74,6 @@ export function resolveOptions(options: SupaMDEOptions): ResolvedOptions {
     tabSize: options.tabSize ?? 2,
     indentUnit: options.indentUnit ?? 2,
     extraKeys: options.extraKeys ?? [],
+    editorMode: resolveEditorMode(options.editorMode),
   };
 }

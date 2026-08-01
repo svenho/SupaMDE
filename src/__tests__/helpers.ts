@@ -116,8 +116,7 @@ export function makeResolved(overrides: Partial<ResolvedOptions> = {}): Resolved
     tabSize: 2,
     indentUnit: 2,
     extraKeys: [],
-    // `editorMode` kommt in Task 3 dazu — hier bewusst noch nicht gesetzt,
-    // damit der Typecheck in dieser Task grün bleibt.
+    editorMode: 'source',
     ...overrides,
   };
 }
