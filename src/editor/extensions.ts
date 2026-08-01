@@ -12,6 +12,7 @@ import { supaKeymap } from '../commands/keymap';
 import { updateListenerExtension, type UpdateSink } from '../ui/update-listener';
 import { livePreviewCompartment, livePreviewFor } from '../livepreview';
 import { linkClickExtension } from './link-click';
+import { linkHoverCursorExtension } from './link-hover-cursor';
 
 /**
  * Übersetzt normalisierte Optionen in die CM6-Extension-Liste. Jede easyMDE-
@@ -31,6 +32,8 @@ export function buildExtensions(resolved: ResolvedOptions, sink?: UpdateSink): E
     livePreviewCompartment.of(livePreviewFor(resolved.editorMode)),
     // Modusunabhängig: Cmd/Ctrl+Klick öffnet Links in beiden Darstellungsmodi.
     linkClickExtension,
+    // Modusunabhängig: Klickhand bei Modifier+Hover über einem Link.
+    linkHoverCursorExtension,
     history(),
     keymap.of([...resolved.extraKeys, ...supaKeymap, ...historyKeymap, ...defaultKeymap]),
     supaTheme,

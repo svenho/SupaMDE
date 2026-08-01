@@ -208,8 +208,18 @@ Aktionen auch über die grafische Toolbar per Klick erreichbar.
 | `F11`                                 | Fullscreen-Modus an/aus (M4)           |
 
 **Links öffnen:** `Cmd`+Klick (macOS) bzw. `Strg`+Klick öffnet den Link unter dem
-Zeiger in einem neuen Tab — in beiden Editor-Modi. Nur `http:`- und `https:`-URLs
-werden geöffnet.
+Zeiger in einem neuen Tab — in beiden Editor-Modi. Das funktioniert bei
+Markdown-Links (`[Text](url)`), Autolinks (`<url>`) und bei nackten URLs, die
+GFM automatisch erkennt (`https://…`, `http://…`, `www.…` und E-Mail-Adressen
+wie `foo@example.com`). Bei `www.`-Adressen wird `https://` ergänzt, bei
+E-Mail-Adressen `mailto:` — jeweils nur, wenn noch kein Schema im Text steht.
+Nur `http:`-, `https:`- und (nach dieser Ergänzung) `mailto:`-URLs werden
+geöffnet. Hinweis zur Parser-Grenze: GFM erkennt nackte URLs/`www.`-Adressen
+nur kleingeschrieben — `HTTPS://EXAMPLE.COM` als Fließtext wird nicht erkannt
+(Markdown-Links und Autolinks sind davon nicht betroffen).
+
+Steht der Mauszeiger bei gedrücktem `Cmd`/`Strg` über einem klickbaren Link,
+wird er zur Klickhand (`cursor: pointer`) — wie in VS Code.
 
 `Enter` in einer Listenzeile setzt die Liste fort; in einer leeren Listenzeile
 beendet es sie. `Durchstreichen`, `Inline-Code`, `Trennlinie` und `Tabelle` sind
