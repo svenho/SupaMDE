@@ -10,6 +10,7 @@ import { Math } from './math';
 import { supaTheme } from './theme';
 import { supaKeymap } from '../commands/keymap';
 import { updateListenerExtension, type UpdateSink } from '../ui/update-listener';
+import { livePreviewCompartment, livePreviewFor } from '../livepreview';
 
 /**
  * Übersetzt normalisierte Optionen in die CM6-Extension-Liste. Jede easyMDE-
@@ -18,11 +19,15 @@ import { updateListenerExtension, type UpdateSink } from '../ui/update-listener'
  * GFM-Extensions sind aktiviert, um GitHub Flavored Markdown (Strikethrough, Tabellen, etc.) zu parsen.
  * `Math` erkennt `$…$`/`$$…$$` als eigene Knoten, damit LaTeX-Inhalt nicht als
  * Markdown (Fett, Links, …) interpretiert wird.
+ * `livePreviewCompartment` hält die Live-Modus-Extension — im Source-Modus leer,
+ * per `reconfigure` zur Laufzeit umschaltbar.
  */
 export function buildExtensions(resolved: ResolvedOptions, sink?: UpdateSink): Extension[] {
   const extensions: Extension[] = [
     markdown({ extensions: [GFM, Math] }),
     highlightExtension,
+    // Compartment: erlaubt den Modus-Wechsel zur Laufzeit ohne View-Neuaufbau.
+    livePreviewCompartment.of(livePreviewFor(resolved.editorMode)),
     history(),
     keymap.of([...resolved.extraKeys, ...supaKeymap, ...historyKeymap, ...defaultKeymap]),
     supaTheme,

@@ -5,7 +5,8 @@ import { indentUnit, syntaxTree } from '@codemirror/language';
 import { buildExtensions } from '../extensions';
 import type { ResolvedOptions } from '../../options';
 import { resolveOptions } from '../../options';
-import { makeResolved } from '../../__tests__/helpers';
+import { makeResolved, viewFromExtensions, cleanup } from '../../__tests__/helpers';
+import { livePreviewCompartment, livePreviewFor } from '../../livepreview';
 
 const base: ResolvedOptions = makeResolved();
 
@@ -157,5 +158,48 @@ describe('buildExtensions', () => {
     view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', eventInit));
     expect(calls).toEqual([expected]);
     view.destroy();
+  });
+});
+
+describe('buildExtensions — editorMode', () => {
+  /**
+   * View aus einer FERTIGEN Extension-Liste. Bewusst `viewFromExtensions` und
+   * nicht `viewWith`: `buildExtensions` bringt das Markdown-Setup schon mit,
+   * ein zweites würde es doppelt registrieren.
+   */
+  function viewFor(mode: 'source' | 'live', doc: string, cursor: number) {
+    return viewFromExtensions(buildExtensions(makeResolved({ editorMode: mode })), doc, cursor);
+  }
+
+  it('blendet im Modus "live" inaktives Markup aus', () => {
+    const view = viewFor('live', '**fett** x', 9);
+    expect(view.contentDOM.textContent).toBe('fett x');
+    cleanup(view);
+  });
+
+  it('lässt im Modus "source" das Markup stehen', () => {
+    const view = viewFor('source', '**fett** x', 9);
+    expect(view.contentDOM.textContent).toBe('**fett** x');
+    cleanup(view);
+  });
+
+  it('schaltet per Compartment-reconfigure um, ohne die View neu zu bauen', () => {
+    const view = viewFor('source', '**fett** x', 9);
+    expect(view.contentDOM.textContent).toBe('**fett** x');
+
+    view.dispatch({ effects: livePreviewCompartment.reconfigure(livePreviewFor('live')) });
+    expect(view.contentDOM.textContent).toBe('fett x');
+
+    view.dispatch({ effects: livePreviewCompartment.reconfigure(livePreviewFor('source')) });
+    expect(view.contentDOM.textContent).toBe('**fett** x');
+    cleanup(view);
+  });
+
+  it('erhält Dokument und Cursor über den Moduswechsel hinweg', () => {
+    const view = viewFor('source', '**fett** x', 9);
+    view.dispatch({ effects: livePreviewCompartment.reconfigure(livePreviewFor('live')) });
+    expect(view.state.doc.toString()).toBe('**fett** x');
+    expect(view.state.selection.main.head).toBe(9);
+    cleanup(view);
   });
 });
