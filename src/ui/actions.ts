@@ -1,5 +1,6 @@
 import type { EditorState } from '@codemirror/state';
 import type { SupaCommand } from '../commands/types';
+import type { EditorMode } from '../livepreview';
 import { bold, italic, strikethrough, inlineCode } from '../commands/inline';
 import {
   setHeading,
@@ -35,6 +36,8 @@ export interface SupaLike {
   toggleFullScreen(): void;
   isSideBySideActive(): boolean;
   isFullscreenActive(): boolean;
+  toggleEditorMode(): void;
+  getEditorMode(): EditorMode;
 }
 
 /** Ein Built-in-Toolbar-Eintrag: entweder CM6-Command oder Instanz-Aktion. */
@@ -247,6 +250,14 @@ export const BUILTIN_ACTIONS: Record<string, ToolbarAction> = {
     icon: 'fullscreen',
     title: 'Vollbild',
     shortcut: 'F11',
+  },
+  'editor-mode': {
+    kind: 'view',
+    run: (editor) => editor.toggleEditorMode(),
+    active: (editor) => editor.getEditorMode() === 'live',
+    icon: 'editor-mode',
+    title: 'Live-Vorschau',
+    shortcut: 'F10',
   },
 };
 

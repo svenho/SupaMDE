@@ -38,3 +38,13 @@ describe('icons', () => {
     expect(() => renderIcon('fullscreen')).not.toThrow();
   });
 });
+
+describe('Icon editor-mode', () => {
+  it('ist bekannt', () => {
+    expect(hasIcon('editor-mode')).toBe(true);
+  });
+
+  it('rendert ein SVG', () => {
+    expect(renderIcon('editor-mode').tagName.toLowerCase()).toBe('svg');
+  });
+});
