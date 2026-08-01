@@ -11,6 +11,7 @@ import { supaTheme } from './theme';
 import { supaKeymap } from '../commands/keymap';
 import { updateListenerExtension, type UpdateSink } from '../ui/update-listener';
 import { livePreviewCompartment, livePreviewFor } from '../livepreview';
+import { linkClickExtension } from './link-click';
 
 /**
  * Übersetzt normalisierte Optionen in die CM6-Extension-Liste. Jede easyMDE-
@@ -28,6 +29,8 @@ export function buildExtensions(resolved: ResolvedOptions, sink?: UpdateSink): E
     highlightExtension,
     // Compartment: erlaubt den Modus-Wechsel zur Laufzeit ohne View-Neuaufbau.
     livePreviewCompartment.of(livePreviewFor(resolved.editorMode)),
+    // Modusunabhängig: Cmd/Ctrl+Klick öffnet Links in beiden Darstellungsmodi.
+    linkClickExtension,
     history(),
     keymap.of([...resolved.extraKeys, ...supaKeymap, ...historyKeymap, ...defaultKeymap]),
     supaTheme,
