@@ -15,9 +15,11 @@ import { createSideBySide, type SideBySide } from './ui/preview';
 import { createFullscreen, type Fullscreen } from './ui/fullscreen';
 import { markdownToHtml, renderOptionsFrom, type RenderOptions } from './markdown/parse';
 import type { SupaLike } from './ui/actions';
+import { livePreviewCompartment, livePreviewFor, type EditorMode } from './livepreview';
 
 export type { SupaMDEOptions } from './options';
 export type { KeyBinding } from '@codemirror/view';
+export type { EditorMode } from './livepreview';
 
 /**
  * SupaMDE — moderner Markdown-Editor auf Basis von CodeMirror 6.
@@ -52,6 +54,12 @@ export class SupaMDE {
    * `this.options` konsistent bleiben (eine Quelle der Wahrheit, kein stiller Split).
    */
   private readonly renderOpts: RenderOptions;
+  /**
+   * Aktueller Darstellungsmodus. Bewusst ein Instanzfeld und KEIN StateField:
+   * Der Modus ist eine Eigenschaft der Ansicht, nicht des Dokuments — gleiches
+   * Muster wie bei Fullscreen und Side-by-Side.
+   */
+  private editorMode: EditorMode;
 
   constructor(options: SupaMDEOptions = {}) {
     this.options = options;
@@ -67,6 +75,12 @@ export class SupaMDE {
 
     this.handle = editorFromTextArea(options, sink);
     this.codemirror = this.handle.view;
+
+    // Aus dem Handle, NICHT über einen zweiten resolveOptions()-Aufruf: die
+    // Extension-Erzeugung hat die Optionen bereits normalisiert. Ein zweiter
+    // Aufruf ergäbe zwei unabhängige Auswertungen und eine doppelte Warnung bei
+    // ungültigem editorMode. Eine Quelle der Wahrheit — hier wörtlich.
+    this.editorMode = this.handle.resolved.editorMode;
 
     this.toolbar = createToolbar(this.codemirror, options.toolbar, this);
     this.statusbar = createStatusbar(options.status);
@@ -110,6 +124,10 @@ export class SupaMDE {
       if (event.key === 'F9') {
         event.preventDefault();
         this.toggleSideBySide();
+      } else if (event.key === 'F10') {
+        // preventDefault, weil F10 in einigen Browsern die Menüleiste fokussiert.
+        event.preventDefault();
+        this.toggleEditorMode();
       } else if (event.key === 'F11') {
         event.preventDefault();
         this.toggleFullScreen();
@@ -163,6 +181,30 @@ export class SupaMDE {
   }
   isFullscreenActive(): boolean {
     return this.fullscreen.isActive();
+  }
+
+  /** Der aktuelle Darstellungsmodus. */
+  getEditorMode(): EditorMode {
+    return this.editorMode;
+  }
+
+  /**
+   * Setzt den Darstellungsmodus. Idempotent — ein Aufruf mit dem bereits aktiven
+   * Modus dispatcht nichts. Der Wechsel läuft über ein Compartment-`reconfigure`,
+   * daher bleiben Dokument, Cursor, Historie und Scrollposition erhalten.
+   */
+  setEditorMode(mode: EditorMode): void {
+    if (mode === this.editorMode) return;
+    this.editorMode = mode;
+    this.codemirror.dispatch({
+      effects: livePreviewCompartment.reconfigure(livePreviewFor(mode)),
+    });
+    this.toolbar?.update(this.codemirror.state);
+  }
+
+  /** Wechselt zwischen `'source'` und `'live'`. */
+  toggleEditorMode(): void {
+    this.setEditorMode(this.editorMode === 'live' ? 'source' : 'live');
   }
 
   /** Baut den Editor zurück und stellt die ursprüngliche Textarea wieder her. */

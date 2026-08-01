@@ -116,8 +116,7 @@ describe('resolveOptions — editorMode', () => {
     } as never);
 
     expect(warn).toHaveBeenCalledOnce();
-    // Die Prüfung des tatsächlichen Modus über `getEditorMode()` kommt in Task 5
-    // dazu — diese Methode existiert noch nicht.
+    expect(editor.getEditorMode()).toBe('source');
 
     warn.mockRestore();
     editor.toTextArea();
