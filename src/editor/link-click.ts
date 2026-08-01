@@ -32,6 +32,29 @@ export function linkUrlAt(state: EditorState, pos: number): string | null {
 }
 
 /**
+ * Der mousedown-Handler als benannte Funktion: liefert `true`, wenn er den Klick
+ * behandelt hat (Link geöffnet), sonst `false`. Separat exportiert, damit sich
+ * die Entscheidungslogik ohne DOM-Layout testen lässt — `event.defaultPrevented`
+ * taugt dafür nicht, weil CodeMirror bei simuliertem mousedown selbst
+ * `preventDefault()` aufruft (auch mit leerer Extension-Liste).
+ */
+export function handleLinkMousedown(event: MouseEvent, view: EditorView): boolean {
+  if (!event.metaKey && !event.ctrlKey) return false;
+
+  const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+  if (pos === null) return false;
+
+  const url = linkUrlAt(view.state, pos);
+  if (!url) return false;
+
+  // noopener/noreferrer: die geöffnete Seite darf weder auf `window.opener`
+  // zugreifen noch den Referrer sehen.
+  window.open(url, '_blank', 'noopener,noreferrer');
+  event.preventDefault();
+  return true;
+}
+
+/**
  * Cmd/Ctrl+Klick öffnet den Link unter dem Zeiger in einem neuen Tab.
  *
  * Bewusst MODUSUNABHÄNGIG (fest in der Extension-Liste, außerhalb des
@@ -39,19 +62,5 @@ export function linkUrlAt(state: EditorState, pos: number): string | null {
  * Darstellungsmodus zu koppeln.
  */
 export const linkClickExtension: Extension = EditorView.domEventHandlers({
-  mousedown(event, view) {
-    if (!event.metaKey && !event.ctrlKey) return false;
-
-    const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-    if (pos === null) return false;
-
-    const url = linkUrlAt(view.state, pos);
-    if (!url) return false;
-
-    // noopener/noreferrer: die geöffnete Seite darf weder auf `window.opener`
-    // zugreifen noch den Referrer sehen.
-    window.open(url, '_blank', 'noopener,noreferrer');
-    event.preventDefault();
-    return true;
-  },
+  mousedown: handleLinkMousedown,
 });

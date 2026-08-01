@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { stateWith, viewWith, cleanup } from '../../__tests__/helpers';
-import { linkUrlAt, linkClickExtension } from '../link-click';
+import { linkUrlAt, linkClickExtension, handleLinkMousedown } from '../link-click';
 
 describe('linkUrlAt', () => {
   it('findet die URL eines Inline-Links vom Linktext aus', () => {
@@ -72,18 +72,14 @@ describe('linkClickExtension', () => {
     cleanup(view);
   });
 
-  it('greift ohne Modifier nicht ein — der Handler meldet "nicht behandelt"', () => {
-    // Bewusst NICHT über `event.defaultPrevented` geprüft: CodeMirror ruft bei
-    // einem simulierten mousedown selbst `preventDefault()` auf (verifiziert mit
-    // leerer Extension-Liste), der Wert misst also Fremdverhalten statt unseres.
-    // Aussagekräftig ist stattdessen der Rückgabewert unseres Handlers: `false`
-    // bedeutet "nicht behandelt", CodeMirror behält die Kontrolle.
+  it('meldet "nicht behandelt", wenn kein Modifier gedrückt ist', () => {
+    // `event.defaultPrevented` taugt hier nicht: CodeMirror ruft bei simuliertem
+    // mousedown selbst `preventDefault()` auf — auch mit leerer Extension-Liste.
+    // Aussagekräftig ist der Rückgabewert des Handlers: `false` heißt
+    // "nicht behandelt", CodeMirror behält die Kontrolle über den Klick.
     const view = linkView('[Text](https://example.com)');
     const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-    view.contentDOM.dispatchEvent(event);
-    // Ohne Modifier wird kein Link geöffnet — das prüft der folgende Test direkt.
-    // Hier genügt, dass der Klick die View nicht verändert hat.
-    expect(view.state.doc.toString()).toBe('[Text](https://example.com)');
+    expect(handleLinkMousedown(event, view)).toBe(false);
     cleanup(view);
   });
 
