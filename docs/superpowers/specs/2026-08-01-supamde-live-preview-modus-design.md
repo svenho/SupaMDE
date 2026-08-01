@@ -88,11 +88,25 @@ Akzeptierter Randfall: Beim Überqueren einer Knotengrenze kann der Cursor eine
 Position weiter springen als erwartet (hinter statt vor den ersten Marker). Eine
 Position Differenz, kein Klemmen — dasselbe Verhalten wie in Obsidian.
 
-**Löschen über einen inaktiven Marker.** `atomicRanges` wirkt auch auf Backspace
-und Delete: Steht der Cursor direkt hinter einem versteckten `**`, entfernt ein
-Backspace beide Sternchen auf einmal statt eines. Das ist konsistent — ein halb
-gelöschter Marker hinterließe kaputtes Markup, das der Nutzer nicht sieht. Verhalten
-wird so übernommen und getestet.
+**Löschen.** Am realen CodeMirror verifiziert: Backspace und Delete verhalten sich
+**unverändert**, Zeichen für Zeichen. Das ist kein Mangel, sondern folgt zwingend
+aus der Aktiv-Regel — Ausblendung und Atomarität hängen an derselben Bedingung:
+
+- Ein Marker ist genau dann atomar, wenn sein Knoten inaktiv ist.
+- Um ihn per Backspace zu treffen, muss der Cursor ihn berühren.
+- Berührt der Cursor ihn, ist der Knoten aktiv → Markup sichtbar, kein atomarer
+  Bereich mehr.
+
+Der Fall „Backspace auf einen unsichtbaren Marker" kann also konstruktiv nicht
+eintreten. Gemessene Werte für `a **b** c` (Marker `[2,4]` und `[5,7]`):
+
+```
+Backspace bei 7 → "a **b* c"    (ein Sternchen, Knoten war aktiv)
+Backspace bei 4 → "a *b** c"    (ein Sternchen, Knoten war aktiv)
+```
+
+`atomicRanges` wirkt damit ausschließlich auf die **Cursor-Bewegung**, und das ist
+genau der beabsichtigte Zweck.
 
 **Kopieren** liefert Markdown inklusive Markup (`**fett**`). Der Editor bearbeitet
 Markdown, die Zwischenablage soll Markdown enthalten; alles andere wäre zwischen
@@ -381,21 +395,46 @@ Die Deckungsgleichheit von Dekorationen und `atomicRanges` sichert die Zusage au
 | Sichtbarer Ausschnitt kleiner als Dokument | Viewport-Beschränkung |
 | Zeile nur aus `#` bzw. `>` | Leerzeichen-Erweiterung läuft nicht in die Folgezeile |
 | Geschlossene Überschrift `# Titel #` | schließender `HeaderMark`, Erweiterung nach links |
-| Leeres Markup `****` | siehe offener Punkt unten |
+| Leeres Markup `****` | liefert **keine** Bereiche (ist `HorizontalRule`, siehe unten) |
+| Marker unterschiedlicher Länge (`` ` `` vs `~~`) | keine feste Breite angenommen |
 | Leeres Dokument | Randfall |
 
 **Regressionstest zur Command-Zusage:** `bold` im Live-Modus aufrufen und prüfen,
 dass das Dokument `**fett**` enthält **und** die Sternchen nicht in den
 ausgeblendeten Bereichen liegen.
 
-### Offener Punkt (beim Implementieren zu verifizieren)
+### Geklärter Punkt: `****` ist eine HorizontalRule
 
-Bei `****` mit Cursor in der Mitte ist der Knoten **leer**. Ob `@lezer/markdown`
-dort überhaupt einen `StrongEmphasis`-Knoten bildet, ist nicht selbstverständlich —
-der Parser könnte die Sternchen auch als gewöhnlichen Text sehen. Entsteht kein
-Knoten, gibt es nichts auszublenden, und die Sternchen sind aus einem anderen Grund
-sichtbar. Das sichtbare Ergebnis ist in beiden Fällen dasselbe; der Test wird gegen
-das **tatsächliche** Parser-Verhalten geschrieben, nicht gegen eine Annahme.
+Am realen Parser verifiziert (`@lezer/markdown` mit `GFM`): `****` erzeugt **keinen**
+leeren `StrongEmphasis`, sondern einen `HorizontalRule`-Knoten ohne Marker-Kinder.
+
+```
+### "****"
+  Document[0,4]="****"
+  HorizontalRule[0,4]="****"
+```
+
+Folge: Es gibt dort nichts auszublenden, die Sternchen bleiben sichtbar — genau das
+gewünschte Verhalten nach einem `bold`-Aufruf mit leerer Selektion, allerdings aus
+einem anderen Grund als zunächst angenommen (kein aktiver Knoten, sondern gar kein
+Marker-Knoten). Der Test hält dieses Parser-Verhalten fest, damit ein späterer
+Parser-Wechsel auffällt.
+
+### Weitere verifizierte Knotenstrukturen
+
+```
+### "# Titel #"        → ATXHeading1, HeaderMark[0,1], HeaderMark[8,9]
+### "#"                → ATXHeading1[0,1], HeaderMark[0,1]   (kein Textinhalt)
+### ">"                → Blockquote[0,1], QuoteMark[0,1]      (kein Paragraph)
+### "**a *b* c**"      → StrongEmphasis(EmphasisMark[0,2], Emphasis(EmphasisMark[4,5],
+                          EmphasisMark[6,7]), EmphasisMark[9,11])
+### "~~weg~~"          → Strikethrough, StrikethroughMark[0,2], StrikethroughMark[5,7]
+### "`code`"           → InlineCode, CodeMark[0,1], CodeMark[5,6]
+```
+
+**Wichtig für die Implementierung:** Marker-Längen variieren (`CodeMark` 1 Zeichen,
+`StrikethroughMark` 2, `EmphasisMark` 1 oder 2). Die Logik darf keine feste Breite
+annehmen, sondern muss `node.from`/`node.to` verwenden.
 
 ---
 
