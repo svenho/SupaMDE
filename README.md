@@ -119,6 +119,54 @@ werden. Custom-Buttons können über `className` weiterhin eigene Icon-Fonts
 | `syncSideBySidePreviewScroll`  | `boolean`                         | `true`  | Bidirektionaler Scroll-Sync im Side-by-Side.          |
 | `onToggleFullScreen`           | `(active) => void`                | —       | Callback bei Fullscreen-Wechsel.                      |
 
+## Editor-Modus (Live-Vorschau)
+
+SupaMDE kennt zwei Darstellungsmodi:
+
+| Modus | Verhalten |
+|---|---|
+| `'source'` (Default) | Das Markdown-Markup bleibt sichtbar und wird live formatiert. |
+| `'live'` | Das Markup wird ausgeblendet und erscheint nur dort, wo der Cursor steht (Obsidian-Stil). |
+
+```js
+const editor = new SupaMDE({
+  element: document.querySelector('#editor'),
+  editorMode: 'live',
+});
+```
+
+| Option | Typ | Default | Beschreibung |
+|---|---|---|---|
+| `editorMode` | `'source' \| 'live'` | `'source'` | Darstellungsmodus beim Start. |
+
+**Zur Laufzeit umschalten:**
+
+| Methode | Beschreibung |
+|---|---|
+| `getEditorMode()` | Liefert den aktuellen Modus. |
+| `setEditorMode(mode)` | Setzt den Modus. Idempotent. |
+| `toggleEditorMode()` | Wechselt zwischen beiden Modi. |
+
+Der Wechsel erhält Dokument, Cursor, Selektion, Undo-Historie und Scrollposition.
+
+**Was im Live-Modus ausgeblendet wird:** die Marker von Fett, Kursiv,
+Durchgestrichen, Inline-Code, ATX-Überschriften (`#` … `######`) und
+Blockzitaten. Fenced Code Blocks und Setext-Überschriften (Unterstreichung mit
+`=`/`-`) bleiben vollständig sichtbar, ebenso Listen-Marker und Link-Syntax.
+
+Der Text bleibt in beiden Modi editierbarer Markdown-Quelltext — kopierter Text
+enthält immer das vollständige Markup.
+
+**Toolbar-Button:** Die Aktion `'editor-mode'` ist bewusst **nicht** Teil der
+Standard-Toolbar. Wer sie will, nimmt sie in die eigene `toolbar`-Liste auf:
+
+```js
+new SupaMDE({
+  element: document.querySelector('#editor'),
+  toolbar: ['bold', 'italic', '|', 'editor-mode'],
+});
+```
+
 ## API (M1)
 
 | Methode                        | Beschreibung                                             |
@@ -156,7 +204,27 @@ Aktionen auch über die grafische Toolbar per Klick erreichbar.
 | `Mod-Z` / `Mod-Y`                     | Rückgängig / Wiederholen               |
 | `Tab` / `Shift-Tab`                   | Zeile ein- / ausrücken                 |
 | `F9`                                  | Side-by-Side-Vorschau an/aus (M4)      |
+| `F10`                                 | Editor-Modus umschalten (Quelltext ↔ Live-Vorschau) |
 | `F11`                                 | Fullscreen-Modus an/aus (M4)           |
+
+**Links öffnen:** `Cmd`+Klick (macOS) bzw. `Strg`+Klick öffnet den Link unter dem
+Zeiger in einem neuen Tab — in beiden Editor-Modi. Das funktioniert bei
+Markdown-Links (`[Text](url)`), Autolinks (`<url>`) und bei nackten URLs, die
+GFM automatisch erkennt (`https://…`, `http://…`, `www.…` und E-Mail-Adressen
+wie `foo@example.com`). Bei `www.`-Adressen wird `https://` ergänzt, bei
+E-Mail-Adressen `mailto:` — jeweils nur, wenn noch kein Schema im Text steht.
+Nur `http://`-, `https://`- und (nach dieser Ergänzung) `mailto:`-URLs werden
+geöffnet; `https:`/`http:` ohne die beiden Schrägstriche zählen NICHT als
+gültiges Schema. Steht eine E-Mail-ähnliche Zeichenfolge als Teil einer
+größeren URL im Text (z. B. der Benutzerteil in `https://admin@github.com/…`),
+wird sie NICHT zu `mailto:` normalisiert. Cmd/Strg+Klick auf eine solche
+Adresse öffnet dann nichts — niemals ungewollt das Mailprogramm. Hinweis zur
+Parser-Grenze: GFM erkennt nackte URLs/`www.`-Adressen nur kleingeschrieben —
+`HTTPS://EXAMPLE.COM` als Fließtext wird nicht erkannt (Markdown-Links und
+Autolinks sind davon nicht betroffen).
+
+Steht der Mauszeiger bei gedrücktem `Cmd`/`Strg` über einem klickbaren Link,
+wird er zur Klickhand (`cursor: pointer`) — wie in VS Code.
 
 `Enter` in einer Listenzeile setzt die Liste fort; in einer leeren Listenzeile
 beendet es sie. `Durchstreichen`, `Inline-Code`, `Trennlinie` und `Tabelle` sind

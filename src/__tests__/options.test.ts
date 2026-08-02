@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { resolveOptions } from '../options';
 import type { SupaMDEOptions } from '../options';
 
@@ -12,6 +12,7 @@ describe('resolveOptions', () => {
       tabSize: 2,
       indentUnit: 2,
       extraKeys: [],
+      editorMode: 'source',
     });
   });
 
@@ -74,5 +75,51 @@ describe('SupaMDEOptions (Typ-Erweiterung, M4)', () => {
       },
     };
     expect(full.previewClass).toEqual(['a', 'b']);
+  });
+});
+
+describe('resolveOptions — editorMode', () => {
+  it('nutzt "source" als Default', () => {
+    expect(resolveOptions({}).editorMode).toBe('source');
+  });
+
+  it('übernimmt "live", wenn gesetzt', () => {
+    expect(resolveOptions({ editorMode: 'live' }).editorMode).toBe('live');
+  });
+
+  it('übernimmt "source", wenn explizit gesetzt', () => {
+    expect(resolveOptions({ editorMode: 'source' }).editorMode).toBe('source');
+  });
+
+  it('fällt bei einem ungültigen Wert auf "source" zurück und warnt', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Bewusst untypisiert: simuliert einen Aufruf aus reinem JavaScript.
+    const resolved = resolveOptions({ editorMode: 'wysiwyg' } as never);
+    expect(resolved.editorMode).toBe('source');
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+
+  it('warnt bei einer SupaMDE-Instanz genau EINMAL, nicht doppelt', async () => {
+    // Regressionsschutz: `resolveOptions` darf pro Instanz nur einmal laufen.
+    // Ein zweiter Aufruf in `src/index.ts` würde die Warnung verdoppeln.
+    const { SupaMDE } = await import('../index');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const textarea = document.createElement('textarea');
+    document.body.appendChild(textarea);
+
+    const editor = new SupaMDE({
+      element: textarea,
+      toolbar: false,
+      status: false,
+      editorMode: 'wysiwyg',
+    } as never);
+
+    expect(warn).toHaveBeenCalledOnce();
+    expect(editor.getEditorMode()).toBe('source');
+
+    warn.mockRestore();
+    editor.toTextArea();
+    textarea.remove();
   });
 });
