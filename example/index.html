@@ -3,34 +3,42 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SupaMDE — M2 Aktionen</title>
+    <title>SupaMDE — M4 LaTeX-Vorschau</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css" crossorigin="anonymous">
+    <!-- KEIN defer: window.katex muss stehen, bevor das SupaMDE-Modul erstmals rendert.
+         (Mit defer würde der erste Render evtl. vor gesetztem window.katex laufen und
+         kurz Rohtext zeigen; resolveKatex() greift beim nächsten Render nach.) -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.js" crossorigin="anonymous"></script>
     <style>
       body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
     </style>
   </head>
   <body>
     <h1>SupaMDE</h1>
-    <p>M2: Live formatierender Editor mit Tastenkürzeln. Probiere
-      <kbd>Strg/Cmd</kbd>+<kbd>B</kbd> (fett), <kbd>Strg/Cmd</kbd>+<kbd>I</kbd> (kursiv),
-      <kbd>Strg/Cmd</kbd>+<kbd>K</kbd> (Link), <kbd>Strg/Cmd</kbd>+<kbd>'</kbd> (Zitat),
-      <kbd>Strg/Cmd</kbd>+<kbd>L</kbd> (Liste), <kbd>Strg/Cmd</kbd>+<kbd>Z</kbd> (undo).
-      Enter in einer Listenzeile setzt die Liste fort.</p>
+    <p>M4: LaTeX-Vorschau mit Side-by-Side-Anzeige, Fullscreen und Live-Rendering.
+      KaTeX ist vom CDN geladen und global verfügbar.</p>
     <form>
       <textarea id="editor">
-# Überschrift 1
-## Überschrift 2
+# SupaMDE mit LaTeX
 
-Ein Absatz mit **fettem**, *kursivem* und ~~durchgestrichenem~~ Text.
+Inline-Formel: $E = mc^2$ mitten im Text.
 
-Inline-`code` und ein Block:
+Block-Formel:
 
-```
-const x = 42;
-```
+$$
+\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+$$
 
-> Ein Zitat.
+Ausgerichtete Gleichungen:
 
-Ein [Link](https://example.org).
+$$
+\begin{align}
+a &= b + c \\
+x &= y - z
+\end{align}
+$$
+
+Ein Preis wie $5 und $10 bleibt Text.
 </textarea>
       <button type="submit">Absenden (forceSync-Demo)</button>
     </form>
@@ -39,6 +47,14 @@ Ein [Link](https://example.org).
       const editor = new SupaMDE({
         element: document.getElementById('editor'),
         placeholder: 'Schreibe etwas Markdown …',
+        // Default-Toolbar + ein eigener Button, der die Wortzahl in die Statusbar schreibt
+        toolbar: [
+          'bold', 'italic', 'strikethrough', 'code', '|',
+          'quote', 'unordered-list', 'ordered-list', 'check-list', '|',
+          'link', 'image', 'table', '|', 'undo', 'redo', '|',
+          'editor-mode', 'side-by-side', 'fullscreen',
+        ],
+        status: ['lines', 'words', 'cursor'],
       });
       // eslint-disable-next-line no-console
       console.log('SupaMDE-Version:', SupaMDE.version, editor.getValue());

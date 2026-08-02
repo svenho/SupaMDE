@@ -3,9 +3,9 @@
 Ein moderner, einbettbarer Markdown-Editor auf Basis von **CodeMirror 6** — die
 modernisierte Neufassung von [easyMDE](https://github.com/Ionaru/easy-markdown-editor).
 
-> **Status:** In Entwicklung. Aktueller Meilenstein: **M2 — Aktionen**
-> (Formatierungs-Commands per Tastenkürzel, Undo/Redo). Die grafische Toolbar,
-> Preview und weitere Features folgen in späteren Meilensteinen.
+> **Status:** In Entwicklung. Aktueller Meilenstein: **M4 — LaTeX-Live-Vorschau
+> & Fullscreen** (Side-by-Side-Vorschau mit Markdown+LaTeX-Rendering, Fullscreen).
+> Autosave und Bild-Upload folgen in M5.
 
 ## Installation
 
@@ -38,6 +38,23 @@ npm install \
 Die Einbindung erfolgt über einen Bundler (Vite, esbuild, Rollup, webpack …),
 der die Bare-Imports auflöst. SupaMDE wird als ESM ausgeliefert.
 
+### KaTeX (optional, für Formeln in der Vorschau)
+
+Die Live-Vorschau rendert LaTeX-Formeln (`$…$`, `$$…$$`, `\begin{align}` in
+`$$`) über **KaTeX**. KaTeX ist eine **optionale** Peer-Dependency — ist es
+nicht installiert, zeigt die Vorschau reines Markdown und lässt Formeln als
+Text stehen. Zum Aktivieren:
+
+```bash
+npm install katex
+```
+
+Zusätzlich das KaTeX-CSS (inkl. Schriften) in der Host-Seite einbinden, z.B.:
+
+```html
+<link rel="stylesheet" href="/node_modules/katex/dist/katex.min.css">
+```
+
 ## Grundnutzung
 
 ```html
@@ -50,15 +67,105 @@ der die Bare-Imports auflöst. SupaMDE wird als ESM ausgeliefert.
 
 ## Optionen (Kern-Set, M1)
 
-| Option         | Typ                   | Default         | Bedeutung                                  |
-| -------------- | --------------------- | --------------- | ------------------------------------------ |
-| `element`      | `HTMLTextAreaElement` | —               | **Pflicht.** Die zu ersetzende Textarea.   |
-| `lineWrapping` | `boolean`             | `true`          | Zeilenumbruch statt horizontalem Scrollen. |
-| `placeholder`  | `string`              | —               | Platzhaltertext im leeren Editor.          |
-| `autofocus`    | `boolean`             | `false`         | Fokussiert den Editor nach Erzeugung.      |
-| `tabSize`      | `number`              | `2`             | Tab-Breite in Spalten.                     |
-| `indentUnit`   | `number`              | `2`             | Einrücktiefe in Leerzeichen.               |
-| `initialValue` | `string`              | Textarea-Inhalt | Startwert (überschreibt Textarea).         |
+| Option         | Typ                   | Default         | Bedeutung                                   |
+| -------------- | --------------------- | --------------- | -------------------------------------------- |
+| `element`      | `HTMLTextAreaElement` | —               | **Pflicht.** Die zu ersetzende Textarea.      |
+| `lineWrapping` | `boolean`             | `true`          | Zeilenumbruch statt horizontalem Scrollen.    |
+| `placeholder`  | `string`              | —               | Platzhaltertext im leeren Editor.             |
+| `autofocus`    | `boolean`             | `false`         | Fokussiert den Editor nach Erzeugung.         |
+| `tabSize`      | `number`              | `2`             | Tab-Breite in Spalten.                        |
+| `indentUnit`   | `number`              | `2`             | Einrücktiefe in Leerzeichen.                  |
+| `initialValue` | `string`              | Textarea-Inhalt | Startwert (überschreibt Textarea).            |
+| `extraKeys`    | `KeyBinding[]`        | `[]`            | Eigene CM6-Tastenkürzel; Vorrang vor Defaults. |
+
+## Toolbar & Statusbar (M3)
+
+| Option    | Typ                                          | Default                       | Bedeutung                                        |
+| --------- | -------------------------------------------- | ----------------------------- | ------------------------------------------------ |
+| `toolbar` | `false \| Array<string \| CustomButton>`     | Default-Toolbar               | Toolbar-Aufbau. `false` blendet sie aus.         |
+| `status`  | `false \| Array<string \| CustomStatusItem>` | `['lines', 'words', 'cursor']`| Statusbar-Items. `false` blendet sie aus.        |
+
+**Built-in-Toolbar-Buttons:** `bold`, `italic`, `strikethrough`, `code`,
+`heading-smaller`, `heading-bigger`, `heading-1`…`heading-6`, `quote`, `code-block`,
+`horizontal-rule`, `clean-block`, `unordered-list`, `ordered-list`, `check-list`,
+`link`, `image`, `table`, `undo`, `redo`. `'|'` fügt einen Separator ein.
+
+**Custom-Buttons** behalten die easyMDE-Signatur:
+
+```js
+{
+  name: 'shout',
+  title: 'In Großbuchstaben',
+  className: 'fa fa-bullhorn',       // optionale eigene Icon-Klasse
+  action: (editor) => editor.setValue(editor.getValue().toUpperCase()),
+}
+```
+
+**Statusbar-Items:** `lines`, `words`, `cursor` (und `autosave`, ab M5 mit Inhalt).
+Custom-Items via `{ className, defaultValue, onUpdate, onActivity }`.
+
+**Icons:** Die Built-in-Buttons nutzen gebündelte
+[Lucide](https://lucide.dev)-SVG-Icons — es muss **kein** Icon-Font eingebunden
+werden. Custom-Buttons können über `className` weiterhin eigene Icon-Fonts
+(z. B. FontAwesome) verwenden.
+
+## Optionen (Preview/Fullscreen, M4)
+
+| Option                         | Typ                               | Default | Bedeutung                                             |
+| ------------------------------ | --------------------------------- | ------- | ----------------------------------------------------- |
+| `previewRender`                | `(text) => string`                | —       | Ersetzt den eingebauten Markdown-Renderer komplett.   |
+| `previewClass`                 | `string \| string[]`              | —       | Zusätzliche CSS-Klassen aufs Vorschau-Panel.          |
+| `renderingConfig.singleLineBreaks` | `boolean`                     | `true`  | Einfacher Zeilenumbruch → `<br>`.                     |
+| `syncSideBySidePreviewScroll`  | `boolean`                         | `true`  | Bidirektionaler Scroll-Sync im Side-by-Side.          |
+| `onToggleFullScreen`           | `(active) => void`                | —       | Callback bei Fullscreen-Wechsel.                      |
+
+## Editor-Modus (Live-Vorschau)
+
+SupaMDE kennt zwei Darstellungsmodi:
+
+| Modus | Verhalten |
+|---|---|
+| `'source'` (Default) | Das Markdown-Markup bleibt sichtbar und wird live formatiert. |
+| `'live'` | Das Markup wird ausgeblendet und erscheint nur dort, wo der Cursor steht (Obsidian-Stil). |
+
+```js
+const editor = new SupaMDE({
+  element: document.querySelector('#editor'),
+  editorMode: 'live',
+});
+```
+
+| Option | Typ | Default | Beschreibung |
+|---|---|---|---|
+| `editorMode` | `'source' \| 'live'` | `'source'` | Darstellungsmodus beim Start. |
+
+**Zur Laufzeit umschalten:**
+
+| Methode | Beschreibung |
+|---|---|
+| `getEditorMode()` | Liefert den aktuellen Modus. |
+| `setEditorMode(mode)` | Setzt den Modus. Idempotent. |
+| `toggleEditorMode()` | Wechselt zwischen beiden Modi. |
+
+Der Wechsel erhält Dokument, Cursor, Selektion, Undo-Historie und Scrollposition.
+
+**Was im Live-Modus ausgeblendet wird:** die Marker von Fett, Kursiv,
+Durchgestrichen, Inline-Code, ATX-Überschriften (`#` … `######`) und
+Blockzitaten. Fenced Code Blocks und Setext-Überschriften (Unterstreichung mit
+`=`/`-`) bleiben vollständig sichtbar, ebenso Listen-Marker und Link-Syntax.
+
+Der Text bleibt in beiden Modi editierbarer Markdown-Quelltext — kopierter Text
+enthält immer das vollständige Markup.
+
+**Toolbar-Button:** Die Aktion `'editor-mode'` ist bewusst **nicht** Teil der
+Standard-Toolbar. Wer sie will, nimmt sie in die eigene `toolbar`-Liste auf:
+
+```js
+new SupaMDE({
+  element: document.querySelector('#editor'),
+  toolbar: ['bold', 'italic', '|', 'editor-mode'],
+});
+```
 
 ## API (M1)
 
@@ -66,14 +173,20 @@ der die Bare-Imports auflöst. SupaMDE wird als ESM ausgeliefert.
 | ------------------------------ | -------------------------------------------------------- |
 | `value()` / `getValue()`       | Aktuellen Inhalt als String lesen.                       |
 | `value(val)` / `setValue(val)` | Gesamten Inhalt ersetzen.                                |
+| `updateStatusBar(name, content)` | Inhalt eines Statusbar-Items setzen (M3).              |
 | `toTextArea()`                 | Editor abbauen, ursprüngliche Textarea wiederherstellen. |
 | `codemirror`                   | Die zugrunde liegende CodeMirror-6-`EditorView`.         |
+| `toggleSideBySide()`            | Side-by-Side-Vorschau an/aus.                            |
+| `isSideBySideActive()`          | `true` wenn Side-by-Side aktiv (M4).                     |
+| `toggleFullScreen()`            | Fullscreen-Modus an/aus (M4).                            |
+| `isFullscreenActive()`          | `true` wenn Fullscreen aktiv (M4).                       |
+| `markdown(text)`                | Text als Markdown mit KaTeX rendern (M4).                |
 
 ## Tastenkürzel (M2)
 
 Alle Formatierungs-Aktionen sind als CodeMirror-6-Commands umgesetzt und per
-Tastenkürzel erreichbar (`Mod` = `Cmd` auf macOS, `Ctrl` sonst). Eine grafische
-Toolbar folgt in M3.
+Tastenkürzel erreichbar (`Mod` = `Cmd` auf macOS, `Ctrl` sonst). Seit M3 sind alle
+Aktionen auch über die grafische Toolbar per Klick erreichbar.
 
 | Kürzel                                | Aktion                                 |
 | ------------------------------------- | -------------------------------------- |
@@ -90,10 +203,38 @@ Toolbar folgt in M3.
 | `Mod-E`                               | Blockformat entfernen                  |
 | `Mod-Z` / `Mod-Y`                     | Rückgängig / Wiederholen               |
 | `Tab` / `Shift-Tab`                   | Zeile ein- / ausrücken                 |
+| `F9`                                  | Side-by-Side-Vorschau an/aus (M4)      |
+| `F10`                                 | Editor-Modus umschalten (Quelltext ↔ Live-Vorschau) |
+| `F11` / `Mod-Shift-F`                 | Fullscreen-Modus an/aus (M4)           |
+
+**Vollbild auf macOS:** `F11` ist dort systemweit belegt (Mission Control bzw.
+„Schreibtisch einblenden“) und erreicht die Seite je nach Systemeinstellung gar
+nicht. Deshalb hört der Vollbildmodus zusätzlich auf `Cmd`+`Shift`+`F` (bzw.
+`Strg`+`Shift`+`F` auf Windows/Linux); der Toolbar-Button zeigt auf macOS
+entsprechend `⌘⇧F` als Kürzel an.
+
+**Links öffnen:** `Cmd`+Klick (macOS) bzw. `Strg`+Klick öffnet den Link unter dem
+Zeiger in einem neuen Tab — in beiden Editor-Modi. Das funktioniert bei
+Markdown-Links (`[Text](url)`), Autolinks (`<url>`) und bei nackten URLs, die
+GFM automatisch erkennt (`https://…`, `http://…`, `www.…` und E-Mail-Adressen
+wie `foo@example.com`). Bei `www.`-Adressen wird `https://` ergänzt, bei
+E-Mail-Adressen `mailto:` — jeweils nur, wenn noch kein Schema im Text steht.
+Nur `http://`-, `https://`- und (nach dieser Ergänzung) `mailto:`-URLs werden
+geöffnet; `https:`/`http:` ohne die beiden Schrägstriche zählen NICHT als
+gültiges Schema. Steht eine E-Mail-ähnliche Zeichenfolge als Teil einer
+größeren URL im Text (z. B. der Benutzerteil in `https://admin@github.com/…`),
+wird sie NICHT zu `mailto:` normalisiert. Cmd/Strg+Klick auf eine solche
+Adresse öffnet dann nichts — niemals ungewollt das Mailprogramm. Hinweis zur
+Parser-Grenze: GFM erkennt nackte URLs/`www.`-Adressen nur kleingeschrieben —
+`HTTPS://EXAMPLE.COM` als Fließtext wird nicht erkannt (Markdown-Links und
+Autolinks sind davon nicht betroffen).
+
+Steht der Mauszeiger bei gedrücktem `Cmd`/`Strg` über einem klickbaren Link,
+wird er zur Klickhand (`cursor: pointer`) — wie in VS Code.
 
 `Enter` in einer Listenzeile setzt die Liste fort; in einer leeren Listenzeile
 beendet es sie. `Durchstreichen`, `Inline-Code`, `Trennlinie` und `Tabelle` sind
-als Commands vorhanden und werden mit der Toolbar (M3) auch per Klick erreichbar.
+über die Toolbar per Klick erreichbar.
 
 `Tab` rückt die aktuelle Zeile um ein `indentUnit` ein, `Shift-Tab` wieder aus —
 unabhängig davon, wo der Cursor in der Zeile steht. Bei einer Selektion gilt das
@@ -107,6 +248,31 @@ für alle berührten Zeilen. So werden Listen verschachtelt: aus `- Punkt` wird
 > **Hinweis (deutsche Mac-Tastatur):** `Mod-'` (Blockzitat) liegt hier auf
 > `Cmd+Shift+#` und wird je nach Browser nicht zuverlässig erkannt. Nutze
 > stattdessen das layout-unabhängige `Ctrl-Alt-Q`.
+
+### Eigene Tastenkürzel
+
+Über `extraKeys` lassen sich beliebige CodeMirror-6-`KeyBinding`s ergänzen.
+CM6 wertet Tastenkürzel in Registrierungsreihenfolge aus — der erste
+passende Eintrag gewinnt. `extraKeys` steht **vor** den SupaMDE-Defaults,
+wodurch sich sowohl neue Kürzel als auch Überschreibungen bestehender
+Defaults gleich verhalten:
+
+```ts
+import SupaMDE, { type KeyBinding } from 'supamde';
+import { insertNewlineAndIndent } from '@codemirror/commands';
+
+const extraKeys: KeyBinding[] = [
+  // Override: ersetzt das eingebaute Mod-B (fett)
+  { key: 'Mod-b', run: (view) => { /* eigene Aktion */ return true; } },
+  // Neu: bisher unbelegter Key
+  { key: 'Mod-Enter', run: insertNewlineAndIndent },
+];
+
+const editor = new SupaMDE({
+  element: document.getElementById('editor'),
+  extraKeys,
+});
+```
 
 ## Formatierung anpassen
 

@@ -1,0 +1,26 @@
+.supamde-container.supamde-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--supamde-bg, #fff);
+  max-width: none;
+
+  /* Höhenkette Teil 1: Der Container spannt den Viewport auf und verteilt ihn
+     als Flex-Spalte auf Toolbar (auto), Editor-Zeile (Rest) und Statusbar (auto). */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Höhenkette Teil 2: Die Editor-Zeile nimmt die Resthöhe. `min-height: 0` hebt
+   die Flex-Default-Mindesthöhe (`auto`) auf — ohne sie wüchse die Zeile mit dem
+   Dokument über den Viewport hinaus, statt intern zu scrollen. */
+.supamde-container.supamde-fullscreen .supamde-editor-row {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Höhenkette Teil 3: Editor und Vorschau füllen die Zeile; gescrollt wird
+   innen im `.cm-scroller` bzw. im Panel (das bereits `overflow-y: auto` hat). */
+.supamde-container.supamde-fullscreen .supamde-editor-row .cm-editor {
+  height: 100%;
+}

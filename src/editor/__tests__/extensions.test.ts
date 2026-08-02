@@ -4,14 +4,11 @@ import { EditorView } from '@codemirror/view';
 import { indentUnit, syntaxTree } from '@codemirror/language';
 import { buildExtensions } from '../extensions';
 import type { ResolvedOptions } from '../../options';
+import { resolveOptions } from '../../options';
+import { makeResolved, viewFromExtensions, cleanup } from '../../__tests__/helpers';
+import { livePreviewCompartment, livePreviewFor } from '../../livepreview';
 
-const base: ResolvedOptions = {
-  lineWrapping: true,
-  placeholder: null,
-  autofocus: false,
-  tabSize: 2,
-  indentUnit: 2,
-};
+const base: ResolvedOptions = makeResolved();
 
 /** Baut einen State aus den Extensions — schlägt fehl, wenn Extensions inkompatibel sind. */
 function stateFrom(resolved: ResolvedOptions) {
@@ -122,5 +119,87 @@ describe('buildExtensions', () => {
     undo(view);
     expect(view.state.doc.toString()).toBe('a');
     view.destroy();
+  });
+
+  it('ruft den sink bei einer Doc-Änderung', () => {
+    const calls: boolean[] = [];
+    const ext = buildExtensions(resolveOptions({}), {
+      onUpdate: (u) => calls.push(u.docChanged),
+    });
+    const view = new EditorView({ state: EditorState.create({ doc: '', extensions: ext }) });
+    view.dispatch({ changes: { from: 0, insert: 'x' } });
+    expect(calls.some(Boolean)).toBe(true);
+    view.destroy();
+  });
+
+  it.each([
+    {
+      name: 'überschreiben ein bestehendes SupaMDE-Default-Binding (Mod-b)',
+      key: 'Mod-b',
+      eventInit: { key: 'b', code: 'KeyB', ctrlKey: true, bubbles: true },
+      expected: 'custom',
+    },
+    {
+      name: 'ergänzen ein neues, bisher unbelegtes Binding',
+      key: 'Mod-Alt-z',
+      eventInit: { key: 'z', code: 'KeyZ', ctrlKey: true, altKey: true, bubbles: true },
+      expected: 'neu',
+    },
+  ])('extraKeys $name', ({ key, eventInit, expected }) => {
+    const calls: string[] = [];
+    const view = new EditorView({
+      state: stateFrom({
+        ...base,
+        extraKeys: [{ key, run: () => { calls.push(expected); return true; } }],
+      }),
+    });
+    view.dom.ownerDocument.body.appendChild(view.dom);
+    view.focus();
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    expect(calls).toEqual([expected]);
+    view.destroy();
+  });
+});
+
+describe('buildExtensions — editorMode', () => {
+  /**
+   * View aus einer FERTIGEN Extension-Liste. Bewusst `viewFromExtensions` und
+   * nicht `viewWith`: `buildExtensions` bringt das Markdown-Setup schon mit,
+   * ein zweites würde es doppelt registrieren.
+   */
+  function viewFor(mode: 'source' | 'live', doc: string, cursor: number) {
+    return viewFromExtensions(buildExtensions(makeResolved({ editorMode: mode })), doc, cursor);
+  }
+
+  it('blendet im Modus "live" inaktives Markup aus', () => {
+    const view = viewFor('live', '**fett** x', 9);
+    expect(view.contentDOM.textContent).toBe('fett x');
+    cleanup(view);
+  });
+
+  it('lässt im Modus "source" das Markup stehen', () => {
+    const view = viewFor('source', '**fett** x', 9);
+    expect(view.contentDOM.textContent).toBe('**fett** x');
+    cleanup(view);
+  });
+
+  it('schaltet per Compartment-reconfigure um, ohne die View neu zu bauen', () => {
+    const view = viewFor('source', '**fett** x', 9);
+    expect(view.contentDOM.textContent).toBe('**fett** x');
+
+    view.dispatch({ effects: livePreviewCompartment.reconfigure(livePreviewFor('live')) });
+    expect(view.contentDOM.textContent).toBe('fett x');
+
+    view.dispatch({ effects: livePreviewCompartment.reconfigure(livePreviewFor('source')) });
+    expect(view.contentDOM.textContent).toBe('**fett** x');
+    cleanup(view);
+  });
+
+  it('erhält Dokument und Cursor über den Moduswechsel hinweg', () => {
+    const view = viewFor('source', '**fett** x', 9);
+    view.dispatch({ effects: livePreviewCompartment.reconfigure(livePreviewFor('live')) });
+    expect(view.state.doc.toString()).toBe('**fett** x');
+    expect(view.state.selection.main.head).toBe(9);
+    cleanup(view);
   });
 });

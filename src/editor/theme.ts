@@ -1,6 +1,7 @@
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
-import { colors, fontStack } from './tokens';
+import { fontStack } from './tokens';
+import { LINK_HOVER_CLASS } from './link-hover-cursor';
 
 /**
  * Basis-Erscheinungsbild des SupaMDE-Editors (Container, Font, Padding).
@@ -8,11 +9,11 @@ import { colors, fontStack } from './tokens';
  * Feinschliff (Farben/Abstände) folgt in M3/M6, dann nur an der Token-Quelle.
  */
 export const supaTheme: Extension = EditorView.theme({
+  // Kein eigener Rahmen: den zieht der `.supamde-container`, der Toolbar,
+  // Editor und Statusleiste umschließt (siehe `ui/toolbar.css`).
   '&': {
     fontFamily: fontStack,
     fontSize: '16px',
-    border: `1px solid ${colors.border}`,
-    borderRadius: '4px',
   },
   '.cm-content': {
     padding: '10px 12px',
@@ -20,5 +21,12 @@ export const supaTheme: Extension = EditorView.theme({
   },
   '.cm-scroller': {
     fontFamily: 'inherit',
+  },
+  // Klickhand bei Modifier+Hover über einem klickbaren Link (siehe
+  // `link-hover-cursor.ts`). Die Klasse landet auf `view.contentDOM`, das
+  // bereits `.cm-content` trägt — beide Klassen sitzen also auf demselben
+  // Element (kein Nachfahren-Selektor nötig).
+  [`.cm-content.${LINK_HOVER_CLASS}`]: {
+    cursor: 'pointer',
   },
 });

@@ -1,7 +1,8 @@
 import { EditorView } from '@codemirror/view';
 import type { SupaMDEOptions } from '../options';
-import { resolveOptions } from '../options';
+import { resolveOptions, type ResolvedOptions } from '../options';
 import { buildExtensions } from './extensions';
+import type { UpdateSink } from '../ui/update-listener';
 
 /** Steuerungs-Handle über den erzeugten Editor inkl. Rückbau. */
 export interface EditorHandle {
@@ -11,6 +12,12 @@ export interface EditorHandle {
   toTextArea(): HTMLTextAreaElement;
   /** Schreibt den aktuellen Doc-Inhalt sofort in die Textarea. */
   forceSync(): void;
+  /**
+   * Die normalisierten Optionen dieser Instanz. Herausgegeben, damit die Fassade
+   * (`src/index.ts`) sie NICHT erneut auflösen muss — `resolveOptions` läuft pro
+   * Instanz genau einmal, Warnungen erscheinen daher genau einmal.
+   */
+  resolved: ResolvedOptions;
 }
 
 /**
@@ -18,7 +25,7 @@ export interface EditorHandle {
  * Inhalt, fügt sie davor ein, versteckt die Textarea und hält den Form-Submit-
  * Wert synchron. Der Textarea-Wert ist die Quelle NUR bei Konstruktion.
  */
-export function editorFromTextArea(options: SupaMDEOptions): EditorHandle {
+export function editorFromTextArea(options: SupaMDEOptions, sink?: UpdateSink): EditorHandle {
   const element = options.element;
   if (!element) {
     throw new Error('SupaMDE: `element` ist erforderlich (eine <textarea>).');
@@ -34,7 +41,7 @@ export function editorFromTextArea(options: SupaMDEOptions): EditorHandle {
   // Ohne `parent` erzeugt; view.dom wird gleich manuell vor der Textarea platziert.
   const view = new EditorView({
     doc,
-    extensions: buildExtensions(resolved),
+    extensions: buildExtensions(resolved, sink),
   });
 
   // vor die Textarea einfügen, Textarea verstecken
@@ -64,5 +71,5 @@ export function editorFromTextArea(options: SupaMDEOptions): EditorHandle {
     return textarea;
   };
 
-  return { view, toTextArea, forceSync };
+  return { view, toTextArea, forceSync, resolved };
 }

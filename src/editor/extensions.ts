@@ -9,6 +9,10 @@ import { highlightExtension } from './highlight';
 import { Math } from './math';
 import { supaTheme } from './theme';
 import { supaKeymap } from '../commands/keymap';
+import { updateListenerExtension, type UpdateSink } from '../ui/update-listener';
+import { livePreviewCompartment, livePreviewFor } from '../livepreview';
+import { linkClickExtension } from './link-click';
+import { linkHoverCursorExtension } from './link-hover-cursor';
 
 /**
  * Übersetzt normalisierte Optionen in die CM6-Extension-Liste. Jede easyMDE-
@@ -17,13 +21,21 @@ import { supaKeymap } from '../commands/keymap';
  * GFM-Extensions sind aktiviert, um GitHub Flavored Markdown (Strikethrough, Tabellen, etc.) zu parsen.
  * `Math` erkennt `$…$`/`$$…$$` als eigene Knoten, damit LaTeX-Inhalt nicht als
  * Markdown (Fett, Links, …) interpretiert wird.
+ * `livePreviewCompartment` hält die Live-Modus-Extension — im Source-Modus leer,
+ * per `reconfigure` zur Laufzeit umschaltbar.
  */
-export function buildExtensions(resolved: ResolvedOptions): Extension[] {
+export function buildExtensions(resolved: ResolvedOptions, sink?: UpdateSink): Extension[] {
   const extensions: Extension[] = [
     markdown({ extensions: [GFM, Math] }),
     highlightExtension,
+    // Compartment: erlaubt den Modus-Wechsel zur Laufzeit ohne View-Neuaufbau.
+    livePreviewCompartment.of(livePreviewFor(resolved.editorMode)),
+    // Modusunabhängig: Cmd/Ctrl+Klick öffnet Links in beiden Darstellungsmodi.
+    linkClickExtension,
+    // Modusunabhängig: Klickhand bei Modifier+Hover über einem Link.
+    linkHoverCursorExtension,
     history(),
-    keymap.of([...supaKeymap, ...historyKeymap, ...defaultKeymap]),
+    keymap.of([...resolved.extraKeys, ...supaKeymap, ...historyKeymap, ...defaultKeymap]),
     supaTheme,
     EditorState.tabSize.of(resolved.tabSize),
     indentUnit.of(' '.repeat(resolved.indentUnit)),
@@ -34,6 +46,9 @@ export function buildExtensions(resolved: ResolvedOptions): Extension[] {
   }
   if (resolved.placeholder !== null) {
     extensions.push(placeholder(resolved.placeholder));
+  }
+  if (sink) {
+    extensions.push(updateListenerExtension(sink));
   }
 
   return extensions;
