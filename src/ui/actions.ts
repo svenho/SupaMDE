@@ -249,7 +249,9 @@ export const BUILTIN_ACTIONS: Record<string, ToolbarAction> = {
     active: (editor) => editor.isFullscreenActive(),
     icon: 'fullscreen',
     title: 'Vollbild',
-    shortcut: 'F11',
+    // F11 bleibt gebunden, wird aber auf Mac vom OS abgefangen — deshalb zeigt der
+    // Button-Title dort das zuverlässig funktionierende Mod-Shift-F (siehe index.ts).
+    shortcut: { default: 'F11', mac: 'Mod-Shift-F' },
   },
   'editor-mode': {
     kind: 'view',

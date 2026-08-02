@@ -205,7 +205,13 @@ Aktionen auch über die grafische Toolbar per Klick erreichbar.
 | `Tab` / `Shift-Tab`                   | Zeile ein- / ausrücken                 |
 | `F9`                                  | Side-by-Side-Vorschau an/aus (M4)      |
 | `F10`                                 | Editor-Modus umschalten (Quelltext ↔ Live-Vorschau) |
-| `F11`                                 | Fullscreen-Modus an/aus (M4)           |
+| `F11` / `Mod-Shift-F`                 | Fullscreen-Modus an/aus (M4)           |
+
+**Vollbild auf macOS:** `F11` ist dort systemweit belegt (Mission Control bzw.
+„Schreibtisch einblenden“) und erreicht die Seite je nach Systemeinstellung gar
+nicht. Deshalb hört der Vollbildmodus zusätzlich auf `Cmd`+`Shift`+`F` (bzw.
+`Strg`+`Shift`+`F` auf Windows/Linux); der Toolbar-Button zeigt auf macOS
+entsprechend `⌘⇧F` als Kürzel an.
 
 **Links öffnen:** `Cmd`+Klick (macOS) bzw. `Strg`+Klick öffnet den Link unter dem
 Zeiger in einem neuen Tab — in beiden Editor-Modi. Das funktioniert bei

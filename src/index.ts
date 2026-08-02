@@ -119,7 +119,8 @@ export class SupaMDE {
     // ableiten, da sie nicht auf der EditorView, sondern auf der SupaMDE-Instanz
     // wirken (siehe Kommentar dort). Deshalb hier ein eigener Keydown-Handler auf
     // dem Container, der `event.preventDefault()` für F11 aufruft, damit der
-    // Browser nicht zusätzlich ins native Vollbild wechselt.
+    // Browser nicht zusätzlich ins native Vollbild wechselt. Vollbild hört
+    // zusätzlich auf Mod-Shift-F, weil F11 auf macOS vom OS abgefangen wird.
     this.onViewShortcuts = (event: KeyboardEvent): void => {
       if (event.key === 'F9') {
         event.preventDefault();
@@ -129,6 +130,18 @@ export class SupaMDE {
         event.preventDefault();
         this.toggleEditorMode();
       } else if (event.key === 'F11') {
+        event.preventDefault();
+        this.toggleFullScreen();
+      } else if (
+        // Zweitbindung für Vollbild: macOS belegt F11 systemweit (Mission Control /
+        // "Schreibtisch einblenden"), die Taste erreicht die Seite dort oft gar nicht.
+        // Cmd/Ctrl+Shift+F kollidiert weder mit dem OS noch mit Browser-Defaults
+        // (Cmd+Ctrl+F wäre das native macOS-Vollbild des Fensters).
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        !event.altKey &&
+        (event.key === 'F' || event.key === 'f')
+      ) {
         event.preventDefault();
         this.toggleFullScreen();
       }

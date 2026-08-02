@@ -174,8 +174,8 @@ describe('SupaMDE — F9/F11-Tastenkürzel (view-Aktionen, keine CM6-Commands)',
     return ta;
   }
 
-  function fireKey(target: EventTarget, key: string): void {
-    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+  function fireKey(target: EventTarget, key: string, mods: KeyboardEventInit = {}): void {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...mods }));
   }
 
   it('F9 auf dem Container schaltet Side-by-Side um', () => {
@@ -219,6 +219,32 @@ describe('SupaMDE — F9/F11-Tastenkürzel (view-Aktionen, keine CM6-Commands)',
     expect(editor.isFullscreenActive()).toBe(false);
     fireKey(editor.codemirror.contentDOM, 'F11');
     expect(editor.isFullscreenActive()).toBe(true);
+    editor.toTextArea();
+  });
+
+  // Zweitbindung, weil F11 auf macOS vom OS abgefangen wird (siehe index.ts).
+  it('Cmd+Shift+F schaltet Fullscreen um', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x') });
+    const container = document.querySelector('.supamde-container') as HTMLElement;
+    expect(editor.isFullscreenActive()).toBe(false);
+    fireKey(container, 'F', { metaKey: true, shiftKey: true });
+    expect(editor.isFullscreenActive()).toBe(true);
+    editor.toTextArea();
+  });
+
+  it('Ctrl+Shift+F schaltet Fullscreen um', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x') });
+    expect(editor.isFullscreenActive()).toBe(false);
+    fireKey(editor.codemirror.contentDOM, 'F', { ctrlKey: true, shiftKey: true });
+    expect(editor.isFullscreenActive()).toBe(true);
+    editor.toTextArea();
+  });
+
+  it('Shift+F ohne Mod-Taste schaltet Fullscreen nicht um', () => {
+    const editor = new SupaMDE({ element: makeTextarea('x') });
+    const container = document.querySelector('.supamde-container') as HTMLElement;
+    fireKey(container, 'F', { shiftKey: true });
+    expect(editor.isFullscreenActive()).toBe(false);
     editor.toTextArea();
   });
 });
