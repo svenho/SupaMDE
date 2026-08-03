@@ -14,7 +14,9 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/supamde.mjs"
-    }
+    },
+    "./style.css": "./dist/supamde.css",
+    "./dist/supamde.css": "./dist/supamde.css"
   },
   "files": [
     "dist/**/*"

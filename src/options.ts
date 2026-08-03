@@ -40,6 +40,13 @@ export interface SupaMDEOptions {
   syncSideBySidePreviewScroll?: boolean;
   /** Callback bei Fullscreen-Wechsel. */
   onToggleFullScreen?: (active: boolean) => void;
+  /**
+   * Fügt die SupaMDE-Styles automatisch als `<style>`-Tag in den Head ein
+   * (Default: true). Auf `false` setzen, wenn das Host-Projekt die Styles
+   * selbst kontrolliert — dann muss `supamde/style.css` manuell eingebunden
+   * werden, sonst bleiben Toolbar und Statusbar ungestylt.
+   */
+  injectStyles?: boolean;
 }
 
 /** Normalisierte, immer vollständig belegte Optionen für die Extension-Erzeugung. */

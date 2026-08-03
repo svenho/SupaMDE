@@ -113,6 +113,43 @@ Zusätzlich das KaTeX-CSS (inkl. Schriften) in der Host-Seite einbinden, z.B.:
 </script>
 ```
 
+### Styles
+
+Toolbar, Statusbar, Vorschau-Panel und Vollbild brauchen CSS. SupaMDE setzt
+diese Regeln beim ersten Konstruktor-Aufruf selbst als `<style>`-Tag in den
+Head — im Normalfall ist **nichts weiter zu tun**. Das Tag trägt das Attribut
+`data-supamde-styles`, hängt als erstes Kind im Head und wird pro Seite nur
+einmal gesetzt (mehrere Instanzen teilen es sich).
+
+Die Position ganz vorn im Head ist Absicht: Deine eigenen Stylesheets kommen
+danach und gewinnen damit bei gleicher Spezifität — Overrides brauchen kein
+`!important`.
+
+Willst du die Styles über deine eigene Build-Pipeline laufen lassen (Purging,
+Reihenfolge-Kontrolle, eigenes Theming), schalte den Auto-Inject ab und binde
+das mitgelieferte Stylesheet selbst ein:
+
+```js
+import SupaMDE from 'supamde';
+import 'supamde/style.css';
+
+new SupaMDE({ element: document.getElementById('editor'), injectStyles: false });
+```
+
+Ohne eines von beidem — weder Auto-Inject noch manueller Import — erscheint der
+Editor ungestylt: die Toolbar-Buttons stehen dann als nackte Icon-Reihe da.
+
+Die Farben laufen über CSS-Variablen auf `.supamde-container`, die sich
+überschreiben lassen:
+
+| Variable                | Default   | Wirkung                       |
+| ----------------------- | --------- | ----------------------------- |
+| `--supamde-border`      | `#d0d0d0` | Rahmen von Container/Toolbar. |
+| `--supamde-toolbar-bg`  | `#f7f7f7` | Toolbar-Hintergrund.          |
+| `--supamde-btn-hover`   | `#e6e6e6` | Button-Hover.                 |
+| `--supamde-btn-active`  | `#d8e6ff` | Aktiver Button.               |
+| `--supamde-btn-text`    | `#333`    | Icon-/Textfarbe der Buttons.  |
+
 ## Optionen (Kern-Set, M1)
 
 | Option         | Typ                   | Default         | Bedeutung                                   |
@@ -166,6 +203,7 @@ werden. Custom-Buttons können über `className` weiterhin eigene Icon-Fonts
 | `renderingConfig.singleLineBreaks` | `boolean`                     | `true`  | Einfacher Zeilenumbruch → `<br>`.                     |
 | `syncSideBySidePreviewScroll`  | `boolean`                         | `true`  | Bidirektionaler Scroll-Sync im Side-by-Side.          |
 | `onToggleFullScreen`           | `(active) => void`                | —       | Callback bei Fullscreen-Wechsel.                      |
+| `injectStyles`                 | `boolean`                         | `true`  | Setzt die SupaMDE-Styles automatisch in den Head.     |
 
 ## Editor-Modus (Live-Vorschau)
 
