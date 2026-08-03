@@ -22,6 +22,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    // Vitest verarbeitet CSS standardmässig NICHT — `?inline`-Importe lieferten
+    // dann leere Strings und der Inject-Test prüfte nur Newlines. Der Build ist
+    // davon unberührt; das Flag gilt allein dem Testlauf.
+    css: true,
     include: ['src/**/__tests__/**/*.test.ts'],
     coverage: {
       provider: 'v8',

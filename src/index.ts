@@ -1,3 +1,7 @@
+// Diese vier Imports erzeugen im Library-Build `dist/supamde.css` — die Datei,
+// die Host-Projekte über `supamde/style.css` einbinden können. Sie wird NICHT
+// automatisch geladen; dafür sorgt `injectStyles()`, das dieselben Quellen per
+// `?inline` als String im Bundle mitführt.
 import './ui/toolbar.css';
 import './ui/statusbar.css';
 import './ui/preview.css';
@@ -13,6 +17,7 @@ import { createToolbar, type Toolbar } from './ui/toolbar';
 import { createStatusbar, type Statusbar } from './ui/statusbar';
 import { createSideBySide, type SideBySide } from './ui/preview';
 import { createFullscreen, type Fullscreen } from './ui/fullscreen';
+import { injectStyles } from './ui/inject-styles';
 import { markdownToHtml, renderOptionsFrom, type RenderOptions } from './markdown/parse';
 import type { SupaLike } from './ui/actions';
 import { livePreviewCompartment, livePreviewFor, type EditorMode } from './livepreview';
@@ -63,6 +68,10 @@ export class SupaMDE {
 
   constructor(options: SupaMDEOptions = {}) {
     this.options = options;
+
+    // VOR dem DOM-Aufbau: sonst hinge der Editor kurz ungestylt in der Seite.
+    // Idempotent — mehrere Instanzen teilen sich EIN <style>-Tag.
+    if (options.injectStyles !== false) injectStyles();
 
     // Der EINE Sink: speist Toolbar-Aktiv-Zustand, Statusbar UND Vorschau-Panel.
     const sink = {
