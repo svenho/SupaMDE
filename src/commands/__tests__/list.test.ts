@@ -35,6 +35,36 @@ describe('unorderedList — Spiegelstrich "- " (AC-L1, Default)', () => {
     expect(view.state.selection.main.head).toBe(2);
     view.destroy();
   });
+
+  it('konvertiert verschachtelte Marker hinter der Einrückung statt davor', () => {
+    // Die eingerückte Zeile trägt bereits einen Marker: er muss ERSETZT werden,
+    // ohne dass ein zweiter Marker vor die Einrückung rutscht.
+    const view = viewWith('* huhu\n  * hihi\n* haha', 0, 22);
+    unorderedList(view);
+    expect(view.state.doc.toString()).toBe('- huhu\n  - hihi\n- haha');
+    view.destroy();
+  });
+
+  it('entfernt Marker verschachtelter Listen und behält die Einrückung', () => {
+    const view = viewWith('- huhu\n  - hihi\n- haha', 0, 22);
+    unorderedList(view);
+    expect(view.state.doc.toString()).toBe('huhu\n  hihi\nhaha');
+    view.destroy();
+  });
+
+  it('setzt den Marker bei eingerücktem Klartext hinter die Einrückung', () => {
+    const view = viewWith('- a\n  b', 0, 7);
+    unorderedList(view);
+    expect(view.state.doc.toString()).toBe('- a\n  - b');
+    view.destroy();
+  });
+
+  it('lässt Checklisten und geordnete Listen unangetastet', () => {
+    const view = viewWith('* a\n- [ ] todo\n1. eins\nklartext', 0, 31);
+    unorderedList(view);
+    expect(view.state.doc.toString()).toBe('- a\n- [ ] todo\n1. eins\n- klartext');
+    view.destroy();
+  });
 });
 
 describe('unorderedListStar — Sternchen "* " (Shift+Alt+Cmd+L)', () => {
@@ -58,6 +88,13 @@ describe('unorderedListStar — Sternchen "* " (Shift+Alt+Cmd+L)', () => {
     const view = viewWith('- a\n* b\nc', 0, 9);
     unorderedListStar(view);
     expect(view.state.doc.toString()).toBe('* a\n* b\n* c');
+    view.destroy();
+  });
+
+  it('konvertiert verschachtelte Marker hinter der Einrückung statt davor', () => {
+    const view = viewWith('- huhu\n  - hihi\n- haha', 0, 22);
+    unorderedListStar(view);
+    expect(view.state.doc.toString()).toBe('* huhu\n  * hihi\n* haha');
     view.destroy();
   });
 });

@@ -3,8 +3,27 @@ import type { DocChange, SupaCommand } from './types';
 import { stripLinePrefix } from './prefixes';
 import { dispatchLineChanges, selectedLineRange, toggleLinePrefix } from '../utils/text';
 
-/** Ein ungeordneter Bullet-Marker am Zeilenanfang (`- ` oder `* `). */
-const BULLET_PREFIX = /^[-*] /;
+/**
+ * Ein ungeordneter Bullet-Marker (`- ` oder `* `), ohne führende Einrückung.
+ * Vollständig verankert (`$`), damit das Checklisten-Präfix `- [ ] ` NICHT als
+ * Bullet durchgeht — es beginnt zwar mit `- `, ist aber ein eigener Präfix-Typ.
+ */
+const BULLET_PREFIX = /^[-*] $/;
+
+/**
+ * Zerlegt eine Zeile in Einrückung, einen etwaigen Bullet-Marker und die Frage,
+ * ob überhaupt ein bekanntes Präfix vorliegt. Checklisten, geordnete Listen,
+ * Headings und Zitate liefern `bullet: null` bei `hasPrefix: true` — sie werden
+ * vom Bullet-Toggle bewusst nicht angefasst.
+ */
+function splitBullet(text: string): { indent: string; bullet: string | null; hasPrefix: boolean } {
+  const stripped = stripLinePrefix(text);
+  if (stripped === null) {
+    return { indent: /^[ \t]*/.exec(text)![0], bullet: null, hasPrefix: false };
+  }
+  const isBullet = BULLET_PREFIX.test(stripped.prefix);
+  return { indent: stripped.indent, bullet: isBullet ? stripped.prefix : null, hasPrefix: true };
+}
 
 /**
  * Toggelt einen ungeordneten Bullet-Marker über die Selektion mit Konvertier-
@@ -12,28 +31,39 @@ const BULLET_PREFIX = /^[-*] /;
  * - Tragen ALLE Zeilen bereits exakt `marker`, wird er entfernt (Toggle-Off).
  * - Sonst wird jede Zeile auf `marker` gebracht: ein vorhandener Fremd-Bullet
  *   (`- ` ↔ `* `) wird ERSETZT (Konvertierung), Klartextzeilen bekommen `marker`.
+ *
+ * Alle Eingriffe erfolgen HINTER der Einrückung, damit verschachtelte Listen ihre
+ * Ebene behalten; die Einrückung selbst bleibt auch beim Toggle-Off erhalten.
+ * Checklisten (`- [ ] `) und geordnete Listen (`1. `) bleiben unberührt.
  */
 function toggleBulletList(view: EditorView, marker: '- ' | '* '): boolean {
   const range = selectedLineRange(view.state);
   const lines = [];
   for (let n = range.firstLine; n <= range.lastLine; n++) {
-    lines.push(view.state.doc.line(n));
+    const line = view.state.doc.line(n);
+    lines.push({ from: line.from, ...splitBullet(line.text) });
   }
 
-  const allHaveMarker = lines.every((line) => line.text.startsWith(marker));
+  // Toggle-Off nur, wenn wirklich JEDE Zeile den Ziel-Marker trägt. Nicht-Bullets
+  // (Checkliste, geordnet) verhindern das und lösen stattdessen ein Setzen aus.
+  const allHaveMarker = lines.every((l) => l.bullet === marker);
+
   const changes: DocChange[] = [];
   for (const line of lines) {
-    const existing = BULLET_PREFIX.exec(line.text);
+    const { indent, bullet, hasPrefix } = line;
+    // Ab hier ist der Marker-Bereich der Zeile: [markerFrom, markerFrom + bullet.length).
+    const markerFrom = line.from + indent.length;
     if (allHaveMarker) {
-      // Toggle-Off: den (überall gleichen) Marker entfernen.
-      changes.push({ from: line.from, to: line.from + marker.length, insert: '' });
-    } else if (existing) {
-      // Fremd-Bullet → auf den Ziel-Marker konvertieren (Länge ist identisch: 2).
-      changes.push({ from: line.from, to: line.from + existing[0].length, insert: marker });
-    } else {
-      // Klartext → Ziel-Marker setzen.
-      changes.push({ from: line.from, to: line.from, insert: marker });
+      // Toggle-Off: den (überall gleichen) Marker entfernen, Einrückung behalten.
+      changes.push({ from: markerFrom, to: markerFrom + marker.length, insert: '' });
+    } else if (bullet !== null) {
+      // Fremd-Bullet → auf den Ziel-Marker konvertieren.
+      changes.push({ from: markerFrom, to: markerFrom + bullet.length, insert: marker });
+    } else if (!hasPrefix) {
+      // Klartext → Ziel-Marker hinter der Einrückung setzen.
+      changes.push({ from: markerFrom, to: markerFrom, insert: marker });
     }
+    // Checkliste/geordnete Liste/Heading/Zitat: keine Änderung.
   }
 
   if (changes.length === 0) return false;
