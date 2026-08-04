@@ -139,16 +139,69 @@ new SupaMDE({ element: document.getElementById('editor'), injectStyles: false })
 Ohne eines von beidem — weder Auto-Inject noch manueller Import — erscheint der
 Editor ungestylt: die Toolbar-Buttons stehen dann als nackte Icon-Reihe da.
 
-Die Farben laufen über CSS-Variablen auf `.supamde-container`, die sich
-überschreiben lassen:
+Farben, Rahmenbreiten und Radius laufen über CSS-Variablen auf
+`.supamde-container`, die sich überschreiben lassen.
 
-| Variable                | Default   | Wirkung                       |
-| ----------------------- | --------- | ----------------------------- |
-| `--supamde-border`      | `#d0d0d0` | Rahmen von Container/Toolbar. |
-| `--supamde-toolbar-bg`  | `#f7f7f7` | Toolbar-Hintergrund.          |
-| `--supamde-btn-hover`   | `#e6e6e6` | Button-Hover.                 |
-| `--supamde-btn-active`  | `#d8e6ff` | Aktiver Button.               |
-| `--supamde-btn-text`    | `#333`    | Icon-/Textfarbe der Buttons.  |
+Jede Linie ist einzeln steuerbar; einen Sammelschalter über alle Linien hinweg
+gibt es bewusst nicht. `--supamde-border-width` wirkt nur auf den Außenrahmen —
+die Trennlinien im Inneren bleiben davon unberührt.
+
+| Variable                            | Default                  | Wirkung                                      |
+| ----------------------------------- | ------------------------ | -------------------------------------------- |
+| `--supamde-border-color`            | `#d0d0d0`                | Farbe aller Rahmen und Trennlinien.          |
+| `--supamde-border-width`            | `1px`                    | Außenrahmen, alle vier Kanten.               |
+| `--supamde-border-top-width`        | `--supamde-border-width` | Außenrahmen nur oben.                        |
+| `--supamde-border-right-width`      | `--supamde-border-width` | Außenrahmen nur rechts.                      |
+| `--supamde-border-bottom-width`     | `--supamde-border-width` | Außenrahmen nur unten.                       |
+| `--supamde-border-left-width`       | `--supamde-border-width` | Außenrahmen nur links.                       |
+| `--supamde-radius`                  | `4px`                    | Eckenradius des Containers.                  |
+| `--supamde-divider-toolbar-width`   | `1px`                    | Trennlinie Toolbar ↔ Inhalt.                 |
+| `--supamde-divider-statusbar-width` | `1px`                    | Trennlinie Inhalt ↔ Statusleiste.            |
+| `--supamde-divider-preview-width`   | `1px`                    | Trennlinie Editor ↔ Vorschau (Side-by-Side). |
+| `--supamde-toolbar-bg`              | `#f7f7f7`                | Toolbar-Hintergrund.                         |
+| `--supamde-statusbar-bg`            | `#f7f7f7`                | Hintergrund der Statusleiste.                |
+| `--supamde-btn-hover`               | `#e6e6e6`                | Button-Hover.                                |
+| `--supamde-btn-active`              | `#d8e6ff`                | Aktiver Button.                              |
+| `--supamde-btn-text`                | `#333`                   | Icon-/Textfarbe der Buttons.                 |
+
+**Nur den Außenrahmen abschalten**, Trennlinien innen behalten:
+
+```css
+.supamde-container {
+  --supamde-border-width: 0;
+  --supamde-radius: 0;
+}
+```
+
+**Komplett randlos** — jede Linie einzeln aus:
+
+```css
+.supamde-container {
+  --supamde-border-width: 0;
+  --supamde-radius: 0;
+  --supamde-divider-toolbar-width: 0;
+  --supamde-divider-statusbar-width: 0;
+  --supamde-divider-preview-width: 0;
+}
+```
+
+**Einzelne Kanten** — z. B. bündig in einer Spalte, nur oben und unten eine Linie:
+
+```css
+.supamde-container {
+  --supamde-border-left-width: 0;
+  --supamde-border-right-width: 0;
+  --supamde-radius: 0;
+}
+```
+
+> Zeigt dein Editor trotzdem noch einen Rahmen, stammt er aus dem Host-Projekt:
+> SupaMDE setzt auf `.cm-editor` selbst keinen Rahmen. Häufige Quellen sind
+> globale Resets oder Framework-Regeln (z. B. Bootstraps `.form-control`).
+
+> **Breaking Change:** Die Farbvariable hieß früher `--supamde-border`. Der Name
+> gab vor, ein `border`-Shorthand zu sein, nahm aber nur eine Farbe entgegen —
+> daher jetzt `--supamde-border-color`. Der alte Name wirkt nicht mehr.
 
 ## Optionen (Kern-Set, M1)
 
@@ -199,11 +252,145 @@ werden. Custom-Buttons können über `className` weiterhin eigene Icon-Fonts
 | Option                         | Typ                               | Default | Bedeutung                                             |
 | ------------------------------ | --------------------------------- | ------- | ----------------------------------------------------- |
 | `previewRender`                | `(text) => string`                | —       | Ersetzt den eingebauten Markdown-Renderer komplett.   |
-| `previewClass`                 | `string \| string[]`              | —       | Zusätzliche CSS-Klassen aufs Vorschau-Panel.          |
+| `previewClass`                 | `string \| string[]`              | —       | Zusätzliche CSS-Klassen aufs Vorschau-Panel. Mehrere als Array. |
 | `renderingConfig.singleLineBreaks` | `boolean`                     | `true`  | Einfacher Zeilenumbruch → `<br>`.                     |
 | `syncSideBySidePreviewScroll`  | `boolean`                         | `true`  | Bidirektionaler Scroll-Sync im Side-by-Side.          |
 | `onToggleFullScreen`           | `(active) => void`                | —       | Callback bei Fullscreen-Wechsel.                      |
 | `injectStyles`                 | `boolean`                         | `true`  | Setzt die SupaMDE-Styles automatisch in den Head.     |
+
+### Die Vorschau stylen
+
+Das mitgelieferte CSS gibt für die Vorschau **nur das Layout** vor: halbe
+Breite, eigenes Scrolling, Trennlinie, Innenabstand. Für den Inhalt — `h1`,
+`p`, `ul`, `pre`, `table` — bringt SupaMDE bewusst **keine** Regeln mit.
+
+Das ist Absicht: Die Vorschau soll aussehen wie dein späteres Ergebnis, nicht
+wie ein Fremdkörper. Ein Editor-Paket, das ungefragt eine eigene Typografie in
+deine Seite kippt, würde damit kollidieren.
+
+Die Folge: Die Vorschau erbt die Typografie deiner Seite. Hat dein Projekt
+einen CSS-Reset oder Tailwinds Preflight, sind `h1` und `ul` dort plattgemacht
+— die Vorschau wirkt dann unformatiert, obwohl der Editor korrekt aussieht.
+Dagegen hilft einer der folgenden drei Wege.
+
+#### Weg 1 — vorhandene Typografie-Klasse anhängen (empfohlen)
+
+`previewClass` hängt beliebige Klassen ans Vorschau-Panel. Nutze die Klasse,
+mit der dein Projekt gerenderte Inhalte ohnehin darstellt — dann zeigt die
+Vorschau exakt das spätere Ergebnis:
+
+```js
+new SupaMDE({
+  element: document.getElementById('editor'),
+  // Tailwind + @tailwindcss/typography
+  previewClass: ['prose', 'max-w-none'],
+});
+```
+
+> **Mehrere Klassen als Array übergeben, nicht als ein String mit
+> Leerzeichen.** `previewClass: 'prose max-w-none'` wirft einen
+> `InvalidCharacterError` und verhindert, dass der Editor startet — die Klassen
+> gehen an `classList.add()`, das keine Leerzeichen im einzelnen Token erlaubt.
+> Eine einzelne Klasse als String ist dagegen in Ordnung.
+
+`max-w-none` ist bei `prose` sinnvoll, weil die Klasse sonst auf etwa 65
+Zeichen begrenzt und in der halben Editorbreite unnötig schmal wirkt. Im
+Dark Mode zusätzlich `dark:prose-invert`.
+
+Ohne Tailwind funktioniert dasselbe mit deiner eigenen Content-Klasse:
+`previewClass: 'content'`.
+
+#### Weg 2 — eigenes Stylesheet gegen `.supamde-preview-side`
+
+Hat dein Projekt kein Typografie-System, style die **Kinder** des Panels. Die
+Panel-Klasse selbst nicht neu definieren — sie trägt das Layout:
+
+```css
+/* Erste Überschrift nicht nach unten schieben */
+.supamde-preview-side > :first-child { margin-top: 0; }
+
+.supamde-preview-side h1 { font-size: 1.75em; margin: 0.6em 0 0.4em; }
+.supamde-preview-side h2 { font-size: 1.4em; margin: 0.6em 0 0.4em; }
+.supamde-preview-side p  { margin: 0 0 1em; line-height: 1.6; }
+.supamde-preview-side ul,
+.supamde-preview-side ol { padding-left: 1.5em; margin: 0 0 1em; }
+.supamde-preview-side blockquote {
+  margin: 0 0 1em;
+  padding-left: 1em;
+  border-left: 3px solid var(--supamde-border-color, #d0d0d0);
+  color: #555;
+}
+
+/* overflow-x verhindert, dass ein langer Code-Block das 50/50-Layout sprengt */
+.supamde-preview-side pre {
+  background: #f6f8fa;
+  padding: 0.75em 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.supamde-preview-side :not(pre) > code {
+  background: #f6f8fa;
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+}
+
+.supamde-preview-side table { border-collapse: collapse; margin: 0 0 1em; }
+.supamde-preview-side th,
+.supamde-preview-side td { border: 1px solid var(--supamde-border-color, #d0d0d0); padding: 0.3em 0.6em; }
+
+/* Bilder nicht über die Panel-Breite hinauslaufen lassen */
+.supamde-preview-side img { max-width: 100%; height: auto; }
+
+/* Checklisten: marked erzeugt <input type="checkbox"> im <li> */
+.supamde-preview-side li:has(input[type='checkbox']) { list-style: none; }
+```
+
+Dieses Stylesheet bindest du ganz normal in deiner Seite ein. Es gewinnt ohne
+`!important`, weil die SupaMDE-Styles als erstes Kind im Head sitzen (siehe
+[Styles](#styles)).
+
+#### Weg 3 — Renderer ersetzen
+
+Brauchst du eigenes Markup (andere Klassen, Syntax-Highlighting, eigener
+Sanitizer), ersetzt `previewRender` den eingebauten Renderer vollständig:
+
+```js
+new SupaMDE({
+  element: document.getElementById('editor'),
+  previewRender: (text) => meinRenderer(text),   // liefert fertiges HTML
+});
+```
+
+Der Rückgabewert wird als HTML ins Panel geschrieben — Escaping und
+Sanitisierung liegen dann bei dir.
+
+#### Welches HTML entsteht
+
+Zum Schreiben eigener Regeln — der eingebaute Renderer (`marked`) erzeugt
+gewöhnliches HTML ohne eigene Klassen:
+
+| Markdown        | HTML                                                      |
+| --------------- | --------------------------------------------------------- |
+| Überschriften   | `<h1>` … `<h6>`                                            |
+| Absatz          | `<p>`                                                      |
+| Listen          | `<ul>` / `<ol>` mit `<li>`                                 |
+| Checkliste      | `<li>` mit `<input type="checkbox" disabled>`              |
+| Zitat           | `<blockquote>`                                             |
+| Code-Block      | `<pre><code class="language-js">`                          |
+| Inline-Code     | `<code>`                                                   |
+| Tabelle         | `<table>`, `<thead>`, `<tbody>`, `<th>`, `<td>`            |
+| Link            | `<a target="_blank" rel="noopener noreferrer">`            |
+| Trennlinie      | `<hr>`                                                     |
+| LaTeX (KaTeX)   | `<span class="katex">` bzw. `.katex-display` bei `$$…$$`   |
+
+Zwei Punkte, die dabei leicht überraschen:
+
+- **Tabellen brauchen `renderingConfig.singleLineBreaks: false`.** Im Default
+  wird jeder einfache Zeilenumbruch zu `<br>`, wodurch die Zeilen einer
+  Markdown-Tabelle als einzelne Absätze statt als `<table>` ankommen.
+- **LaTeX-Formeln brauchen zusätzlich das KaTeX-CSS** in der Host-Seite (siehe
+  [KaTeX](#katex-optional-für-formeln-in-der-vorschau)). Ohne dieses Stylesheet
+  bleibt die Formel unformatiert, auch wenn KaTeX installiert ist.
 
 ## Editor-Modus (Live-Vorschau)
 

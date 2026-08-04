@@ -83,7 +83,21 @@ describe('wrapSelection', () => {
 
 describe('stripLinePrefix', () => {
   it('erkennt Checkliste vor dem allgemeinen Aufzählungsstrich', () => {
-    expect(stripLinePrefix('- [ ] Aufgabe')).toEqual({ prefix: '- [ ] ', rest: 'Aufgabe' });
+    expect(stripLinePrefix('- [ ] Aufgabe')).toEqual({ indent: '', prefix: '- [ ] ', rest: 'Aufgabe' });
+  });
+
+  it('erkennt eingerückte Präfixe und liefert die Einrückung separat', () => {
+    expect(stripLinePrefix('  - Punkt')).toEqual({ indent: '  ', prefix: '- ', rest: 'Punkt' });
+    expect(stripLinePrefix('\t1. Punkt')).toEqual({ indent: '\t', prefix: '1. ', rest: 'Punkt' });
+    expect(stripLinePrefix('    - [x] Aufgabe')).toEqual({
+      indent: '    ',
+      prefix: '- [x] ',
+      rest: 'Aufgabe',
+    });
+  });
+
+  it('lässt reine Whitespace-Zeilen ohne Präfix null', () => {
+    expect(stripLinePrefix('   ')).toBeNull();
   });
 
   it('erkennt Heading, Quote und geordnete Liste', () => {

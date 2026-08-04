@@ -81,7 +81,10 @@ export const cleanBlock: SupaCommand = (view) => {
     const line = view.state.doc.line(n);
     const stripped = stripLinePrefix(line.text);
     if (stripped) {
-      changes.push({ from: line.from, to: line.from + stripped.prefix.length, insert: '' });
+      // Ab dem Ende der Einrückung schneiden: die Einrückung einer verschachtelten
+      // Liste bleibt erhalten, entfernt wird nur der Marker selbst.
+      const start = line.from + stripped.indent.length;
+      changes.push({ from: start, to: start + stripped.prefix.length, insert: '' });
     }
   }
   if (changes.length === 0) return false;

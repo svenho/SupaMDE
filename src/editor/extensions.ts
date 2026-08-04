@@ -26,7 +26,13 @@ import { linkHoverCursorExtension } from './link-hover-cursor';
  */
 export function buildExtensions(resolved: ResolvedOptions, sink?: UpdateSink): Extension[] {
   const extensions: Extension[] = [
-    markdown({ extensions: [GFM, Math] }),
+    // `addKeymap: false`: `markdown()` bindet Enter sonst per `Prec.high` an
+    // `insertNewlineContinueMarkup` — also VOR dem `supaKeymap`, wodurch SupaMDEs
+    // `continueList` nie liefe. Dessen Listen-Ende ist zudem mehrstufig (erst eine
+    // Leerzeile einschieben, dann ausrücken, dann den Marker entfernen); SupaMDE
+    // beendet die Liste stattdessen mit einem einzigen Enter. Die übrigen
+    // Markdown-Bindungen der Extension sind für SupaMDE ohne Belang.
+    markdown({ extensions: [GFM, Math], addKeymap: false }),
     highlightExtension,
     // Compartment: erlaubt den Modus-Wechsel zur Laufzeit ohne View-Neuaufbau.
     livePreviewCompartment.of(livePreviewFor(resolved.editorMode)),

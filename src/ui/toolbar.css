@@ -1,13 +1,36 @@
-/* Custom Properties für Toolbar-Styling */
+/* Custom Properties für das Container-Styling.
+   Jede Linie ist EINZELN steuerbar; es gibt bewusst keinen Sammelschalter über
+   alle Linien hinweg. `--supamde-border-width` wirkt NUR auf den Außenrahmen —
+   die Trennlinien zwischen Toolbar, Inhalt, Statusleiste und Vorschau bleiben
+   davon unberührt und haben je einen eigenen Default (`1px`).
+   Der Außenrahmen ist zusätzlich pro Kante überschreibbar
+   (`--supamde-border-{top,right,bottom,left}-width`), jeweils mit
+   `--supamde-border-width` als Vorgabe. Farbe ist für alle Linien EINE:
+   `--supamde-border-color`. */
 .supamde-container {
-  --supamde-border: #d0d0d0;
+  --supamde-border-color: #d0d0d0;
+  --supamde-border-width: 1px;
+  --supamde-border-top-width: var(--supamde-border-width);
+  --supamde-border-right-width: var(--supamde-border-width);
+  --supamde-border-bottom-width: var(--supamde-border-width);
+  --supamde-border-left-width: var(--supamde-border-width);
+  --supamde-radius: 4px;
+  --supamde-divider-toolbar-width: 1px;
+  --supamde-divider-statusbar-width: 1px;
+  --supamde-divider-preview-width: 1px;
   --supamde-toolbar-bg: #f7f7f7;
   --supamde-btn-hover: #e6e6e6;
   --supamde-btn-active: #d8e6ff;
   --supamde-btn-text: #333;
 
-  border: 1px solid var(--supamde-border);
-  border-radius: 4px;
+  /* Longhands statt `border`-Shorthand: nur so greifen die vier Kanten-Variablen. */
+  border-style: solid;
+  border-color: var(--supamde-border-color);
+  border-top-width: var(--supamde-border-top-width);
+  border-right-width: var(--supamde-border-right-width);
+  border-bottom-width: var(--supamde-border-bottom-width);
+  border-left-width: var(--supamde-border-left-width);
+  border-radius: var(--supamde-radius);
   overflow: hidden;
 }
 
@@ -16,7 +39,7 @@
   align-items: center;
   gap: 2px;
   padding: 4px;
-  border-bottom: 1px solid var(--supamde-border);
+  border-bottom: var(--supamde-divider-toolbar-width) solid var(--supamde-border-color);
   background: var(--supamde-toolbar-bg);
   flex-wrap: wrap;
 }
@@ -53,5 +76,5 @@
   width: 1px;
   height: 20px;
   margin: 0 4px;
-  background: var(--supamde-border);
+  background: var(--supamde-border-color);
 }
