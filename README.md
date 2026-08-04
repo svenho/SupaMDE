@@ -139,16 +139,69 @@ new SupaMDE({ element: document.getElementById('editor'), injectStyles: false })
 Ohne eines von beidem — weder Auto-Inject noch manueller Import — erscheint der
 Editor ungestylt: die Toolbar-Buttons stehen dann als nackte Icon-Reihe da.
 
-Die Farben laufen über CSS-Variablen auf `.supamde-container`, die sich
-überschreiben lassen:
+Farben, Rahmenbreiten und Radius laufen über CSS-Variablen auf
+`.supamde-container`, die sich überschreiben lassen.
 
-| Variable                | Default   | Wirkung                       |
-| ----------------------- | --------- | ----------------------------- |
-| `--supamde-border`      | `#d0d0d0` | Rahmen von Container/Toolbar. |
-| `--supamde-toolbar-bg`  | `#f7f7f7` | Toolbar-Hintergrund.          |
-| `--supamde-btn-hover`   | `#e6e6e6` | Button-Hover.                 |
-| `--supamde-btn-active`  | `#d8e6ff` | Aktiver Button.               |
-| `--supamde-btn-text`    | `#333`    | Icon-/Textfarbe der Buttons.  |
+Jede Linie ist einzeln steuerbar; einen Sammelschalter über alle Linien hinweg
+gibt es bewusst nicht. `--supamde-border-width` wirkt nur auf den Außenrahmen —
+die Trennlinien im Inneren bleiben davon unberührt.
+
+| Variable                            | Default                  | Wirkung                                      |
+| ----------------------------------- | ------------------------ | -------------------------------------------- |
+| `--supamde-border-color`            | `#d0d0d0`                | Farbe aller Rahmen und Trennlinien.          |
+| `--supamde-border-width`            | `1px`                    | Außenrahmen, alle vier Kanten.               |
+| `--supamde-border-top-width`        | `--supamde-border-width` | Außenrahmen nur oben.                        |
+| `--supamde-border-right-width`      | `--supamde-border-width` | Außenrahmen nur rechts.                      |
+| `--supamde-border-bottom-width`     | `--supamde-border-width` | Außenrahmen nur unten.                       |
+| `--supamde-border-left-width`       | `--supamde-border-width` | Außenrahmen nur links.                       |
+| `--supamde-radius`                  | `4px`                    | Eckenradius des Containers.                  |
+| `--supamde-divider-toolbar-width`   | `1px`                    | Trennlinie Toolbar ↔ Inhalt.                 |
+| `--supamde-divider-statusbar-width` | `1px`                    | Trennlinie Inhalt ↔ Statusleiste.            |
+| `--supamde-divider-preview-width`   | `1px`                    | Trennlinie Editor ↔ Vorschau (Side-by-Side). |
+| `--supamde-toolbar-bg`              | `#f7f7f7`                | Toolbar-Hintergrund.                         |
+| `--supamde-statusbar-bg`            | `#f7f7f7`                | Hintergrund der Statusleiste.                |
+| `--supamde-btn-hover`               | `#e6e6e6`                | Button-Hover.                                |
+| `--supamde-btn-active`              | `#d8e6ff`                | Aktiver Button.                              |
+| `--supamde-btn-text`                | `#333`                   | Icon-/Textfarbe der Buttons.                 |
+
+**Nur den Außenrahmen abschalten**, Trennlinien innen behalten:
+
+```css
+.supamde-container {
+  --supamde-border-width: 0;
+  --supamde-radius: 0;
+}
+```
+
+**Komplett randlos** — jede Linie einzeln aus:
+
+```css
+.supamde-container {
+  --supamde-border-width: 0;
+  --supamde-radius: 0;
+  --supamde-divider-toolbar-width: 0;
+  --supamde-divider-statusbar-width: 0;
+  --supamde-divider-preview-width: 0;
+}
+```
+
+**Einzelne Kanten** — z. B. bündig in einer Spalte, nur oben und unten eine Linie:
+
+```css
+.supamde-container {
+  --supamde-border-left-width: 0;
+  --supamde-border-right-width: 0;
+  --supamde-radius: 0;
+}
+```
+
+> Zeigt dein Editor trotzdem noch einen Rahmen, stammt er aus dem Host-Projekt:
+> SupaMDE setzt auf `.cm-editor` selbst keinen Rahmen. Häufige Quellen sind
+> globale Resets oder Framework-Regeln (z. B. Bootstraps `.form-control`).
+
+> **Breaking Change:** Die Farbvariable hieß früher `--supamde-border`. Der Name
+> gab vor, ein `border`-Shorthand zu sein, nahm aber nur eine Farbe entgegen —
+> daher jetzt `--supamde-border-color`. Der alte Name wirkt nicht mehr.
 
 ## Optionen (Kern-Set, M1)
 
@@ -264,7 +317,7 @@ Panel-Klasse selbst nicht neu definieren — sie trägt das Layout:
 .supamde-preview-side blockquote {
   margin: 0 0 1em;
   padding-left: 1em;
-  border-left: 3px solid var(--supamde-border, #d0d0d0);
+  border-left: 3px solid var(--supamde-border-color, #d0d0d0);
   color: #555;
 }
 
@@ -283,7 +336,7 @@ Panel-Klasse selbst nicht neu definieren — sie trägt das Layout:
 
 .supamde-preview-side table { border-collapse: collapse; margin: 0 0 1em; }
 .supamde-preview-side th,
-.supamde-preview-side td { border: 1px solid var(--supamde-border, #d0d0d0); padding: 0.3em 0.6em; }
+.supamde-preview-side td { border: 1px solid var(--supamde-border-color, #d0d0d0); padding: 0.3em 0.6em; }
 
 /* Bilder nicht über die Panel-Breite hinauslaufen lassen */
 .supamde-preview-side img { max-width: 100%; height: auto; }
