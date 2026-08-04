@@ -94,8 +94,9 @@ function continuationPrefix(currentPrefix: string): string | null {
 }
 
 /**
- * Enter-Handler für Listen: setzt das Präfix in der neuen Zeile fort; ist die
- * aktuelle Listenzeile leer (nur Präfix), wird die Liste beendet (Präfix weg).
+ * Enter-Handler für Listen: setzt Einrückung und Präfix in der neuen Zeile fort;
+ * ist die aktuelle Listenzeile leer (nur Einrückung + Präfix), wird die Liste
+ * beendet — die Zeile wird geleert, der Cursor bleibt an ihrem Anfang stehen.
  * `false`, wenn die Cursorzeile keine Liste ist (Standard-Enter greift dann).
  *
  * Die Präfix-Erkennung teilt sich mit `cleanBlock` die zentrale `stripLinePrefix`
@@ -111,14 +112,22 @@ export function continueList(view: EditorView): boolean {
   if (prefix === null) return false;
 
   if (stripped.rest.length === 0) {
-    // Leere Listenzeile → Liste beenden: Präfix entfernen.
-    view.dispatch({ changes: { from: line.from, to: line.to, insert: '' } });
+    // Leere Listenzeile → Liste beenden: Einrückung UND Marker entfernen, die Zeile
+    // selbst aber behalten. Der Cursor landet dadurch am Anfang derselben Zeile —
+    // es entsteht KEINE zusätzliche Leerzeile.
+    view.dispatch({
+      changes: { from: line.from, to: line.to, insert: '' },
+      selection: { anchor: line.from },
+    });
     return true;
   }
 
+  // Fortsetzung erbt die Einrückung der aktuellen Zeile, damit Unterlisten auf
+  // ihrer Ebene bleiben.
+  const insert = `\n${stripped.indent}${prefix}`;
   view.dispatch({
-    changes: { from: sel.head, insert: `\n${prefix}` },
-    selection: { anchor: sel.head + 1 + prefix.length },
+    changes: { from: sel.head, insert },
+    selection: { anchor: sel.head + insert.length },
   });
   return true;
 }

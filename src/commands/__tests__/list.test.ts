@@ -118,9 +118,63 @@ describe('continueList (AC-L4/L5)', () => {
     view.destroy();
   });
 
+  it('beendet die Liste ohne zusätzliche Leerzeile, wenn Zeilen vorausgehen', () => {
+    // Zweites Enter direkt nach dem ersten: die leere Listenzeile folgt auf einen
+    // befüllten Eintrag. Es darf NUR das Präfix verschwinden — die Zeile selbst
+    // bleibt bestehen und der Cursor steht an ihrem Anfang.
+    const view = viewWith('- item\n- ', 9);
+    expect(continueList(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('- item\n');
+    expect(view.state.selection.main.head).toBe(7);
+    view.destroy();
+  });
+
+  it('beendet die Liste per Enter-Folge (Eintrag → Enter → Enter)', () => {
+    const view = viewWith('- item', 6);
+    continueList(view); // 1. Enter: neue Listenzeile mit Präfix
+    expect(view.state.doc.toString()).toBe('- item\n- ');
+    continueList(view); // 2. Enter: Präfix weg, KEINE weitere Zeile
+    expect(view.state.doc.toString()).toBe('- item\n');
+    expect(view.state.selection.main.head).toBe(7);
+    view.destroy();
+  });
+
   it('gibt false zurück außerhalb einer Liste', () => {
     const view = viewWith('kein Listeneintrag', 5);
     expect(continueList(view)).toBe(false);
+    view.destroy();
+  });
+
+  it('setzt eingerückte Listen samt Einrückung fort', () => {
+    const view = viewWith('- a\n  - b', 9);
+    expect(continueList(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('- a\n  - b\n  - ');
+    view.destroy();
+  });
+
+  it('beendet eine eingerückte Liste ohne zusätzliche Zeile', () => {
+    // Zweites Enter in der eingerückten Liste: Einrückung UND Marker müssen weg,
+    // der Cursor bleibt am Anfang derselben Zeile (keine neue Leerzeile).
+    const view = viewWith('- a\n  - b\n  - ', 14);
+    expect(continueList(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('- a\n  - b\n');
+    expect(view.state.selection.main.head).toBe(10);
+    view.destroy();
+  });
+
+  it('beendet eingerückte Liste per Enter-Folge (Eintrag → Enter → Enter)', () => {
+    const view = viewWith('- a\n  - b', 9);
+    continueList(view);
+    expect(view.state.doc.toString()).toBe('- a\n  - b\n  - ');
+    continueList(view);
+    expect(view.state.doc.toString()).toBe('- a\n  - b\n');
+    view.destroy();
+  });
+
+  it('inkrementiert eingerückte geordnete Listen', () => {
+    const view = viewWith('  3. Punkt', 10);
+    expect(continueList(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('  3. Punkt\n  4. ');
     view.destroy();
   });
 });
