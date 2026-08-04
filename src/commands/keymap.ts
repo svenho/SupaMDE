@@ -1,5 +1,6 @@
 import type { KeyBinding } from '@codemirror/view';
 import { deleteLine, copyLineUp, copyLineDown, moveLineUp, moveLineDown } from '@codemirror/commands';
+import { deleteMarkupBackward } from '@codemirror/lang-markdown';
 import { quote } from './block';
 import { unorderedListStar, continueList } from './list';
 import { indentLines, dedentLines } from './indent';
@@ -60,6 +61,11 @@ const extras: KeyBinding[] = [
   { key: 'Shift-Alt-Mod-l', run: unorderedListStar, preventDefault: true },
   // Listen-Fortsetzung: greift nur in Listenzeilen, sonst false → Standard-Enter.
   { key: 'Enter', run: continueList },
+  // Backspace am Anfang eines Listen-/Zitat-Eintrags entfernt die Markup-Ebene.
+  // Stammt aus `markdownKeymap`, das in editor/extensions.ts per `addKeymap: false`
+  // abgeschaltet ist (dessen Enter-Bindung würde `continueList` verdrängen) — diese
+  // zweite Bindung des Keymaps ist davon unabhängig nützlich und bleibt erhalten.
+  { key: 'Backspace', run: deleteMarkupBackward },
   // Ein-/Ausrücken der Zeile bzw. aller selektierten Zeilen — greift in JEDER
   // Zeile und an jeder Cursorposition. Tab wird bewusst ausnahmslos konsumiert
   // (keine Escape-Hatch, siehe Spec 2026-07-25).
