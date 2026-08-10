@@ -13,6 +13,8 @@ export interface SideBySideOptions {
 export interface SideBySide {
   dom: HTMLElement;
   toggle(): void;
+  /** Schaltet gezielt auf `next`. Idempotent — gleicher Wert ändert nichts. */
+  set(next: boolean): void;
   isActive(): boolean;
   update(state: EditorState): void;
   destroy(): void;
@@ -87,11 +89,14 @@ export function createSideBySide(view: EditorView, opts: SideBySideOptions): Sid
     dom.addEventListener('scroll', onPreviewScroll);
   }
 
-  const toggle = (): void => {
-    active = !active;
+  const set = (next: boolean): void => {
+    if (next === active) return;
+    active = next;
     dom.style.display = active ? '' : 'none';
     if (active) rerender(view.state);
   };
+
+  const toggle = (): void => set(!active);
 
   const update = (state: EditorState): void => {
     if (active) rerender(state);
@@ -105,5 +110,5 @@ export function createSideBySide(view: EditorView, opts: SideBySideOptions): Sid
     dom.remove();
   };
 
-  return { dom, toggle, isActive: () => active, update, destroy };
+  return { dom, toggle, set, isActive: () => active, update, destroy };
 }

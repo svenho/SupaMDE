@@ -4,6 +4,8 @@ export interface FullscreenOptions {
 
 export interface Fullscreen {
   toggle(): void;
+  /** Schaltet gezielt auf `next`. Idempotent — gleicher Wert ändert nichts. */
+  set(next: boolean): void;
   isActive(): boolean;
   destroy(): void;
 }
@@ -37,6 +39,7 @@ export function createFullscreen(container: HTMLElement, opts: FullscreenOptions
 
   return {
     toggle: () => set(!active),
+    set,
     isActive: () => active,
     destroy: () => {
       container.removeEventListener('keydown', onKeydown);

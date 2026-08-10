@@ -52,4 +52,28 @@ describe('createFullscreen', () => {
     expect(fs.isActive()).toBe(false);
     fs.destroy();
   });
+
+  it('set() schaltet gezielt und ist idempotent', () => {
+    const el = container();
+    const cb = vi.fn();
+    const fs = createFullscreen(el, { onToggleFullScreen: cb });
+
+    fs.set(true);
+    expect(fs.isActive()).toBe(true);
+    expect(el.classList.contains('supamde-fullscreen')).toBe(true);
+    expect(cb).toHaveBeenCalledTimes(1);
+
+    // Zweiter Aufruf mit demselben Wert: kein Zustandswechsel, kein Callback.
+    fs.set(true);
+    expect(fs.isActive()).toBe(true);
+    expect(cb).toHaveBeenCalledTimes(1);
+
+    fs.set(false);
+    expect(fs.isActive()).toBe(false);
+    expect(cb).toHaveBeenCalledTimes(2);
+    fs.set(false);
+    expect(cb).toHaveBeenCalledTimes(2);
+
+    fs.destroy();
+  });
 });
