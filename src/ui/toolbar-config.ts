@@ -11,7 +11,14 @@ export interface CustomToolbarButton {
 /** Die `toolbar`-Option: false, oder Liste aus Built-in-Namen/Custom-Buttons. */
 export type ToolbarOption = false | Array<string | CustomToolbarButton>;
 
-/** Default-Toolbar. `'|'` ist ein Separator. */
+/**
+ * Default-Toolbar. `'|'` ist ein Separator.
+ *
+ * Ansicht: der Default zeigt den kombinierten `'preview-fullscreen'`-Button
+ * (Vorschau + Vollbild in einem Schritt). Die Einzel-Buttons `'side-by-side'`
+ * und `'fullscreen'` bleiben registriert und lassen sich über die
+ * `toolbar`-Option weiterhin einzeln einsetzen.
+ */
 export const DEFAULT_TOOLBAR: string[] = [
   'bold',
   'italic',
@@ -38,8 +45,7 @@ export const DEFAULT_TOOLBAR: string[] = [
   'undo',
   'redo',
   '|',
-  'side-by-side',
-  'fullscreen',
+  'preview-fullscreen',
 ];
 
 /** Aufgelöster Toolbar-Eintrag. */
