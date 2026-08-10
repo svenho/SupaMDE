@@ -50,7 +50,7 @@ export class SupaMDE {
   private readonly statusbar: Statusbar | null;
   private readonly preview: SideBySide | null;
   private readonly fullscreen: Fullscreen;
-  /** Referenz auf den F9/F10/F11-Keydown-Handler, damit toTextArea() ihn abräumt. */
+  /** Referenz auf den F8/F9/F10/F11-Keydown-Handler, damit toTextArea() ihn abräumt. */
   private readonly onViewShortcuts: (event: KeyboardEvent) => void;
   /**
    * EINMALIG im Konstruktor berechneter Render-Options-Snapshot — Panel UND
@@ -130,7 +130,7 @@ export class SupaMDE {
       },
     });
 
-    // F9/F10/F11 sind view-Aktionen (side-by-side/editorMode/fullscreen), keine
+    // F8/F9/F10/F11 sind view-Aktionen (preview-fullscreen/side-by-side/editorMode/fullscreen), keine
     // CM6-Commands — sie lassen sich nicht über die CM6-keymap (commands/keymap.ts)
     // ableiten, da sie nicht auf der EditorView, sondern auf der SupaMDE-Instanz
     // wirken (siehe Kommentar dort). Deshalb hier ein eigener Keydown-Handler auf
@@ -138,7 +138,11 @@ export class SupaMDE {
     // Browser nicht zusätzlich ins native Vollbild wechselt. Vollbild hört
     // zusätzlich auf Mod-Shift-F, weil F11 auf macOS vom OS abgefangen wird.
     this.onViewShortcuts = (event: KeyboardEvent): void => {
-      if (event.key === 'F9') {
+      if (event.key === 'F8') {
+        // Vorschau + Vollbild gemeinsam (Alles-oder-nichts, siehe togglePreviewFullScreen).
+        event.preventDefault();
+        this.togglePreviewFullScreen();
+      } else if (event.key === 'F9') {
         event.preventDefault();
         this.toggleSideBySide();
       } else if (event.key === 'F10') {

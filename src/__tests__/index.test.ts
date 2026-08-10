@@ -368,4 +368,28 @@ describe('SupaMDE: kombinierter Vorschau-Vollbild-Modus', () => {
 
     editor.toTextArea();
   });
+
+  it('F8 schaltet Vorschau und Vollbild gemeinsam', () => {
+    const ta = attachedTextarea();
+    const editor = new SupaMDE({ element: ta });
+    const container = document.querySelector('.supamde-container');
+    if (!container) throw new Error('Container fehlt');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'F8',
+      bubbles: true,
+      cancelable: true,
+    });
+    container.dispatchEvent(event);
+
+    expect(editor.isPreviewFullScreenActive()).toBe(true);
+    expect(event.defaultPrevented).toBe(true);
+
+    container.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'F8', bubbles: true, cancelable: true }),
+    );
+    expect(editor.isPreviewFullScreenActive()).toBe(false);
+
+    editor.toTextArea();
+  });
 });
