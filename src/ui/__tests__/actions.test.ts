@@ -52,6 +52,8 @@ describe('view-Aktionen (side-by-side, fullscreen)', () => {
       toggleFullScreen: vi.fn(),
       isSideBySideActive: () => false,
       isFullscreenActive: () => false,
+      togglePreviewFullScreen: vi.fn(),
+      isPreviewFullScreenActive: () => false,
       toggleEditorMode: vi.fn(),
       getEditorMode: () => 'source' as const,
     };
@@ -66,6 +68,8 @@ describe('view-Aktionen (side-by-side, fullscreen)', () => {
       toggleFullScreen: vi.fn(),
       isSideBySideActive: () => false,
       isFullscreenActive: () => true,
+      togglePreviewFullScreen: vi.fn(),
+      isPreviewFullScreenActive: () => false,
       toggleEditorMode: vi.fn(),
       getEditorMode: () => 'source' as const,
     };
@@ -82,6 +86,8 @@ describe('BUILTIN_ACTIONS — editor-mode', () => {
       toggleFullScreen: () => {},
       isSideBySideActive: () => false,
       isFullscreenActive: () => false,
+      togglePreviewFullScreen: vi.fn(),
+      isPreviewFullScreenActive: () => false,
       toggleEditorMode(this: { current: string }) {
         this.current = this.current === 'live' ? 'source' : 'live';
       },
@@ -117,5 +123,73 @@ describe('BUILTIN_ACTIONS — editor-mode', () => {
   it('ist NICHT Teil der Default-Toolbar', async () => {
     const { DEFAULT_TOOLBAR } = await import('../toolbar-config');
     expect(DEFAULT_TOOLBAR).not.toContain('editor-mode');
+  });
+});
+
+describe('view-Aktion preview-fullscreen', () => {
+  /** Test-Double der SupaMDE-Instanz mit steuerbarem Ausgangszustand. */
+  function fakeEditor(sideBySide: boolean, fullscreen: boolean) {
+    const state = { sideBySide, fullscreen };
+    return {
+      state,
+      toggleSideBySide: vi.fn(),
+      toggleFullScreen: vi.fn(),
+      isSideBySideActive: () => state.sideBySide,
+      isFullscreenActive: () => state.fullscreen,
+      toggleEditorMode: vi.fn(),
+      getEditorMode: () => 'source' as const,
+      togglePreviewFullScreen: vi.fn(() => {
+        const on = !(state.sideBySide && state.fullscreen);
+        state.sideBySide = on;
+        state.fullscreen = on;
+      }),
+      isPreviewFullScreenActive: () => state.sideBySide && state.fullscreen,
+    };
+  }
+
+  it('ist registriert, hat Titel, Icon und das Kürzel F8', () => {
+    const action = getAction('preview-fullscreen');
+    expect(action?.kind).toBe('view');
+    expect(action?.title).toBe('Vorschau im Vollbild');
+    expect(action?.icon).toBe('preview-fullscreen');
+    expect(action?.shortcut).toBe('F8');
+  });
+
+  it('run() ruft togglePreviewFullScreen', () => {
+    const action = getAction('preview-fullscreen');
+    const editor = fakeEditor(false, false);
+    if (action?.kind === 'view') action.run(editor);
+    expect(editor.togglePreviewFullScreen).toHaveBeenCalled();
+  });
+
+  it('active() nur wenn beide Modi aktiv sind', () => {
+    const action = getAction('preview-fullscreen');
+    if (action?.kind !== 'view') throw new Error('view-Aktion erwartet');
+
+    expect(action.active?.(fakeEditor(false, false))).toBe(false);
+    expect(action.active?.(fakeEditor(true, false))).toBe(false);
+    expect(action.active?.(fakeEditor(false, true))).toBe(false);
+    expect(action.active?.(fakeEditor(true, true))).toBe(true);
+  });
+
+  it('run() führt aus jedem Teilzustand in den Vollzustand', () => {
+    const action = getAction('preview-fullscreen');
+    if (action?.kind !== 'view') throw new Error('view-Aktion erwartet');
+
+    for (const [sbs, fs] of [
+      [false, false],
+      [true, false],
+      [false, true],
+    ] as const) {
+      const editor = fakeEditor(sbs, fs);
+      action.run(editor);
+      expect(editor.isPreviewFullScreenActive()).toBe(true);
+    }
+
+    // Aus dem Vollzustand heraus: beides aus.
+    const both = fakeEditor(true, true);
+    action.run(both);
+    expect(both.isSideBySideActive()).toBe(false);
+    expect(both.isFullscreenActive()).toBe(false);
   });
 });

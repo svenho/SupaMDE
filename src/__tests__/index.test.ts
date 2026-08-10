@@ -334,8 +334,7 @@ describe('SupaMDE: kombinierter Vorschau-Vollbild-Modus', () => {
     editor.toTextArea();
   });
 
-  // TODO(Task 3): aktivieren, sobald 'preview-fullscreen' in BUILTIN_ACTIONS registriert ist.
-  it.skip('Escape aus dem Vollbild aktualisiert den Aktiv-Zustand des Kombi-Buttons', () => {
+  it('Escape aus dem Vollbild aktualisiert den Aktiv-Zustand des Kombi-Buttons', () => {
     const ta = attachedTextarea();
     const editor = new SupaMDE({ element: ta, toolbar: ['preview-fullscreen'] });
     const container = document.querySelector('.supamde-container');
