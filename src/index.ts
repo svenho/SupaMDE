@@ -120,7 +120,14 @@ export class SupaMDE {
     if (this.statusbar) this.container.appendChild(this.statusbar.dom);
 
     this.fullscreen = createFullscreen(this.container, {
-      onToggleFullScreen: options.onToggleFullScreen,
+      // Jeder Fullscreen-Wechsel läuft hier durch — auch der modul-interne
+      // Escape-Pfad, der NICHT über setFullScreen() kommt. Deshalb ist das die
+      // richtige Stelle für das Toolbar-Update: eine Pflegestelle statt zwei.
+      // Die Nutzer-Option wird weitergereicht, nicht ersetzt.
+      onToggleFullScreen: (active) => {
+        this.toolbar?.update(this.codemirror.state);
+        options.onToggleFullScreen?.(active);
+      },
     });
 
     // F9/F10/F11 sind view-Aktionen (side-by-side/editorMode/fullscreen), keine
@@ -188,21 +195,47 @@ export class SupaMDE {
     return markdownToHtml(text, this.renderOpts);
   }
 
-  toggleSideBySide(): void {
-    this.preview?.toggle();
+  /**
+   * Schaltet die Nebeneinander-Vorschau gezielt an oder aus. Idempotent —
+   * ein Aufruf mit dem bereits aktiven Zustand ändert nichts.
+   */
+  setSideBySide(on: boolean): void {
+    this.preview?.set(on);
     this.container.classList.toggle('supamde-sided', this.isSideBySideActive());
     this.toolbar?.update(this.codemirror.state);
+  }
+  toggleSideBySide(): void {
+    this.setSideBySide(!this.isSideBySideActive());
   }
   isSideBySideActive(): boolean {
     return this.preview?.isActive() ?? false;
   }
 
-  toggleFullScreen(): void {
-    this.fullscreen.toggle();
+  /** Schaltet den Vollbildmodus gezielt an oder aus. Idempotent. */
+  setFullScreen(on: boolean): void {
+    this.fullscreen.set(on);
     this.toolbar?.update(this.codemirror.state);
+  }
+  toggleFullScreen(): void {
+    this.setFullScreen(!this.isFullscreenActive());
   }
   isFullscreenActive(): boolean {
     return this.fullscreen.isActive();
+  }
+
+  /**
+   * Vorschau UND Vollbild gemeinsam schalten (Alles-oder-nichts): Ist nicht
+   * bereits beides aktiv, wird beides eingeschaltet — auch aus einem
+   * Teilzustand heraus. Sind beide aktiv, wird beides ausgeschaltet.
+   */
+  togglePreviewFullScreen(): void {
+    const on = !this.isPreviewFullScreenActive();
+    this.setSideBySide(on);
+    this.setFullScreen(on);
+  }
+  /** Ob Vorschau und Vollbild gleichzeitig aktiv sind. */
+  isPreviewFullScreenActive(): boolean {
+    return this.isSideBySideActive() && this.isFullscreenActive();
   }
 
   /** Der aktuelle Darstellungsmodus. */
