@@ -147,4 +147,29 @@ describe('createSideBySide', () => {
     view.destroy();
     vi.restoreAllMocks();
   });
+
+  it('set() schaltet gezielt und ist idempotent', () => {
+    const view = viewWith('# Titel');
+    const render = vi.fn((text: string) => `<p>${text}</p>`);
+    const sbs = createSideBySide(view, { render });
+
+    sbs.set(true);
+    expect(sbs.isActive()).toBe(true);
+    expect(sbs.dom.style.display).toBe('');
+    expect(render).toHaveBeenCalledTimes(1);
+
+    // Zweiter Aufruf mit demselben Wert: kein erneutes Rendern.
+    sbs.set(true);
+    expect(sbs.isActive()).toBe(true);
+    expect(render).toHaveBeenCalledTimes(1);
+
+    sbs.set(false);
+    expect(sbs.isActive()).toBe(false);
+    expect(sbs.dom.style.display).toBe('none');
+    sbs.set(false);
+    expect(sbs.isActive()).toBe(false);
+
+    sbs.destroy();
+    view.destroy();
+  });
 });

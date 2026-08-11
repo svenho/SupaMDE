@@ -226,7 +226,23 @@ die Trennlinien im Inneren bleiben davon unberührt.
 **Built-in-Toolbar-Buttons:** `bold`, `italic`, `strikethrough`, `code`,
 `heading-smaller`, `heading-bigger`, `heading-1`…`heading-6`, `quote`, `code-block`,
 `horizontal-rule`, `clean-block`, `unordered-list`, `ordered-list`, `check-list`,
-`link`, `image`, `table`, `undo`, `redo`. `'|'` fügt einen Separator ein.
+`link`, `image`, `table`, `undo`, `redo`, `preview-fullscreen`, `side-by-side`,
+`fullscreen`, `editor-mode`. `'|'` fügt einen Separator ein.
+
+**Ansichts-Buttons:** `preview-fullscreen` schaltet Nebeneinander-Vorschau und
+Vollbild **gemeinsam** — ein Klick genügt für den Arbeitsmodus „Vorschau im
+Vollbild". Der Button gilt als aktiv, wenn beide Modi laufen; aus einem
+Teilzustand heraus (nur Vorschau oder nur Vollbild) schaltet ein Klick beides
+ein. Er ist Teil der Default-Toolbar. Die Einzel-Buttons `side-by-side` und
+`fullscreen` bleiben verfügbar, sind aber **nicht** mehr im Default — wer sie
+weiterhin einzeln möchte, nimmt sie explizit in die `toolbar`-Option auf:
+
+```js
+new SupaMDE({
+  element: document.querySelector('#editor'),
+  toolbar: ['bold', 'italic', '|', 'side-by-side', 'fullscreen'],
+});
+```
 
 **Custom-Buttons** behalten die easyMDE-Signatur:
 
@@ -461,24 +477,25 @@ Alle Formatierungs-Aktionen sind als CodeMirror-6-Commands umgesetzt und per
 Tastenkürzel erreichbar (`Mod` = `Cmd` auf macOS, `Ctrl` sonst). Seit M3 sind alle
 Aktionen auch über die grafische Toolbar per Klick erreichbar.
 
-| Kürzel                                | Aktion                                 |
-| ------------------------------------- | -------------------------------------- |
-| `Mod-B`                               | Fett                                   |
-| `Mod-I`                               | Kursiv                                 |
-| `Mod-K`                               | Link                                   |
-| `Mod-H` / `Shift-Mod-H`               | Überschrift kleiner / größer           |
-| `Ctrl-Alt-1` … `Ctrl-Alt-6`           | Überschrift H1 … H6                    |
-| `Mod-'` / `Ctrl-Alt-Q`                | Blockzitat                             |
-| `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste (`- `) / nummeriert / Checkliste |
-| `Shift-Alt-Mod-L`                     | Liste mit Sternchen (`* `)             |
-| `Mod-Alt-C`                           | Codeblock                              |
-| `Mod-Alt-I`                           | Bild einfügen                          |
-| `Mod-E`                               | Blockformat entfernen                  |
-| `Mod-Z` / `Mod-Y`                     | Rückgängig / Wiederholen               |
-| `Tab` / `Shift-Tab`                   | Zeile ein- / ausrücken                 |
-| `F9`                                  | Side-by-Side-Vorschau an/aus (M4)      |
+| Kürzel                                | Aktion                                              |
+| ------------------------------------- | --------------------------------------------------- |
+| `Mod-B`                               | Fett                                                |
+| `Mod-I`                               | Kursiv                                              |
+| `Mod-K`                               | Link                                                |
+| `Mod-H` / `Shift-Mod-H`               | Überschrift kleiner / größer                        |
+| `Ctrl-Alt-1` … `Ctrl-Alt-6`           | Überschrift H1 … H6                                 |
+| `Mod-'` / `Ctrl-Alt-Q`                | Blockzitat                                          |
+| `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste (`- `) / nummeriert / Checkliste              |
+| `Shift-Alt-Mod-L`                     | Liste mit Sternchen (`* `)                          |
+| `Mod-Alt-C`                           | Codeblock                                           |
+| `Mod-Alt-I`                           | Bild einfügen                                       |
+| `Mod-E`                               | Blockformat entfernen                               |
+| `Mod-Z` / `Mod-Y`                     | Rückgängig / Wiederholen                            |
+| `Tab` / `Shift-Tab`                   | Zeile ein- / ausrücken                              |
+| `F8`                                  | Vorschau **und** Vollbild gemeinsam an/aus          |
+| `F9`                                  | Side-by-Side-Vorschau an/aus (M4)                   |
 | `F10`                                 | Editor-Modus umschalten (Quelltext ↔ Live-Vorschau) |
-| `F11` / `Mod-Shift-F`                 | Fullscreen-Modus an/aus (M4)           |
+| `F11` / `Mod-Shift-F`                 | Fullscreen-Modus an/aus (M4)                        |
 
 **Vollbild auf macOS:** `F11` ist dort systemweit belegt (Mission Control bzw.
 „Schreibtisch einblenden“) und erreicht die Seite je nach Systemeinstellung gar

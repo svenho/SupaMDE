@@ -19,6 +19,7 @@ import {
   Redo,
   Columns2,
   Fullscreen,
+  Maximize2,
   Eye,
   type IconNode,
 } from 'lucide';
@@ -47,6 +48,7 @@ const ICONS: Record<string, IconNode> = {
   redo: Redo,
   'side-by-side': Columns2,
   fullscreen: Fullscreen,
+  'preview-fullscreen': Maximize2,
   'editor-mode': Eye,
 };
 

@@ -36,6 +36,8 @@ export interface SupaLike {
   toggleFullScreen(): void;
   isSideBySideActive(): boolean;
   isFullscreenActive(): boolean;
+  togglePreviewFullScreen(): void;
+  isPreviewFullScreenActive(): boolean;
   toggleEditorMode(): void;
   getEditorMode(): EditorMode;
 }
@@ -252,6 +254,14 @@ export const BUILTIN_ACTIONS: Record<string, ToolbarAction> = {
     // F11 bleibt gebunden, wird aber auf Mac vom OS abgefangen — deshalb zeigt der
     // Button-Title dort das zuverlässig funktionierende Mod-Shift-F (siehe index.ts).
     shortcut: { default: 'F11', mac: 'Mod-Shift-F' },
+  },
+  'preview-fullscreen': {
+    kind: 'view',
+    run: (editor) => editor.togglePreviewFullScreen(),
+    active: (editor) => editor.isPreviewFullScreenActive(),
+    icon: 'preview-fullscreen',
+    title: 'Vorschau im Vollbild',
+    shortcut: 'F8',
   },
   'editor-mode': {
     kind: 'view',
