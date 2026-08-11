@@ -196,16 +196,30 @@ git commit -m "feat(ui): idempotentes set() für Fullscreen und Side-by-Side"
 ### Task 2: Kombi-Toggle auf der SupaMDE-Instanz
 
 **Files:**
-- Modify: `src/index.ts` (neue Methoden; `toggleSideBySide` / `toggleFullScreen` auf die Setter umstellen)
+- Modify: `src/index.ts` (neue Methoden; `toggleSideBySide` / `toggleFullScreen` auf die Setter umstellen; `onToggleFullScreen`-Verdrahtung im Konstruktor)
 - Test: `src/__tests__/index.test.ts`
 
 **Interfaces:**
 - Consumes: `Fullscreen.set(next: boolean)` und `SideBySide.set(next: boolean)` aus Task 1
-- Produces: auf `SupaMDE` — `setSideBySide(on: boolean): void`, `setFullScreen(on: boolean): void`, `togglePreviewFullScreen(): void`, `isPreviewFullScreenActive(): boolean`
+- Produces: auf `SupaMDE` — `setSideBySide(on: boolean): void`, `setFullScreen(on: boolean): void`, `togglePreviewFullScreen(): void`, `isPreviewFullScreenActive(): boolean`; zusätzlich: jeder Fullscreen-Zustandswechsel aktualisiert die Toolbar, auch der per Escape ausgelöste
+
+**Vorab-Befund (Bestandsbug, wird hier mitbehoben):** Escape verlässt das Vollbild
+über den modul-internen Keydown-Handler in `src/ui/fullscreen.ts:33-35`. Dieser Pfad
+läuft **nicht** über `SupaMDE.toggleFullScreen()` und ruft daher kein
+`toolbar.update()` — der Aktiv-Zustand der Ansichts-Buttons bleibt nach Escape
+stehen. Beim bisherigen `fullscreen`-Einzelbutton fiel das kaum auf; beim
+Kombi-Button bliebe er sichtbar „aktiv", obwohl `isPreviewFullScreenActive()` bereits
+`false` liefert. Behoben wird es an der Wurzel: der Konstruktor wrappt
+`onToggleFullScreen`, statt die Nutzer-Option direkt durchzureichen.
 
 - [ ] **Step 1: Failing Test für alle vier Ausgangszustände schreiben**
 
-In `src/__tests__/index.test.ts` einen neuen `describe`-Block ans Dateiende anfügen. Der Helfer `attachedTextarea` existiert bereits in der Datei innerhalb des Blocks `describe('SupaMDE (Editor-API, M1)', …)` — für den neuen Block eine eigene lokale Kopie anlegen:
+In `src/__tests__/index.test.ts` einen neuen `describe`-Block ans Dateiende anfügen. Der Helfer `attachedTextarea` existiert bereits in der Datei innerhalb des Blocks `describe('SupaMDE (Editor-API, M1)', …)` — für den neuen Block eine eigene lokale Kopie anlegen.
+
+Bewusst kopiert statt hochgezogen: Den Helfer auf Datei-Ebene zu ziehen hieße, einen
+bestehenden, nicht zum Feature gehörenden `describe`-Block umzubauen. Das ist eine
+sinnvolle, aber eigenständige Aufräumarbeit und bleibt außerhalb dieses Plans. Bei
+fünf Zeilen ist die Kopie der günstigere Kompromiss.
 
 ```ts
 describe('SupaMDE: kombinierter Vorschau-Vollbild-Modus', () => {
@@ -292,8 +306,50 @@ describe('SupaMDE: kombinierter Vorschau-Vollbild-Modus', () => {
 
     editor.toTextArea();
   });
+
+  it('Escape aus dem Vollbild aktualisiert den Aktiv-Zustand des Kombi-Buttons', () => {
+    const ta = attachedTextarea();
+    const editor = new SupaMDE({ element: ta, toolbar: ['preview-fullscreen'] });
+    const container = document.querySelector('.supamde-container');
+    if (!container) throw new Error('Container fehlt');
+
+    editor.togglePreviewFullScreen();
+    const btn = container.querySelector('button[data-action="preview-fullscreen"]');
+    expect(btn?.classList.contains('active')).toBe(true);
+
+    // Escape geht direkt an den fullscreen-internen Handler, NICHT über
+    // toggleFullScreen() — die Toolbar muss trotzdem nachziehen.
+    container.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    expect(editor.isFullscreenActive()).toBe(false);
+    expect(editor.isPreviewFullScreenActive()).toBe(false);
+    expect(btn?.classList.contains('active')).toBe(false);
+
+    editor.toTextArea();
+  });
+
+  it('die Nutzer-Option onToggleFullScreen bleibt erhalten', () => {
+    const ta = attachedTextarea();
+    const onToggleFullScreen = vi.fn();
+    const editor = new SupaMDE({ element: ta, onToggleFullScreen });
+
+    editor.setFullScreen(true);
+    expect(onToggleFullScreen).toHaveBeenCalledWith(true);
+    editor.setFullScreen(false);
+    expect(onToggleFullScreen).toHaveBeenCalledWith(false);
+
+    editor.toTextArea();
+  });
 });
 ```
+
+Hinweis: Dieser Block nutzt `vi` — sicherstellen, dass es im `vitest`-Import der Datei enthalten ist.
+
+Der Test `'preview-fullscreen'` als Toolbar-Option setzt Task 3 voraus (Registry-Eintrag).
+Er ist hier trotzdem richtig platziert, weil er das Verhalten aus **dieser** Task prüft.
+Läuft Task 2 isoliert, schlägt er mit einer `resolveToolbar`-Warnung und fehlendem Button
+fehl — dann diesen einen Test bis nach Task 3, Step 5 zurückstellen und dort verifizieren.
 
 - [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
@@ -348,6 +404,38 @@ In `src/index.ts` den Block um `toggleSideBySide` / `toggleFullScreen` ersetzen.
     return this.isSideBySideActive() && this.isFullscreenActive();
   }
 ```
+
+- [ ] **Step 3b: Escape-Pfad an die Toolbar anschließen**
+
+`setFullScreen()` deckt nur den Weg über die Instanz ab. Escape schaltet direkt im
+Modul (`fullscreen.ts:33-35`) und käme daher nie an `toolbar.update()` vorbei. Statt
+den Aufruf an zwei Stellen zu wiederholen, wird der einzige Punkt genutzt, den
+**jeder** Zustandswechsel passiert: der `onToggleFullScreen`-Callback.
+
+In `src/index.ts` die Fullscreen-Erzeugung (Zeile 122-124) ersetzen:
+
+```ts
+    this.fullscreen = createFullscreen(this.container, {
+      // Jeder Fullscreen-Wechsel läuft hier durch — auch der modul-interne
+      // Escape-Pfad, der NICHT über setFullScreen() kommt. Deshalb ist das die
+      // richtige Stelle für das Toolbar-Update: eine Pflegestelle statt zwei.
+      // Die Nutzer-Option wird weitergereicht, nicht ersetzt.
+      onToggleFullScreen: (active) => {
+        this.toolbar?.update(this.codemirror.state);
+        options.onToggleFullScreen?.(active);
+      },
+    });
+```
+
+Damit ist das `this.toolbar?.update(...)` in `setFullScreen()` streng genommen
+redundant — es bleibt trotzdem stehen: `set()` ist idempotent und feuert bei
+unverändertem Wert keinen Callback, `setFullScreen(false)` auf bereits inaktivem
+Editor soll die Toolbar aber dennoch konsistent halten. Der doppelte Aufruf ist
+folgenlos (nur `classList.toggle` mit demselben Ergebnis).
+
+Achtung Reihenfolge: `createFullscreen` wird im Konstruktor **nach** `this.toolbar`
+erzeugt (Zeile 122 vs. weiter oben) — der Callback greift also auf ein bereits
+gesetztes Feld zu. Wird die Reihenfolge je getauscht, rettet das `?.` den Fall.
 
 - [ ] **Step 4: Tests laufen lassen, Erfolg bestätigen**
 
@@ -504,12 +592,23 @@ export interface SupaLike {
 }
 ```
 
-Wichtig: Die bestehenden Test-Doubles in `src/ui/__tests__/actions.test.ts` und `src/ui/__tests__/toolbar.test.ts` sind damit unvollständig, sofern sie als `SupaLike` typisiert sind. Falls der Typecheck in Step 7 dort Fehler meldet, die beiden neuen Methoden in den betroffenen Doubles ergänzen:
+**Pflicht-Nacharbeit, kein Konditional:** Mit der Interface-Erweiterung sind die
+bestehenden Test-Doubles unvollständig. Die betroffenen Stellen sind vorab
+verifiziert — sie brechen sicher, nicht bloß möglicherweise. In
+`src/ui/__tests__/actions.test.ts` sind es drei Doubles bei den Zeilen **54**, **68**
+und **84** (jeweils am Objekt, das `isFullscreenActive` enthält). In jedes dieser
+drei Objekte ergänzen:
 
 ```ts
       togglePreviewFullScreen: vi.fn(),
       isPreviewFullScreenActive: () => false,
 ```
+
+`src/ui/__tests__/toolbar.test.ts` braucht **keine** Anpassung: das dortige Objekt in
+Zeile 96 ist bewusst ein Nicht-`SupaLike` (`{}`) und prüft genau den Wächter-Pfad.
+
+Der Doubles-Fix gehört in **diesen** Step, vor Step 6 — sonst scheitert schon der
+Testlauf, nicht erst der Typecheck in Step 7.
 
 **Den Laufzeit-Wächter `isSupaLike()` in `src/ui/toolbar.ts:32-40` NICHT erweitern.** Er prüft bewusst nur die vier bisherigen Ansichts-Methoden. Nimmt man die zwei neuen mit auf, fallen Host-Objekte, die nur die alten vier implementieren, durch die Prüfung — die Toolbar würde dann für sie den Aktiv-Zustand aller view-Buttons verlieren und eine Warnung ausgeben. Das ist eine stille Regression, die kein bestehender Test abfängt.
 
@@ -540,7 +639,9 @@ Expected: PASS
 - [ ] **Step 7: Typecheck**
 
 Run: `npm run typecheck`
-Expected: keine Fehler. Meldet er fehlende Methoden in Test-Doubles, diese wie in Step 4 beschrieben ergänzen und erneut laufen lassen.
+Expected: keine Fehler — die Doubles sind bereits in Step 4 ergänzt worden. Meldet der
+Typecheck dennoch fehlende Methoden, ist ein weiteres, in Step 4 nicht gelistetes Double
+betroffen: dort dieselben zwei Zeilen ergänzen und erneut laufen lassen.
 
 - [ ] **Step 8: Commit**
 
@@ -643,6 +744,9 @@ describe('DEFAULT_TOOLBAR: kombinierter Vorschau-Vollbild-Button', () => {
   it('enthält preview-fullscreen statt der beiden Einzel-Buttons', () => {
     expect(DEFAULT_TOOLBAR).toContain('preview-fullscreen');
     expect(DEFAULT_TOOLBAR).not.toContain('side-by-side');
+    // Kein Widerspruch zur Zeile darüber: toContain vergleicht Array-Elemente
+    // exakt, nicht als Teilstring. 'preview-fullscreen' !== 'fullscreen', der
+    // Kombi-Button darf also bleiben — ausgeschlossen wird nur der Einzel-Button.
     expect(DEFAULT_TOOLBAR).not.toContain('fullscreen');
   });
 
@@ -789,4 +893,7 @@ Nach Task 6 einmal im Browser gegenprüfen (`npm run dev`):
 3. Erneuter Klick: beides verschwindet, der Editor steht wieder normal in der Seite.
 4. F8 macht dasselbe wie der Button.
 5. Aus dem Teilzustand: F11 (bzw. `Cmd`+`Shift`+`F`) für Vollbild allein, dann F8 → die Vorschau kommt dazu, Vollbild bleibt.
-6. Escape verlässt das Vollbild; die Vorschau bleibt dann sichtbar (unveränderte Bestandslogik) und der Kombi-Button ist nicht mehr als aktiv markiert.
+6. Escape verlässt das Vollbild; die Vorschau bleibt dann sichtbar (unveränderte
+   Bestandslogik). Der Kombi-Button verliert dabei **sofort** seine Aktiv-Markierung —
+   das leistet erst der Callback-Wrap aus Task 2, Step 3b. Ohne ihn bliebe der Button
+   fälschlich aktiv; wer diesen Punkt scheitern sieht, prüft zuerst dort.

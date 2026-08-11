@@ -37,6 +37,11 @@ describe('icons', () => {
     expect(() => renderIcon('side-by-side')).not.toThrow();
     expect(() => renderIcon('fullscreen')).not.toThrow();
   });
+
+  it('kennt das Icon preview-fullscreen', () => {
+    expect(hasIcon('preview-fullscreen')).toBe(true);
+    expect(renderIcon('preview-fullscreen')).toBeInstanceOf(SVGElement);
+  });
 });
 
 describe('Icon editor-mode', () => {

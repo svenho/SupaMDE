@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import SupaMDE, { SupaMDE as NamedSupaMDE, VERSION } from '../index';
 
 describe('SupaMDE (Skelett)', () => {
@@ -245,6 +245,151 @@ describe('SupaMDE — F9/F11-Tastenkürzel (view-Aktionen, keine CM6-Commands)',
     const container = document.querySelector('.supamde-container') as HTMLElement;
     fireKey(container, 'F', { shiftKey: true });
     expect(editor.isFullscreenActive()).toBe(false);
+    editor.toTextArea();
+  });
+});
+
+describe('SupaMDE: kombinierter Vorschau-Vollbild-Modus', () => {
+  function attachedTextarea(value = ''): HTMLTextAreaElement {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    document.body.appendChild(ta);
+    return ta;
+  }
+
+  it('schaltet aus "beides aus" beide Modi ein und wieder aus', () => {
+    const ta = attachedTextarea('# Titel');
+    const editor = new SupaMDE({ element: ta });
+
+    expect(editor.isPreviewFullScreenActive()).toBe(false);
+
+    editor.togglePreviewFullScreen();
+    expect(editor.isSideBySideActive()).toBe(true);
+    expect(editor.isFullscreenActive()).toBe(true);
+    expect(editor.isPreviewFullScreenActive()).toBe(true);
+
+    editor.togglePreviewFullScreen();
+    expect(editor.isSideBySideActive()).toBe(false);
+    expect(editor.isFullscreenActive()).toBe(false);
+    expect(editor.isPreviewFullScreenActive()).toBe(false);
+
+    editor.toTextArea();
+  });
+
+  it('führt aus dem Teilzustand "nur Vorschau" in den Vollzustand', () => {
+    const ta = attachedTextarea();
+    const editor = new SupaMDE({ element: ta });
+
+    editor.toggleSideBySide();
+    expect(editor.isSideBySideActive()).toBe(true);
+    expect(editor.isFullscreenActive()).toBe(false);
+    expect(editor.isPreviewFullScreenActive()).toBe(false);
+
+    editor.togglePreviewFullScreen();
+    expect(editor.isSideBySideActive()).toBe(true);
+    expect(editor.isFullscreenActive()).toBe(true);
+
+    editor.toTextArea();
+  });
+
+  it('führt aus dem Teilzustand "nur Vollbild" in den Vollzustand', () => {
+    const ta = attachedTextarea();
+    const editor = new SupaMDE({ element: ta });
+
+    editor.toggleFullScreen();
+    expect(editor.isFullscreenActive()).toBe(true);
+    expect(editor.isSideBySideActive()).toBe(false);
+    expect(editor.isPreviewFullScreenActive()).toBe(false);
+
+    editor.togglePreviewFullScreen();
+    expect(editor.isSideBySideActive()).toBe(true);
+    expect(editor.isFullscreenActive()).toBe(true);
+
+    editor.toTextArea();
+  });
+
+  it('setSideBySide/setFullScreen sind idempotent', () => {
+    const ta = attachedTextarea();
+    const editor = new SupaMDE({ element: ta });
+
+    editor.setSideBySide(true);
+    editor.setSideBySide(true);
+    expect(editor.isSideBySideActive()).toBe(true);
+
+    editor.setFullScreen(false);
+    expect(editor.isFullscreenActive()).toBe(false);
+
+    editor.toTextArea();
+  });
+
+  it('setzt die Container-Klasse supamde-sided auch über den Kombi-Toggle', () => {
+    const ta = attachedTextarea();
+    const editor = new SupaMDE({ element: ta });
+
+    editor.togglePreviewFullScreen();
+    const container = document.querySelector('.supamde-container');
+    expect(container?.classList.contains('supamde-sided')).toBe(true);
+    expect(container?.classList.contains('supamde-fullscreen')).toBe(true);
+
+    editor.toTextArea();
+  });
+
+  it('Escape aus dem Vollbild aktualisiert den Aktiv-Zustand des Kombi-Buttons', () => {
+    const ta = attachedTextarea();
+    const editor = new SupaMDE({ element: ta, toolbar: ['preview-fullscreen'] });
+    const container = document.querySelector('.supamde-container');
+    if (!container) throw new Error('Container fehlt');
+
+    editor.togglePreviewFullScreen();
+    const btn = container.querySelector('button[data-action="preview-fullscreen"]');
+    expect(btn?.classList.contains('active')).toBe(true);
+
+    // Escape geht direkt an den fullscreen-internen Handler, NICHT über
+    // toggleFullScreen() — die Toolbar muss trotzdem nachziehen.
+    container.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    expect(editor.isFullscreenActive()).toBe(false);
+    expect(editor.isPreviewFullScreenActive()).toBe(false);
+    expect(btn?.classList.contains('active')).toBe(false);
+
+    editor.toTextArea();
+  });
+
+  it('die Nutzer-Option onToggleFullScreen bleibt erhalten', () => {
+    const ta = attachedTextarea();
+    const onToggleFullScreen = vi.fn();
+    const editor = new SupaMDE({ element: ta, onToggleFullScreen });
+
+    editor.setFullScreen(true);
+    expect(onToggleFullScreen).toHaveBeenCalledWith(true);
+    editor.setFullScreen(false);
+    expect(onToggleFullScreen).toHaveBeenCalledWith(false);
+
+    editor.toTextArea();
+  });
+
+  it('F8 schaltet Vorschau und Vollbild gemeinsam', () => {
+    const ta = attachedTextarea();
+    const editor = new SupaMDE({ element: ta });
+    const container = document.querySelector('.supamde-container');
+    if (!container) throw new Error('Container fehlt');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'F8',
+      bubbles: true,
+      cancelable: true,
+    });
+    container.dispatchEvent(event);
+
+    expect(editor.isPreviewFullScreenActive()).toBe(true);
+    expect(event.defaultPrevented).toBe(true);
+
+    container.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'F8', bubbles: true, cancelable: true }),
+    );
+    expect(editor.isPreviewFullScreenActive()).toBe(false);
+
     editor.toTextArea();
   });
 });

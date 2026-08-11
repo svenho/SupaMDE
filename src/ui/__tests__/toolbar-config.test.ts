@@ -33,9 +33,32 @@ describe('resolveToolbar', () => {
     warn.mockRestore();
   });
 
-  it('DEFAULT_TOOLBAR enthält side-by-side und fullscreen, aber keine separate preview-Aktion', () => {
-    expect(DEFAULT_TOOLBAR).toContain('side-by-side');
-    expect(DEFAULT_TOOLBAR).toContain('fullscreen');
+  it('DEFAULT_TOOLBAR enthält preview-fullscreen, aber keine separate preview-Aktion', () => {
+    expect(DEFAULT_TOOLBAR).toContain('preview-fullscreen');
     expect(DEFAULT_TOOLBAR).not.toContain('preview');
+  });
+});
+
+describe('DEFAULT_TOOLBAR: kombinierter Vorschau-Vollbild-Button', () => {
+  it('enthält preview-fullscreen statt der beiden Einzel-Buttons', () => {
+    expect(DEFAULT_TOOLBAR).toContain('preview-fullscreen');
+    expect(DEFAULT_TOOLBAR).not.toContain('side-by-side');
+    // Kein Widerspruch zur Zeile darüber: toContain vergleicht Array-Elemente
+    // exakt, nicht als Teilstring. 'preview-fullscreen' !== 'fullscreen', der
+    // Kombi-Button darf also bleiben — ausgeschlossen wird nur der Einzel-Button.
+    expect(DEFAULT_TOOLBAR).not.toContain('fullscreen');
+  });
+
+  it('die Einzel-Buttons bleiben explizit konfigurierbar', () => {
+    const resolved = resolveToolbar(['side-by-side', 'fullscreen']);
+    expect(resolved).toHaveLength(2);
+    expect(resolved?.[0]).toMatchObject({ kind: 'builtin', name: 'side-by-side' });
+    expect(resolved?.[1]).toMatchObject({ kind: 'builtin', name: 'fullscreen' });
+  });
+
+  it('der Default löst vollständig auf (keine unbekannten Namen)', () => {
+    const resolved = resolveToolbar(undefined);
+    expect(resolved).not.toBeNull();
+    expect(resolved).toHaveLength(DEFAULT_TOOLBAR.length);
   });
 });
