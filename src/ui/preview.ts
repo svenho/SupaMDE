@@ -12,9 +12,9 @@ export interface SideBySideOptions {
 
 export interface SideBySide {
   dom: HTMLElement;
-  toggle(): void;
   /** Schaltet gezielt auf `next`. Idempotent — gleicher Wert ändert nichts. */
   set(next: boolean): void;
+  toggle(): void;
   isActive(): boolean;
   update(state: EditorState): void;
   destroy(): void;
