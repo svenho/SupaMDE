@@ -227,7 +227,7 @@ die Trennlinien im Inneren bleiben davon unberührt.
 `heading-smaller`, `heading-bigger`, `heading-1`…`heading-6`, `quote`, `code-block`,
 `horizontal-rule`, `clean-block`, `unordered-list`, `ordered-list`, `check-list`,
 `link`, `image`, `table`, `undo`, `redo`, `preview-fullscreen`, `side-by-side`,
-`fullscreen`. `'|'` fügt einen Separator ein.
+`fullscreen`, `editor-mode`. `'|'` fügt einen Separator ein.
 
 **Ansichts-Buttons:** `preview-fullscreen` schaltet Nebeneinander-Vorschau und
 Vollbild **gemeinsam** — ein Klick genügt für den Arbeitsmodus „Vorschau im
