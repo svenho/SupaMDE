@@ -47,12 +47,15 @@ Ein Preis wie $5 und $10 bleibt Text.
       const editor = new SupaMDE({
         element: document.getElementById('editor'),
         placeholder: 'Schreibe etwas Markdown …',
-        // Default-Toolbar + ein eigener Button, der die Wortzahl in die Statusbar schreibt
+        // Default-Toolbar + ein eigener Button, der die Wortzahl in die Statusbar schreibt.
+        // Ansicht: 'preview-fullscreen' schaltet Vorschau und Vollbild gemeinsam (F8) und
+        // steht so auch in der Default-Toolbar. Die Einzel-Buttons daneben zeigen, dass sie
+        // weiterhin explizit konfigurierbar sind.
         toolbar: [
           'bold', 'italic', 'strikethrough', 'code', '|',
           'quote', 'unordered-list', 'ordered-list', 'check-list', '|',
           'link', 'image', 'table', '|', 'undo', 'redo', '|',
-          'editor-mode', 'side-by-side', 'fullscreen',
+          'editor-mode', 'preview-fullscreen', 'side-by-side', 'fullscreen',
         ],
         status: ['lines', 'words', 'cursor'],
       });
