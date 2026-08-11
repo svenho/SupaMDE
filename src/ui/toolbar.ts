@@ -27,7 +27,12 @@ interface ViewButton {
 /**
  * Laufzeit-Typwächter: erfüllt `editor` strukturell `SupaLike`? Nötig, weil
  * `createToolbar` ein `editor: unknown` entgegennimmt (Custom-Buttons erlauben
- * beliebige Werte) und `SupaMDE` die vier Methoden erst mit Task 5 bereitstellt.
+ * beliebige Werte) und die Toolbar auch mit Fremdobjekten umgehen muss.
+ *
+ * Geprüft werden bewusst nur diese vier Methoden — nicht die später ergänzten
+ * `togglePreviewFullScreen`/`isPreviewFullScreenActive`. Sonst fielen Host-Objekte
+ * durch die Prüfung, die nur die vier alten Methoden implementieren, und verlören
+ * den Aktiv-Zustand aller view-Buttons.
  */
 function isSupaLike(editor: unknown): editor is SupaLike {
   return (
@@ -128,7 +133,7 @@ export function createToolbar(
     for (const { el, query } of activeButtons) {
       el.classList.toggle('active', query(state));
     }
-    // `editor` implementiert SupaLike erst, sobald die Instanz (SupaMDE, Task 5)
+    // `editor` implementiert SupaLike nur, wenn eine echte SupaMDE-Instanz
     // toggleSideBySide/toggleFullScreen/isSideBySideActive/isFullscreenActive
     // bereitstellt. Bis dahin (bzw. bei einem Host ohne diese Methoden) still
     // überspringen statt zu werfen — verhindert einen crashenden Toolbar-Update
@@ -144,10 +149,10 @@ export function createToolbar(
         // view-Buttons dauerhaft und fehlerfrei "totlaufen" lässt.
         supaLikeWarned = true;
         console.warn(
-          'SupaMDE: Toolbar enthält view-Buttons (side-by-side/fullscreen), aber die ' +
-            'übergebene Editor-Instanz erfüllt SupaLike nicht (toggleSideBySide/' +
-            'toggleFullScreen/isSideBySideActive/isFullscreenActive) — Aktiv-Zustand ' +
-            'dieser Buttons wird nicht aktualisiert.',
+          'SupaMDE: Toolbar enthält view-Buttons (preview-fullscreen/side-by-side/' +
+            'fullscreen/editor-mode), aber die übergebene Editor-Instanz erfüllt ' +
+            'SupaLike nicht (toggleSideBySide/toggleFullScreen/isSideBySideActive/' +
+            'isFullscreenActive) — Aktiv-Zustand dieser Buttons wird nicht aktualisiert.',
         );
       }
     }
