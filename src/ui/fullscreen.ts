@@ -11,23 +11,38 @@ export interface Fullscreen {
 }
 
 /**
+ * Modulweiter Zustand für die body-Scroll-Sperre. Bewusst nicht instanz-lokal:
+ * Mehrere Editoren teilen sich einen `document.body`. Würde jede Instanz ihren
+ * eigenen Snapshot halten, sicherte die zweite Instanz den bereits gesperrten
+ * Wert `'hidden'` als vermeintlichen Ausgangszustand — und schriebe ihn beim
+ * Verlassen zurück. Der body bliebe dauerhaft gesperrt.
+ *
+ * Nur der Übergang 0 → 1 sichert und sperrt, nur 1 → 0 stellt wieder her.
+ */
+let fullscreenCount = 0;
+let savedBodyOverflow = '';
+
+/**
  * Fullscreen-Toggle: reines CSS über die Klasse `supamde-fullscreen` auf dem
  * Container. Sperrt zusätzlich body-Scroll und lässt Escape den Modus
  * verlassen. Unabhängig von Side-by-Side (keine Zwangskopplung).
  */
 export function createFullscreen(container: HTMLElement, opts: FullscreenOptions = {}): Fullscreen {
   let active = false;
-  let savedOverflow = '';
 
   const set = (next: boolean): void => {
     if (next === active) return;
     active = next;
     container.classList.toggle('supamde-fullscreen', active);
     if (active) {
-      savedOverflow = document.body.style.overflow;
+      // Erst die Instanz, die die Sperre auslöst, sichert den Ausgangswert.
+      if (fullscreenCount === 0) savedBodyOverflow = document.body.style.overflow;
+      fullscreenCount += 1;
       document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = savedOverflow;
+      fullscreenCount = Math.max(0, fullscreenCount - 1);
+      // Erst wenn keine Instanz mehr im Vollbild ist, kehrt der Ausgangswert zurück.
+      if (fullscreenCount === 0) document.body.style.overflow = savedBodyOverflow;
     }
     opts.onToggleFullScreen?.(active);
   };
