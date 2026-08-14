@@ -3,9 +3,9 @@
 Ein moderner, einbettbarer Markdown-Editor auf Basis von **CodeMirror 6** — die
 modernisierte Neufassung von [easyMDE](https://github.com/Ionaru/easy-markdown-editor).
 
-> **Status:** In Entwicklung. Aktueller Meilenstein: **M4 — LaTeX-Live-Vorschau
-> & Fullscreen** (Side-by-Side-Vorschau mit Markdown+LaTeX-Rendering, Fullscreen).
-> Autosave und Bild-Upload folgen in M5.
+> **Status:** In Entwicklung. Aktueller Meilenstein: **M5 — Autosave &
+> Bild-Upload** (automatisches Zwischenspeichern des Entwurfs, Bild-Upload
+> per Drag & Drop, Einfügen oder Dateiauswahl).
 
 ## Installation
 
