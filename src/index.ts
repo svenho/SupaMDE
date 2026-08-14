@@ -21,10 +21,13 @@ import { injectStyles } from './ui/inject-styles';
 import { markdownToHtml, renderOptionsFrom, type RenderOptions } from './markdown/parse';
 import type { SupaLike } from './ui/actions';
 import { livePreviewCompartment, livePreviewFor, type EditorMode } from './livepreview';
+import { createAutosave, type Autosave } from './features/autosave';
 
 export type { SupaMDEOptions } from './options';
 export type { KeyBinding } from '@codemirror/view';
 export type { EditorMode } from './livepreview';
+export type { SupaStorage } from './features/storage';
+export type { AutosaveOptions } from './features/autosave';
 
 /**
  * SupaMDE — moderner Markdown-Editor auf Basis von CodeMirror 6.
@@ -50,6 +53,12 @@ export class SupaMDE {
   private readonly statusbar: Statusbar | null;
   private readonly preview: SideBySide | null;
   private readonly fullscreen: Fullscreen;
+  /**
+   * Autosave dieser Instanz. Immer erzeugt, aber nur aktiv, wenn die Option es
+   * verlangt UND der Speicher trägt — `isActive()` ist die Wahrheit, nicht die
+   * Option.
+   */
+  private readonly autosave: Autosave;
   /** Referenz auf den F8/F9/F10/F11-Keydown-Handler, damit toTextArea() ihn abräumt. */
   private readonly onViewShortcuts: (event: KeyboardEvent) => void;
   /**
@@ -79,6 +88,9 @@ export class SupaMDE {
         this.toolbar?.update(u.state);
         this.statusbar?.update(u.state, { docChanged: u.docChanged, selectionSet: u.selectionSet });
         this.preview?.update(u.state);
+        // Nur bei echter Dokumentänderung — eine Cursorbewegung ist kein Grund
+        // zu speichern und würde den Debounce sinnlos verlängern.
+        if (u.docChanged) this.autosave.schedule();
       },
     };
 
@@ -93,6 +105,30 @@ export class SupaMDE {
 
     this.toolbar = createToolbar(this.codemirror, options.toolbar, this);
     this.statusbar = createStatusbar(options.status);
+
+    // NACH der Statusbar: onSaved schreibt in sie hinein. Die Instanz wird immer
+    // erzeugt (der sink referenziert sie), bleibt ohne autosave-Option aber
+    // inaktiv — `start()` verlässt sich bei fehlendem `enabled` sofort wieder.
+    //
+    // `createAutosave` liest hier den Ausgangswert des Dokuments und merkt ihn
+    // als Referenzpunkt für den Restore. Diese Zeile muss deshalb NACH dem
+    // View-Aufbau stehen (sonst gäbe es kein Dokument zu lesen) und VOR jeder
+    // Gelegenheit, bei der der Host `setValue()` rufen könnte — beides ist im
+    // Konstruktor gegeben.
+    this.autosave = createAutosave(options.autosave ?? { enabled: false, key: '' }, {
+      getValue: () => this.getValue(),
+      setValue: (v) => this.setValue(v),
+      onSaved: (time) => {
+        const zeit = new Intl.DateTimeFormat(undefined, {
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(time);
+        // Instanz-eigene Statusbar statt easyMDEs globalem
+        // getElementById('autosaved') — zwei Editoren auf einer Seite störten
+        // sich dort gegenseitig. `setItem` schreibt textContent, kein innerHTML.
+        this.statusbar?.setItem('autosave', `Gespeichert: ${zeit}`);
+      },
+    });
 
     // EINE Quelle für die Render-Optionen (Panel + markdown()-Fassade teilen sie).
     this.renderOpts = renderOptionsFrom(options);
@@ -172,6 +208,11 @@ export class SupaMDE {
     const state = this.codemirror.state;
     this.toolbar?.update(state);
     this.statusbar?.update(state, { docChanged: true, selectionSet: true });
+
+    // Async und bewusst nicht awaited — ein Konstruktor kann nicht warten. Ein
+    // eventueller Restore landet als normale Transaktion im Dokument, sobald
+    // der Speicher geantwortet hat.
+    void this.autosave.start();
   }
 
   value(): string;
@@ -266,8 +307,26 @@ export class SupaMDE {
     this.setEditorMode(this.editorMode === 'live' ? 'source' : 'live');
   }
 
+  /**
+   * Löscht den gespeicherten Entwurf UND stoppt den laufenden Debounce-Timer.
+   * Nach erfolgreichem Speichern im eigenen Backend zu rufen — sonst holt der
+   * Editor beim nächsten Öffnen den alten Entwurf zurück.
+   */
+  async clearAutosavedValue(): Promise<void> {
+    await this.autosave.clear();
+    this.statusbar?.setItem('autosave', '');
+  }
+
+  /** Ob Autosave aktiv ist (aktiviert, `key` gültig, Speicher verfügbar). */
+  isAutosaveActive(): boolean {
+    return this.autosave.isActive();
+  }
+
   /** Baut den Editor zurück und stellt die ursprüngliche Textarea wieder her. */
   toTextArea(): HTMLTextAreaElement {
+    // Nur den Timer abräumen: Der gespeicherte Wert bleibt erhalten — Rückbau
+    // des Editors ist kein Signal, den Entwurf zu verwerfen.
+    this.autosave.stop();
     this.container.removeEventListener('keydown', this.onViewShortcuts);
     this.toolbar?.destroy();
     this.statusbar?.destroy();
