@@ -101,6 +101,26 @@ describe('SupaMDE — Upload-Verdrahtung', () => {
     editor.toTextArea();
   });
 
+  it('warnt einmal, wenn enabled: true ohne upload gesetzt ist, und bleibt folgenlos', () => {
+    // SupaMDE ist eine Bibliothek mit JavaScript-Hosts: `upload` ist im Typ
+    // Pflicht, schützt zur Laufzeit aber niemanden. Ohne diese Prüfung würfe
+    // erst der erste Drop mitten im Ablauf `options.upload is not a function`.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const editor = new SupaMDE({
+      element: textarea,
+      status: ['upload-image'],
+      // @ts-expect-error — genau der Fall, den JS-Hosts ohne Typprüfung bauen können.
+      uploadImage: { enabled: true },
+    });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]![0]).toContain('uploadImage.upload');
+
+    // Der Editor läuft weiter, und uploadImages() bleibt folgenlos.
+    editor.uploadImages([fileOf('a.png', 'image/png')]);
+    expect(editor.getValue()).toBe('');
+    editor.toTextArea();
+  });
+
   it('warnt NICHT, wenn das Statusbar-Item vorhanden ist', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const editor = editorMit(async () => 'u');

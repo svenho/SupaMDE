@@ -104,7 +104,12 @@ export function resolveUploadTexts(texts?: Partial<UploadTexts>): UploadTexts {
  * Cursorposition. Geteilt wird deshalb nur die Textform, hier als eine Zeile.
  */
 export function imageMarkdown(alt: string, url: string): string {
-  return `![${alt}](${url})`;
+  // `]` und `[` im Alt-Text und `(`/`)`/Leerzeichen in der URL brechen die
+  // Markdown-Bildsyntax. Alt-Text maskieren, URL in spitze Klammern setzen —
+  // die von CommonMark vorgesehene Form für URLs mit Sonderzeichen.
+  const altSicher = alt.replace(/([[\]\\])/g, '\\$1');
+  const urlSicher = /[\s()<>]/.test(url) ? `<${url.replace(/([<>\\])/g, '\\$1')}>` : url;
+  return `![${altSicher}](${urlSicher})`;
 }
 
 /**
@@ -194,36 +199,44 @@ export function createImageUploader(
     offen += 1;
     zeige(formatText(texts.statusUploading, { name: file.name }));
 
-    options.upload(file).then(
-      (url) => {
-        offen -= 1;
-        // AUSSCHLIESSLICH die gemappte Position — nie die beim Einfügen
-        // gemerkte. Ist der Eintrag weg, hat der Nutzer den Platzhalter
-        // gelöscht oder das Dokument ersetzt: dann wird NICHTS eingefügt. Ein
-        // Bild, das in ein inzwischen fremdes Dokument hineinspringt, wäre
-        // schlimmer als ein verlorener Upload.
-        const bereich = placeholderRange(view.state, id);
-        if (!bereich) return;
-        view.dispatch({
-          changes: { from: bereich.from, to: bereich.to, insert: imageMarkdown(file.name, url) },
-          effects: removePlaceholder.of(id),
-        });
-        zeige(formatText(texts.statusDone, { name: file.name }), STATUS_DONE_MS);
-      },
-      (ursache: unknown) => {
-        offen -= 1;
-        const bereich = placeholderRange(view.state, id);
-        if (bereich) {
-          // Ersatzlos entfernen — der Platzhaltertext darf nicht im Dokument
-          // stehen bleiben.
+    // `Promise.resolve().then(...)` statt eines direkten Aufrufs: wirft der
+    // Host-Code in `upload()` SYNCHRON statt eine abgelehnte Promise zu
+    // liefern, propagierte der Fehler sonst aus `ladeEine()` heraus — der
+    // Platzhalter bliebe für immer stehen, `offen` würde nie dekrementiert.
+    // So wird ein synchroner Wurf zu einer Ablehnung und läuft durch den
+    // bestehenden Fehlerpfad unten.
+    Promise.resolve()
+      .then(() => options.upload(file))
+      .then(
+        (url) => {
+          offen -= 1;
+          // AUSSCHLIESSLICH die gemappte Position — nie die beim Einfügen
+          // gemerkte. Ist der Eintrag weg, hat der Nutzer den Platzhalter
+          // gelöscht oder das Dokument ersetzt: dann wird NICHTS eingefügt. Ein
+          // Bild, das in ein inzwischen fremdes Dokument hineinspringt, wäre
+          // schlimmer als ein verlorener Upload.
+          const bereich = placeholderRange(view.state, id);
+          if (!bereich) return;
           view.dispatch({
-            changes: { from: bereich.from, to: bereich.to, insert: '' },
+            changes: { from: bereich.from, to: bereich.to, insert: imageMarkdown(file.name, url) },
             effects: removePlaceholder.of(id),
           });
-        }
-        meldeFehler('upload-failed', file, ursache);
-      },
-    );
+          zeige(formatText(texts.statusDone, { name: file.name }), STATUS_DONE_MS);
+        },
+        (ursache: unknown) => {
+          offen -= 1;
+          const bereich = placeholderRange(view.state, id);
+          if (bereich) {
+            // Ersatzlos entfernen — der Platzhaltertext darf nicht im Dokument
+            // stehen bleiben.
+            view.dispatch({
+              changes: { from: bereich.from, to: bereich.to, insert: '' },
+              effects: removePlaceholder.of(id),
+            });
+          }
+          meldeFehler('upload-failed', file, ursache);
+        },
+      );
   };
 
   const uploadFiles = (files: FileList | File[]): void => {

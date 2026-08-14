@@ -168,29 +168,46 @@ export class SupaMDE {
     // Nur bei aktivierter Option: ohne `upload`-Funktion gibt es nichts zu tun,
     // und `uploadImages()` soll dann folgenlos bleiben.
     if (uploadAktiv && options.uploadImage) {
-      this.uploader = createImageUploader(this.codemirror, options.uploadImage, {
-        setStatus: (text) => this.statusbar?.setItem('upload-image', text),
-      });
-
-      // `setItem` findet ein Item nur, wenn es tatsächlich gerendert wurde —
-      // also nur, wenn sein Name in der `status`-Option steht (siehe
-      // ui/statusbar.ts). Fehlt es UND fehlt `onError`, verschwinden sämtliche
-      // Rückmeldungen des Uploads spurlos: kein Fortschritt, keine Fehler. Das
-      // ist eine gültige Konfiguration (ein Host kann das bewusst wollen), aber
-      // fast immer ein Versehen. Genau EINE Warnung — der Editor läuft weiter.
-      const statusZeigtUpload =
-        Array.isArray(options.status) && options.status.includes('upload-image');
-      if (!statusZeigtUpload && !options.uploadImage.onError) {
+      // SupaMDE ist eine Bibliothek mit JavaScript-Hosts — der Typ macht
+      // `upload` zur Pflicht, das schützt zur Laufzeit aber niemanden. Ohne
+      // diese Prüfung passierte bei der Konstruktion nichts, und erst beim
+      // ersten Drop würfe `options.upload is not a function` mitten im
+      // Ablauf. Deshalb dieselbe Warnpraxis wie unten: EINE Meldung, der
+      // Editor läuft weiter, aber es entsteht KEIN Uploader — `uploadImages()`
+      // und `openBrowseFileWindow()` bleiben dann folgenlos.
+      if (typeof options.uploadImage.upload !== 'function') {
         console.warn(
-          'SupaMDE: uploadImage ist aktiviert, aber weder das Statusbar-Item ' +
-            "'upload-image' (status-Option) noch uploadImage.onError ist gesetzt — " +
-            'Fortschritt und Fehler des Uploads bleiben unsichtbar.',
+          'SupaMDE: uploadImage.enabled ist true, aber uploadImage.upload ist keine ' +
+            'Funktion — Bild-Upload bleibt aus.',
+        );
+      } else {
+        this.uploader = createImageUploader(this.codemirror, options.uploadImage, {
+          setStatus: (text) => this.statusbar?.setItem('upload-image', text),
+        });
+
+        // `setItem` findet ein Item nur, wenn es tatsächlich gerendert wurde —
+        // also nur, wenn sein Name in der `status`-Option steht (siehe
+        // ui/statusbar.ts). Fehlt es UND fehlt `onError`, verschwinden sämtliche
+        // Rückmeldungen des Uploads spurlos: kein Fortschritt, keine Fehler. Das
+        // ist eine gültige Konfiguration (ein Host kann das bewusst wollen), aber
+        // fast immer ein Versehen. Genau EINE Warnung — der Editor läuft weiter.
+        const statusZeigtUpload =
+          Array.isArray(options.status) && options.status.includes('upload-image');
+        if (!statusZeigtUpload && !options.uploadImage.onError) {
+          console.warn(
+            'SupaMDE: uploadImage ist aktiviert, aber weder das Statusbar-Item ' +
+              "'upload-image' (status-Option) noch uploadImage.onError ist gesetzt — " +
+              'Fortschritt und Fehler des Uploads bleiben unsichtbar.',
+          );
+        }
+
+        // Der Slot zeigt von Anfang an den Einladungstext, nicht erst nach dem
+        // ersten Upload — sonst bliebe er beim frisch geöffneten Editor leer.
+        this.statusbar?.setItem(
+          'upload-image',
+          resolveUploadTexts(options.uploadImage.texts).statusInit,
         );
       }
-
-      // Der Slot zeigt von Anfang an den Einladungstext, nicht erst nach dem
-      // ersten Upload — sonst bliebe er beim frisch geöffneten Editor leer.
-      this.statusbar?.setItem('upload-image', resolveUploadTexts(options.uploadImage.texts).statusInit);
     }
 
     // EINE Quelle für die Render-Optionen (Panel + markdown()-Fassade teilen sie).
