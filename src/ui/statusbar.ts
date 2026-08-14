@@ -16,7 +16,15 @@ export type StatusOption = false | Array<string | CustomStatusItem>;
 export const DEFAULT_STATUS: string[] = ['lines', 'words', 'cursor'];
 
 /** Built-in-Namen, die SupaMDE selbst befüllt. */
-const BUILTIN_NAMES = new Set(['lines', 'words', 'cursor', 'autosave']);
+const BUILTIN_NAMES = new Set(['lines', 'words', 'cursor', 'autosave', 'upload-image']);
+
+/**
+ * Built-ins, deren Inhalt AUSSCHLIESSLICH über `setItem()` kommt. `update()`
+ * lässt sie unberührt — sonst löschte der nächste Tastendruck den gerade
+ * gesetzten Zeitstempel bzw. die Upload-Meldung wieder (`builtinContent`
+ * liefert für beide `''`).
+ */
+const STICKY_NAMES = new Set(['autosave', 'upload-image']);
 
 /** Ein gerendertes Statusbar-Widget. */
 export interface Statusbar {
@@ -49,7 +57,8 @@ function builtinContent(name: string, state: EditorState): string {
       return `${line.number}:${head - line.from + 1}`;
     }
     case 'autosave':
-      // M3-No-op; wird in M5 über setItem('autosave', …) befüllt.
+    case 'upload-image':
+      // Werden nie hier berechnet, sondern nur über setItem() gesetzt (STICKY_NAMES).
       return '';
     default:
       return '';
@@ -88,6 +97,7 @@ export function createStatusbar(option: StatusOption | undefined): Statusbar | n
     opts: { docChanged: boolean; selectionSet: boolean },
   ): void => {
     for (const { name, el } of builtins) {
+      if (STICKY_NAMES.has(name)) continue;
       el.textContent = builtinContent(name, state);
     }
     for (const { item, el } of customs) {
