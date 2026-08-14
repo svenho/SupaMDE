@@ -8,7 +8,7 @@
  */
 export function formatText(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (treffer: string, schlüssel: string): string =>
-    schlüssel in values ? (values[schlüssel] as string) : treffer,
+    Object.prototype.hasOwnProperty.call(values, schlüssel) ? (values[schlüssel] as string) : treffer,
   );
 }
 

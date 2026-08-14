@@ -30,6 +30,14 @@ describe('formatText', () => {
     // Reihenfolge der Schlüssel ab.
     expect(formatText('{a}{b}', { a: '{b}', b: 'X' })).toBe('{b}X');
   });
+
+  it('ignoriert geerbte Prototyp-Eigenschaften', () => {
+    // Platzhalter für Prototyp-Properties wie {constructor}, {toString} etc.
+    // dürfen nicht ersetzt werden — nur Own Properties zählen.
+    expect(formatText('Datei {constructor} zu groß', { name: 'a.png' })).toBe(
+      'Datei {constructor} zu groß',
+    );
+  });
 });
 
 describe('formatBytes', () => {
