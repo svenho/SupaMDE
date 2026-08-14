@@ -9,6 +9,7 @@ import {
   SquareCode,
   Minus,
   Eraser,
+  ImageUp,
   List,
   ListOrdered,
   ListChecks,
@@ -50,6 +51,7 @@ const ICONS: Record<string, IconNode> = {
   fullscreen: Fullscreen,
   'preview-fullscreen': Maximize2,
   'editor-mode': Eye,
+  'upload-image': ImageUp,
 };
 
 /** Ob ein Icon-Name bekannt ist. */
