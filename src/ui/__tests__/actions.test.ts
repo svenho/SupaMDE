@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { BUILTIN_ACTIONS, getAction } from '../actions';
+import { BUILTIN_ACTIONS, getAction, type ToolbarAction, type SupaLike } from '../actions';
 import { hasIcon } from '../icons';
 
 /** Liefert die Action nur, wenn sie vom `command`-Zweig der Union ist. */
@@ -56,6 +56,8 @@ describe('view-Aktionen (side-by-side, fullscreen)', () => {
       isPreviewFullScreenActive: () => false,
       toggleEditorMode: vi.fn(),
       getEditorMode: () => 'source' as const,
+      uploadImages: vi.fn(),
+      openBrowseFileWindow: vi.fn(),
     };
     if (action?.kind === 'view') action.run(editor);
     expect(editor.toggleSideBySide).toHaveBeenCalled();
@@ -72,6 +74,8 @@ describe('view-Aktionen (side-by-side, fullscreen)', () => {
       isPreviewFullScreenActive: () => false,
       toggleEditorMode: vi.fn(),
       getEditorMode: () => 'source' as const,
+      uploadImages: vi.fn(),
+      openBrowseFileWindow: vi.fn(),
     };
     if (action?.kind === 'view') expect(action.active?.(editor)).toBe(true);
   });
@@ -94,6 +98,8 @@ describe('BUILTIN_ACTIONS — editor-mode', () => {
       getEditorMode(this: { current: string }) {
         return this.current as 'source' | 'live';
       },
+      uploadImages: vi.fn(),
+      openBrowseFileWindow: vi.fn(),
     };
   }
 
@@ -144,6 +150,8 @@ describe('view-Aktion preview-fullscreen', () => {
         state.fullscreen = on;
       }),
       isPreviewFullScreenActive: () => state.sideBySide && state.fullscreen,
+      uploadImages: vi.fn(),
+      openBrowseFileWindow: vi.fn(),
     };
   }
 
@@ -191,5 +199,34 @@ describe('view-Aktion preview-fullscreen', () => {
     action.run(both);
     expect(both.isSideBySideActive()).toBe(false);
     expect(both.isFullscreenActive()).toBe(false);
+  });
+});
+
+describe('BUILTIN_ACTIONS — upload-image', () => {
+  it('kennt die Aktion upload-image', () => {
+    const action = getAction('upload-image');
+    expect(action).toBeDefined();
+    expect(action!.kind).toBe('view');
+    expect(action!.icon).toBe('upload-image');
+  });
+
+  it('upload-image ruft openBrowseFileWindow auf der Instanz', () => {
+    const action = getAction('upload-image')!;
+    expect(action.kind).toBe('view');
+    const openBrowseFileWindow = vi.fn();
+    // Nur die von dieser Aktion genutzte Methode wird gebraucht.
+    (action as Extract<ToolbarAction, { kind: 'view' }>).run({
+      openBrowseFileWindow,
+    } as unknown as SupaLike);
+    expect(openBrowseFileWindow).toHaveBeenCalledTimes(1);
+  });
+
+  it('upload-image hat keinen Aktiv-Zustand', () => {
+    const action = getAction('upload-image')!;
+    expect((action as Extract<ToolbarAction, { kind: 'view' }>).active).toBeUndefined();
+  });
+
+  it('das Icon des Buttons ist bekannt', () => {
+    expect(hasIcon(getAction('upload-image')!.icon)).toBe(true);
   });
 });

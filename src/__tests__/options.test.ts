@@ -123,3 +123,24 @@ describe('resolveOptions — editorMode', () => {
     textarea.remove();
   });
 });
+
+describe('M5-Optionen', () => {
+  it('resolveOptions lässt autosave und uploadImage unberührt', () => {
+    const options: SupaMDEOptions = {
+      autosave: { enabled: true, key: 'doc' },
+      uploadImage: { enabled: true, upload: async () => 'u' },
+    };
+    const resolved = resolveOptions(options);
+    // ResolvedOptions bekommt bewusst KEINE M5-Felder — die Verdrahtung läuft
+    // in der Fassade, nicht über buildExtensions.
+    expect('autosave' in resolved).toBe(false);
+    expect('uploadImage' in resolved).toBe(false);
+  });
+
+  it('mutiert das übergebene Options-Objekt nicht', () => {
+    const options: SupaMDEOptions = { autosave: { enabled: true, key: 'doc' } };
+    const kopie = JSON.stringify(options.autosave);
+    resolveOptions(options);
+    expect(JSON.stringify(options.autosave)).toBe(kopie);
+  });
+});

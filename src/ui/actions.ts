@@ -40,6 +40,10 @@ export interface SupaLike {
   isPreviewFullScreenActive(): boolean;
   toggleEditorMode(): void;
   getEditorMode(): EditorMode;
+  /** Startet den Upload für die übergebenen Dateien (M5). */
+  uploadImages(files: FileList | File[]): void;
+  /** Öffnet die Dateiauswahl (M5). */
+  openBrowseFileWindow(): void;
 }
 
 /** Ein Built-in-Toolbar-Eintrag: entweder CM6-Command oder Instanz-Aktion. */
@@ -270,6 +274,14 @@ export const BUILTIN_ACTIONS: Record<string, ToolbarAction> = {
     icon: 'editor-mode',
     title: 'Live-Vorschau',
     shortcut: 'F10',
+  },
+  'upload-image': {
+    kind: 'view',
+    run: (editor) => editor.openBrowseFileWindow(),
+    // Bewusst OHNE `active`: Bild hochladen ist eine Handlung, kein Zustand —
+    // ein Aktiv-Zustand hätte nichts anzuzeigen.
+    icon: 'upload-image',
+    title: 'Bild hochladen',
   },
 };
 

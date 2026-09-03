@@ -24,7 +24,11 @@ import { linkHoverCursorExtension } from './link-hover-cursor';
  * `livePreviewCompartment` hält die Live-Modus-Extension — im Source-Modus leer,
  * per `reconfigure` zur Laufzeit umschaltbar.
  */
-export function buildExtensions(resolved: ResolvedOptions, sink?: UpdateSink): Extension[] {
+export function buildExtensions(
+  resolved: ResolvedOptions,
+  sink?: UpdateSink,
+  extraExtensions?: Extension[],
+): Extension[] {
   const extensions: Extension[] = [
     // `addKeymap: false`: `markdown()` bindet Enter sonst per `Prec.high` an
     // `insertNewlineContinueMarkup` — also VOR dem `supaKeymap`, wodurch SupaMDEs
@@ -55,6 +59,13 @@ export function buildExtensions(resolved: ResolvedOptions, sink?: UpdateSink): E
   }
   if (sink) {
     extensions.push(updateListenerExtension(sink));
+  }
+
+  // Von der Fassade eingeschleuste Extensions (M5: Platzhalter-StateField,
+  // Drop/Paste-Handler). Bewusst ZULETZT: Sie sollen die Basis ergänzen, nicht
+  // ihr vorgreifen.
+  if (extraExtensions) {
+    extensions.push(...extraExtensions);
   }
 
   return extensions;
