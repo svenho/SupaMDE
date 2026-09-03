@@ -176,6 +176,33 @@ describe('continueList (AC-L4/L5)', () => {
     view.destroy();
   });
 
+  it('gibt false zurück, wenn der Cursor VOR dem Listenmarker steht (Bug: "* * Hallo")', () => {
+    // Cursor am Zeilenanfang, also vor dem Marker: Enter darf hier nur eine
+    // Leerzeile einfügen, kein zweites Präfix erzeugen.
+    const view = viewWith('* Hallo', 0);
+    expect(continueList(view)).toBe(false);
+    view.destroy();
+  });
+
+  it('gibt false zurück, wenn der Cursor INNERHALB des Listenmarkers steht', () => {
+    const view = viewWith('- [ ] Aufgabe', 3);
+    expect(continueList(view)).toBe(false);
+    view.destroy();
+  });
+
+  it('gibt false zurück, wenn der Cursor vor der Einrückung einer Unterliste steht', () => {
+    const view = viewWith('- a\n  - b', 4); // Anfang der eingerückten Zeile
+    expect(continueList(view)).toBe(false);
+    view.destroy();
+  });
+
+  it('setzt fort, wenn der Cursor direkt hinter dem Marker steht', () => {
+    const view = viewWith('* Hallo', 2);
+    expect(continueList(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('* \n* Hallo');
+    view.destroy();
+  });
+
   it('gibt false zurück außerhalb einer Liste', () => {
     const view = viewWith('kein Listeneintrag', 5);
     expect(continueList(view)).toBe(false);

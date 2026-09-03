@@ -120,3 +120,12 @@ export function makeResolved(overrides: Partial<ResolvedOptions> = {}): Resolved
     ...overrides,
   };
 }
+
+/**
+ * Baut ein `File` für Upload-Tests. jsdom kennt `File`, aber die Größe lässt
+ * sich nur über den tatsächlichen Inhalt steuern — deshalb wird ein Puffer der
+ * gewünschten Länge erzeugt statt `size` zu überschreiben.
+ */
+export function fileOf(name: string, type: string, size = 10): File {
+  return new File([new Uint8Array(size)], name, { type });
+}

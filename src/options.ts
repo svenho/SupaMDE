@@ -2,6 +2,8 @@ import type { ToolbarOption } from './ui/toolbar-config';
 import type { StatusOption } from './ui/statusbar';
 import type { KeyBinding } from '@codemirror/view';
 import { EDITOR_MODES, type EditorMode } from './livepreview';
+import type { AutosaveOptions } from './features/autosave';
+import type { UploadImageOptions } from './features/image-upload';
 
 /** Öffentliche Konfigurationsoptionen für SupaMDE (Kern-Set, M1). */
 export interface SupaMDEOptions {
@@ -47,6 +49,16 @@ export interface SupaMDEOptions {
    * werden, sonst bleiben Toolbar und Statusbar ungestylt.
    */
   injectStyles?: boolean;
+  /**
+   * Autosave (M5). Der Inhalt überlebt Absturz, Schließen und Reload.
+   * Per Default aus; `key` ist bei `enabled: true` Pflicht.
+   */
+  autosave?: AutosaveOptions;
+  /**
+   * Bild-Upload (M5). Drag & Drop, Einfügen aus der Zwischenablage und
+   * Dateiauswahl. Per Default aus; `upload` ist Pflicht.
+   */
+  uploadImage?: UploadImageOptions;
 }
 
 /** Normalisierte, immer vollständig belegte Optionen für die Extension-Erzeugung. */

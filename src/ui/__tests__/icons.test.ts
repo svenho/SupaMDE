@@ -53,3 +53,13 @@ describe('Icon editor-mode', () => {
     expect(renderIcon('editor-mode').tagName.toLowerCase()).toBe('svg');
   });
 });
+
+describe('Icon upload-image', () => {
+  it('ist als Built-in-Icon bekannt', () => {
+    expect(hasIcon('upload-image')).toBe(true);
+  });
+
+  it('rendert ein SVG', () => {
+    expect(renderIcon('upload-image').tagName.toLowerCase()).toBe('svg');
+  });
+});

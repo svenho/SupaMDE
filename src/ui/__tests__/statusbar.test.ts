@@ -59,4 +59,48 @@ describe('createStatusbar', () => {
     sb.setItem('autosave', 'gespeichert 12:00');
     expect(sb.dom.querySelector('.supamde-status-autosave')!.textContent).toBe('gespeichert 12:00');
   });
+
+  it('upload-image-Slot rendert leer, bis er gesetzt wird', () => {
+    const sb = createStatusbar(['upload-image'])!;
+    sb.update(stateOf('x'), full);
+    expect(sb.dom.querySelector('.supamde-status-upload-image')!.textContent).toBe('');
+  });
+
+  it('setItem befüllt den upload-image-Slot', () => {
+    const sb = createStatusbar(['upload-image'])!;
+    sb.setItem('upload-image', 'Lade a.png hoch…');
+    expect(sb.dom.querySelector('.supamde-status-upload-image')!.textContent).toBe(
+      'Lade a.png hoch…',
+    );
+  });
+
+  it('ein gesetzter autosave-Wert überlebt das nächste update()', () => {
+    const sb = createStatusbar(['autosave', 'words'])!;
+    sb.setItem('autosave', 'Gespeichert: 14:03');
+    sb.update(stateOf('neuer Text'), full);
+    expect(sb.dom.querySelector('.supamde-status-autosave')!.textContent).toBe(
+      'Gespeichert: 14:03',
+    );
+    // Die nicht-sticky Items werden weiterhin normal aktualisiert.
+    expect(sb.dom.querySelector('.supamde-status-words')!.textContent).toContain('2');
+  });
+
+  it('ein gesetzter upload-image-Wert überlebt das nächste update()', () => {
+    const sb = createStatusbar(['upload-image'])!;
+    sb.setItem('upload-image', 'a.png hochgeladen');
+    sb.update(stateOf('x'), full);
+    expect(sb.dom.querySelector('.supamde-status-upload-image')!.textContent).toBe(
+      'a.png hochgeladen',
+    );
+  });
+
+  it('setItem auf ein NICHT gerendertes Item tut nichts (kein Wurf)', () => {
+    const sb = createStatusbar(['words'])!;
+    expect(() => sb.setItem('autosave', 'x')).not.toThrow();
+  });
+
+  it('DEFAULT_STATUS enthält weder autosave noch upload-image', () => {
+    expect(DEFAULT_STATUS).not.toContain('autosave');
+    expect(DEFAULT_STATUS).not.toContain('upload-image');
+  });
 });

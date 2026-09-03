@@ -21,10 +21,21 @@ import { injectStyles } from './ui/inject-styles';
 import { markdownToHtml, renderOptionsFrom, type RenderOptions } from './markdown/parse';
 import type { SupaLike } from './ui/actions';
 import { livePreviewCompartment, livePreviewFor, type EditorMode } from './livepreview';
+import { createAutosave, type Autosave } from './features/autosave';
+import {
+  createImageUploader,
+  resolveUploadTexts,
+  type ImageUploader,
+} from './features/image-upload';
+import { uploadPlaceholderField } from './features/upload-placeholder';
+import { uploadDropPasteExtension, openFilePicker } from './features/upload-dom';
 
 export type { SupaMDEOptions } from './options';
 export type { KeyBinding } from '@codemirror/view';
 export type { EditorMode } from './livepreview';
+export type { SupaStorage } from './features/storage';
+export type { AutosaveOptions } from './features/autosave';
+export type { UploadImageOptions, UploadError, UploadTexts } from './features/image-upload';
 
 /**
  * SupaMDE — moderner Markdown-Editor auf Basis von CodeMirror 6.
@@ -50,6 +61,18 @@ export class SupaMDE {
   private readonly statusbar: Statusbar | null;
   private readonly preview: SideBySide | null;
   private readonly fullscreen: Fullscreen;
+  /**
+   * Autosave dieser Instanz. Immer erzeugt, aber nur aktiv, wenn die Option es
+   * verlangt UND der Speicher trägt — `isActive()` ist die Wahrheit, nicht die
+   * Option.
+   */
+  private readonly autosave: Autosave;
+  /**
+   * Der Uploader dieser Instanz. Wird NACH der View erzeugt (er braucht sie),
+   * die Drop/Paste-Extension zeigt daher über eine Closure auf dieses Feld statt
+   * direkt auf den Uploader.
+   */
+  private uploader: ImageUploader | null = null;
   /** Referenz auf den F8/F9/F10/F11-Keydown-Handler, damit toTextArea() ihn abräumt. */
   private readonly onViewShortcuts: (event: KeyboardEvent) => void;
   /**
@@ -79,10 +102,24 @@ export class SupaMDE {
         this.toolbar?.update(u.state);
         this.statusbar?.update(u.state, { docChanged: u.docChanged, selectionSet: u.selectionSet });
         this.preview?.update(u.state);
+        // Nur bei echter Dokumentänderung — eine Cursorbewegung ist kein Grund
+        // zu speichern und würde den Debounce sinnlos verlängern.
+        if (u.docChanged) this.autosave.schedule();
       },
     };
 
-    this.handle = editorFromTextArea(options, sink);
+    // Die Extension wird VOR dem Uploader gebaut — sie kann ihn also nicht
+    // direkt referenzieren. Die Closure löst das: Sie liest `this.uploader`
+    // erst beim Drop/Paste, wenn das Feld längst gesetzt ist.
+    const uploadAktiv = options.uploadImage?.enabled === true;
+    const uploadExtensions = uploadAktiv
+      ? [
+          uploadPlaceholderField,
+          uploadDropPasteExtension((files) => this.uploader?.uploadFiles(files)),
+        ]
+      : [];
+
+    this.handle = editorFromTextArea(options, sink, uploadExtensions);
     this.codemirror = this.handle.view;
 
     // Aus dem Handle, NICHT über einen zweiten resolveOptions()-Aufruf: die
@@ -91,8 +128,87 @@ export class SupaMDE {
     // ungültigem editorMode. Eine Quelle der Wahrheit — hier wörtlich.
     this.editorMode = this.handle.resolved.editorMode;
 
-    this.toolbar = createToolbar(this.codemirror, options.toolbar, this);
+    // Spec §4.2: Der Button wird NUR bei aktiviertem Bild-Upload gerendert. Ein
+    // Button, dessen Klick folgenlos bleibt, ist schlimmer als gar keiner.
+    // Gefiltert wird hier statt in `resolveToolbar`, weil nur die Fassade die
+    // `uploadImage`-Option kennt — und ohne Warnung, denn der Name IST gültig.
+    // `filter` liefert eine neue Liste; die übergebene Option bleibt unberührt.
+    const toolbarOption =
+      !uploadAktiv && Array.isArray(options.toolbar)
+        ? options.toolbar.filter((eintrag) => eintrag !== 'upload-image')
+        : options.toolbar;
+
+    this.toolbar = createToolbar(this.codemirror, toolbarOption, this);
     this.statusbar = createStatusbar(options.status);
+
+    // NACH der Statusbar: onSaved schreibt in sie hinein. Die Instanz wird immer
+    // erzeugt (der sink referenziert sie), bleibt ohne autosave-Option aber
+    // inaktiv — `start()` verlässt sich bei fehlendem `enabled` sofort wieder.
+    //
+    // `createAutosave` liest hier den Ausgangswert des Dokuments und merkt ihn
+    // als Referenzpunkt für den Restore. Diese Zeile muss deshalb NACH dem
+    // View-Aufbau stehen (sonst gäbe es kein Dokument zu lesen) und VOR jeder
+    // Gelegenheit, bei der der Host `setValue()` rufen könnte — beides ist im
+    // Konstruktor gegeben.
+    this.autosave = createAutosave(options.autosave ?? { enabled: false, key: '' }, {
+      getValue: () => this.getValue(),
+      setValue: (v) => this.setValue(v),
+      onSaved: (time) => {
+        const zeit = new Intl.DateTimeFormat(undefined, {
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(time);
+        // Instanz-eigene Statusbar statt easyMDEs globalem
+        // getElementById('autosaved') — zwei Editoren auf einer Seite störten
+        // sich dort gegenseitig. `setItem` schreibt textContent, kein innerHTML.
+        this.statusbar?.setItem('autosave', `Gespeichert: ${zeit}`);
+      },
+    });
+
+    // Nur bei aktivierter Option: ohne `upload`-Funktion gibt es nichts zu tun,
+    // und `uploadImages()` soll dann folgenlos bleiben.
+    if (uploadAktiv && options.uploadImage) {
+      // SupaMDE ist eine Bibliothek mit JavaScript-Hosts — der Typ macht
+      // `upload` zur Pflicht, das schützt zur Laufzeit aber niemanden. Ohne
+      // diese Prüfung passierte bei der Konstruktion nichts, und erst beim
+      // ersten Drop würfe `options.upload is not a function` mitten im
+      // Ablauf. Deshalb dieselbe Warnpraxis wie unten: EINE Meldung, der
+      // Editor läuft weiter, aber es entsteht KEIN Uploader — `uploadImages()`
+      // und `openBrowseFileWindow()` bleiben dann folgenlos.
+      if (typeof options.uploadImage.upload !== 'function') {
+        console.warn(
+          'SupaMDE: uploadImage.enabled ist true, aber uploadImage.upload ist keine ' +
+            'Funktion — Bild-Upload bleibt aus.',
+        );
+      } else {
+        this.uploader = createImageUploader(this.codemirror, options.uploadImage, {
+          setStatus: (text) => this.statusbar?.setItem('upload-image', text),
+        });
+
+        // `setItem` findet ein Item nur, wenn es tatsächlich gerendert wurde —
+        // also nur, wenn sein Name in der `status`-Option steht (siehe
+        // ui/statusbar.ts). Fehlt es UND fehlt `onError`, verschwinden sämtliche
+        // Rückmeldungen des Uploads spurlos: kein Fortschritt, keine Fehler. Das
+        // ist eine gültige Konfiguration (ein Host kann das bewusst wollen), aber
+        // fast immer ein Versehen. Genau EINE Warnung — der Editor läuft weiter.
+        const statusZeigtUpload =
+          Array.isArray(options.status) && options.status.includes('upload-image');
+        if (!statusZeigtUpload && !options.uploadImage.onError) {
+          console.warn(
+            'SupaMDE: uploadImage ist aktiviert, aber weder das Statusbar-Item ' +
+              "'upload-image' (status-Option) noch uploadImage.onError ist gesetzt — " +
+              'Fortschritt und Fehler des Uploads bleiben unsichtbar.',
+          );
+        }
+
+        // Der Slot zeigt von Anfang an den Einladungstext, nicht erst nach dem
+        // ersten Upload — sonst bliebe er beim frisch geöffneten Editor leer.
+        this.statusbar?.setItem(
+          'upload-image',
+          resolveUploadTexts(options.uploadImage.texts).statusInit,
+        );
+      }
+    }
 
     // EINE Quelle für die Render-Optionen (Panel + markdown()-Fassade teilen sie).
     this.renderOpts = renderOptionsFrom(options);
@@ -172,6 +288,11 @@ export class SupaMDE {
     const state = this.codemirror.state;
     this.toolbar?.update(state);
     this.statusbar?.update(state, { docChanged: true, selectionSet: true });
+
+    // Async und bewusst nicht awaited — ein Konstruktor kann nicht warten. Ein
+    // eventueller Restore landet als normale Transaktion im Dokument, sobald
+    // der Speicher geantwortet hat.
+    void this.autosave.start();
   }
 
   value(): string;
@@ -266,8 +387,50 @@ export class SupaMDE {
     this.setEditorMode(this.editorMode === 'live' ? 'source' : 'live');
   }
 
+  /**
+   * Löscht den gespeicherten Entwurf UND stoppt den laufenden Debounce-Timer.
+   * Nach erfolgreichem Speichern im eigenen Backend zu rufen — sonst holt der
+   * Editor beim nächsten Öffnen den alten Entwurf zurück.
+   */
+  async clearAutosavedValue(): Promise<void> {
+    await this.autosave.clear();
+    this.statusbar?.setItem('autosave', '');
+  }
+
+  /** Ob Autosave aktiv ist (aktiviert, `key` gültig, Speicher verfügbar). */
+  isAutosaveActive(): boolean {
+    return this.autosave.isActive();
+  }
+
+  /**
+   * Startet den Upload für die übergebenen Dateien. Jede Datei wird einzeln
+   * validiert; ungültige werden über `onError` gemeldet, ohne die gültigen
+   * aufzuhalten. Ohne aktivierten Bild-Upload folgenlos.
+   */
+  uploadImages(files: FileList | File[]): void {
+    this.uploader?.uploadFiles(files);
+  }
+
+  /**
+   * Öffnet die Dateiauswahl. Der Input wird bei Bedarf erzeugt und nicht in der
+   * Toolbar geparkt — funktioniert deshalb auch bei `toolbar: false`.
+   */
+  openBrowseFileWindow(): void {
+    if (!this.uploader) return;
+    openFilePicker(this.uploader.accept(), (files) => this.uploader?.uploadFiles(files));
+  }
+
   /** Baut den Editor zurück und stellt die ursprüngliche Textarea wieder her. */
   toTextArea(): HTMLTextAreaElement {
+    // Nur den Timer abräumen: Der gespeicherte Wert bleibt erhalten — Rückbau
+    // des Editors ist kein Signal, den Entwurf zu verwerfen.
+    this.autosave.stop();
+    // Wie beim Autosave nur die Zeitgeber: Der Rückfall-Timer der Statusanzeige
+    // liefe sonst nach dem Rückbau weiter und schriebe gegen eine zerstörte
+    // Statusbar. Laufende Uploads bleiben unangetastet — ihre Promise gehört dem
+    // Host, und ihr Ergebnis findet über den verschwundenen Platzhalter ohnehin
+    // kein Ziel mehr.
+    this.uploader?.destroy();
     this.container.removeEventListener('keydown', this.onViewShortcuts);
     this.toolbar?.destroy();
     this.statusbar?.destroy();

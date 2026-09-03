@@ -141,6 +141,13 @@ export function continueList(view: EditorView): boolean {
   const prefix = continuationPrefix(stripped.prefix);
   if (prefix === null) return false;
 
+  // Steht der Cursor noch IM Präfixbereich (Einrückung oder Marker), gehört er
+  // logisch nicht zum Listeninhalt: eine Fortsetzung würde das Präfix vor sich
+  // selbst duplizieren (`* Hallo` + Enter an Position 0 → `\n* * Hallo`). Hier
+  // greift bewusst das Standard-Enter, das nur eine Zeile umbricht.
+  const contentFrom = line.from + stripped.indent.length + stripped.prefix.length;
+  if (sel.from < contentFrom) return false;
+
   if (stripped.rest.length === 0) {
     // Leere Listenzeile → Liste beenden: Einrückung UND Marker entfernen, die Zeile
     // selbst aber behalten. Der Cursor landet dadurch am Anfang derselben Zeile —
