@@ -73,9 +73,16 @@ class LinkHoverCursorPlugin implements PluginValue {
   }
 
   update(_update: ViewUpdate): void {
-    // Nach jeder View-Änderung (z.B. Bearbeitung) neu bewerten: derselbe
-    // Bildschirmpunkt kann jetzt auf anderen Dokumentinhalt zeigen.
-    this.updateState();
+    // Nach jeder View-Änderung (z.B. Bearbeitung, Cursorbewegung) neu bewerten:
+    // derselbe Bildschirmpunkt kann jetzt auf anderen Dokumentinhalt zeigen.
+    //
+    // Bewusst NICHT direkt `updateState()`: dessen `posAtCoords()` liest das
+    // Editor-Layout, und das ist während eines laufenden View-Updates verboten
+    // ("Reading the editor layout isn't allowed during an update"). CM6 fing das
+    // als "CodeMirror plugin crashed" ab, z.B. bei Cmd+Pfeil-links. In der
+    // Measure-Phase ist das Lesen erlaubt, also dorthin verschieben.
+    if (!this.modifierDown || !this.hasMousePosition) return;
+    this.view.requestMeasure({ read: () => this.updateState() });
   }
 
   destroy(): void {

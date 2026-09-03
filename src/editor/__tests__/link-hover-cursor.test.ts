@@ -101,6 +101,38 @@ describe('linkHoverCursorExtension — Klickhand bei Modifier+Hover über Link',
     expect(view.contentDOM.classList.contains(LINK_HOVER_CLASS)).toBe(false);
   });
 
+  it('liest das Layout NICHT waehrend eines View-Updates (CM6 verbietet das)', () => {
+    view = hoverView('[Text](https://example.com)');
+
+    // CM6 wirft in `posAtCoords()` "Reading the editor layout isn't allowed
+    // during an update", solange eine Transaktion verarbeitet wird — und
+    // schluckt den Fehler danach als "CodeMirror plugin crashed". Deshalb
+    // prueft dieser Test nicht auf eine Exception, sondern darauf, dass die
+    // Extension den Layout-Zugriff im Update-Zyklus gar nicht erst macht.
+    let inUpdate = false;
+    let readsDuringUpdate = 0;
+    view.posAtCoords = () => {
+      if (inUpdate) readsDuringUpdate += 1;
+      return 2;
+    };
+
+    // Modifier gedrueckt + bekannte Mausposition: nur so kommt die Extension
+    // ueberhaupt bis zum Layout-Zugriff (Kurzschluss in `updateState`).
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Meta', metaKey: true }));
+    moveMouse(view, 10, 10);
+    expect(view.contentDOM.classList.contains(LINK_HOVER_CLASS)).toBe(true);
+
+    // Eine Cursorbewegung wie bei Cmd+Pfeil-links loest ein View-Update aus.
+    inUpdate = true;
+    try {
+      view.dispatch({ selection: { anchor: 0 } });
+    } finally {
+      inUpdate = false;
+    }
+
+    expect(readsDuringUpdate).toBe(0);
+  });
+
   it('entfernt am Ende von destroy() alle window-Listener (kein Leak)', () => {
     const addSpy = vi.spyOn(window, 'addEventListener');
     const removeSpy = vi.spyOn(window, 'removeEventListener');
