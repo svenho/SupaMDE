@@ -3,11 +3,12 @@
 Ein moderner, einbettbarer Markdown-Editor auf Basis von **CodeMirror 6** — die
 modernisierte Neufassung von [easyMDE](https://github.com/Ionaru/easy-markdown-editor).
 
-> **Status:** In Entwicklung. Aktueller Meilenstein: **M5 — Autosave &
-> Bild-Upload** (automatisches Zwischenspeichern des Entwurfs, Bild-Upload
-> per Drag & Drop, Einfügen oder Dateiauswahl).
+> **Status:** In Entwicklung. Aktueller Meilenstein: **M6 — Browser-E2E-Tests**
+> (zweite Testebene in Chromium für Layout, Scroll-Geometrie und Bild-Upload).
 
 ## Installation
+
+> **Voraussetzung:** Node.js ≥ 22.13 (oder ≥ 24).
 
 Aktuell (direkt aus dem Repo):
 
@@ -1095,12 +1096,23 @@ dargestellt. Analog lassen sich alle anderen Tags anpassen — z. B. `t.strong`
 
 ```bash
 npm install
-npm run dev        # Vite-Dev-Server (example/)
-npm run test:run   # Vitest (einmalig)
-npm run build      # Library-Build (ESM-only) + Typdeklarationen
-npm run lint       # ESLint
-npm run typecheck  # TypeScript ohne Emit
+npm run dev          # Vite-Dev-Server (example/)
+npm run test:run     # Unit-Tests in jsdom (schnell, ohne Browser)
+npm run test:browser # E2E-Tests in Chromium (braucht Browser-Binary)
+npm run test:all     # beide Testebenen (braucht Browser-Binary)
+npm run build        # Library-Build (ESM-only) + Typdeklarationen
+npm run lint         # ESLint
+npm run typecheck    # TypeScript ohne Emit (src + test)
 ```
+
+Die Browser-Tests prüfen, was jsdom nicht kann — Layout, Scroll-Geometrie und
+die nativen Drag-&-Drop-APIs. Sie brauchen ein Chromium-Binary:
+
+```bash
+npx playwright install chromium
+```
+
+`npm test` läuft bewusst ohne Browser, damit der schnelle Lauf schnell bleibt.
 
 ## Lizenz
 

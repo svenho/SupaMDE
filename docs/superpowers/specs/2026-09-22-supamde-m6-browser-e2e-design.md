@@ -257,16 +257,52 @@ Unit-Suite — sonst zahlt die Browser-Ebene Laufzeit für Redundanz.
 - **Der rAF-Guard.** Kein Aufschaukeln zwischen den Panes, und ein echter
   Nutzer-Scroll unmittelbar nach einem programmatischen wird **nicht**
   verschluckt. Genau dafür existiert `scheduleGuardReset` in
-  [`src/ui/preview.ts:50-66`](../../../src/ui/preview.ts); in jsdom greift
-  mangels `requestAnimationFrame` nur der synchrone Fallback-Zweig, der echte
-  Pfad bleibt dort ungetestet.
+  [`src/ui/preview.ts:50-66`](../../../src/ui/preview.ts).
+
+  Korrektur: jsdom stellt `requestAnimationFrame` seit v16 bereit, der
+  synchrone Fallback in `preview.ts` greift dort also **nicht**. Was die
+  Browser-Ebene zusätzlich abdeckt, sind die echten Scroll-Höhen und das
+  echte, asynchrone Event-Timing — nicht ein anderer Code-Zweig.
+
+  **Bekannte Grenze:** Der Guard-Test der Browser-Suite prüft den
+  Guard-Mechanismus selbst **nicht** scharf. Per Mutationstest belegt:
+  Sowohl mit deaktiviertem rAF-Release (`scheduleGuardReset`) als auch mit
+  deaktiviertem Haupt-Guard (`syncingFrom`-Check) bleiben alle 13 Tests
+  grün. Der Test zeigt nur, dass zwei aufeinanderfolgende Scrolls ankommen.
+  Abgedeckt ist der Guard weiterhin auf Unit-Ebene, in
+  [`preview.test.ts:99-144`](../../../src/ui/__tests__/preview.test.ts)
+  (inklusive rAF-Flush).
 - Randfall `denom === 0` (Dokument kürzer als der Viewport): kein NaN, kein
   Sprung.
 
+**Korrektur: Fullscreen ist Voraussetzung, nicht nur Side-by-Side.** Eine
+Höhenbegrenzung existiert nur unter `.supamde-fullscreen`
+([`src/ui/fullscreen.css`](../../../src/ui/fullscreen.css));
+[`src/ui/preview.css`](../../../src/ui/preview.css) setzt keine. Ohne
+Fullscreen wächst der Editor mit dem Dokument mit — gemessen `scroller
+4820/4820`, `panel 4820/4820` (scrollHeight/clientHeight), also nichts
+scrollbar. Mit Fullscreen: `scroller 4820/804`, `panel 3648/804`, beide
+scrollbar. Das deckt sich mit der vorgesehenen Nutzung: Die Default-Toolbar
+bietet nur den kombinierten `preview-fullscreen`-Button (F8) an, der
+`togglePreviewFullScreen()` ([`src/index.ts:355-358`](../../../src/index.ts))
+ruft und Side-by-Side und Fullscreen gemeinsam schaltet. Reines
+Side-by-Side ohne Höhenbegrenzung ist ein mitwachsender Editor, in dem der
+Scroll-Sync strukturell nichts zu synchronisieren hat.
+
+**Korrektur: Geprüft wird der Anteil beider Seiten gegeneinander, nicht
+gegen einen festen Sollwert.** CodeMirror virtualisiert den Viewport;
+`scrollHeight` wächst während des Scrollens von 4820 auf 6692, weil bislang
+ungerenderte Zeilen erstmals vermessen werden. Ein vorab berechnetes
+Pixelziel trifft danach einen anderen Anteil (0.341 statt 0.5). Der Sync
+selbst ist davon nicht betroffen: `anteil(scroller)` = 0.34103 und
+`anteil(panel)` = 0.34107 stimmen praktisch exakt überein. Die Aussage des
+Scroll-Syncs ist „beide Seiten stehen gleich weit", nicht „der Editor steht
+bei exakt 50 %".
+
 ### 5.3 `test/browser/upload.test.ts` — Drag & Drop / Paste
 
-- **Dateiauswahl** über `userEvent.upload()`: Platzhalter erscheint und wird
-  nach aufgelöstem Upload durch die Bild-Syntax ersetzt.
+- **Upload-Orchestrierung** über `uploadImages(files)`: Platzhalter erscheint
+  und wird nach aufgelöstem Upload durch die Bild-Syntax ersetzt.
 - **Positionsstabilität.** Während der Upload läuft, wird *vor* der
   Platzhalterstelle Text eingefügt; die Ersetzung landet trotzdem an der
   richtigen Stelle. Das ist der Daseinszweck des `StateField` in
@@ -280,9 +316,13 @@ Unit-Suite — sonst zahlt die Browser-Ebene Laufzeit für Redundanz.
 Echtes Datei-Drop ist im Browser nur über einen konstruierten `DataTransfer` mit
 `dispatchEvent` erreichbar. Das bleibt deutlich näher an der Realität als jsdom
 (echte `File`- und `DataTransfer`-Implementierung statt Nachbau), ist aber kein
-nativer Betriebssystem-Drop. Der Dateiauswahl-Pfad über `userEvent.upload()` ist
-dagegen vollständig echt. Beide Pfade werden abgedeckt; die Grenze wird nicht
+nativer Betriebssystem-Drop. Beide Pfade werden abgedeckt; die Grenze wird nicht
 kaschiert.
+
+Ebenfalls außen vor bleibt der Systemdialog der Dateiauswahl: `openFilePicker()`
+erzeugt einen flüchtigen Input und ruft sofort `click()`, was im echten Browser
+den Dialog des Betriebssystems öffnet. Getestet wird stattdessen
+`uploadImages()` — dieselbe Orchestrierung, die der Picker am Ende ruft.
 
 ---
 
