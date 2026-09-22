@@ -47,7 +47,20 @@ describe('Scroll-Sync mit echten Höhen', () => {
 
     await scrolleAufAnteil(m.scroller, 0.5);
 
-    expect(anteil(panel)).toBeCloseTo(0.5, 1);
+    // Gegen die Gegenseite prüfen, nicht gegen einen vorab errechneten
+    // Sollwert von 0.5: CodeMirror virtualisiert den Viewport, seine
+    // scrollHeight ist anfangs nur geschätzt und wird beim Scrollen
+    // präzisiert (gemessen: 4820 vor dem Scroll, 6692 danach). scrolleAufAnteil()
+    // zielt auf die ALTE Höhe, wodurch derselbe Pixelwert hinterher einem
+    // anderen Anteil entspricht (hier 0.341 statt 0.5) — der Sync selbst
+    // ist davon nicht betroffen, er bildet weiterhin korrekt ab. Die
+    // Aussage des Scroll-Syncs ist "beide Seiten stehen gleich weit", nicht
+    // "der Editor steht bei exakt 50 %"; ein fester Sollwert würde also
+    // CodeMirrors Höhenschätzung mitprüfen statt den Sync. Zusätzlich zur
+    // Übereinstimmung absichern, dass überhaupt (spürbar) gescrollt wurde,
+    // sonst wäre 0 ≈ 0 trivial grün.
+    expect(anteil(m.scroller)).toBeGreaterThan(0.1);
+    expect(anteil(panel)).toBeCloseTo(anteil(m.scroller), 1);
   });
 
   it('zieht den Editor mit, wenn die Vorschau scrollt', async () => {
@@ -64,12 +77,27 @@ describe('Scroll-Sync mit echten Höhen', () => {
     // ginge der unmittelbar folgende echte Nutzer-Scroll als Echo verloren.
     const { m, panel } = await mitVorschau(langesDokument());
 
+    // Gegen die Gegenseite prüfen statt gegen feste Sollwerte (0.5/0.8):
+    // CodeMirrors virtualisierte scrollHeight wächst beim Scrollen, sobald
+    // bislang ungerenderte Zeilen erstmals vermessen werden (gemessen: 4820
+    // vor dem ersten Scroll, 6692 danach) — ein Pixelziel, das vor diesem
+    // Wachstum berechnet wurde, trifft danach einen anderen Anteil als
+    // geplant. Der Sync selbst bildet trotzdem korrekt ab (anteil(scroller)
+    // und anteil(panel) stimmen auf vier Nachkommastellen überein), daher
+    // ist der Vergleich beider Seiten gegeneinander die richtige Prüfung.
     await scrolleAufAnteil(m.scroller, 0.5);
-    expect(anteil(panel)).toBeCloseTo(0.5, 1);
+    const ersterAnteil = anteil(m.scroller);
+    expect(ersterAnteil).toBeGreaterThan(0.1);
+    expect(anteil(panel)).toBeCloseTo(ersterAnteil, 1);
 
-    // Direkt danach ein zweiter echter Scroll: er MUSS ankommen.
+    // Direkt danach ein zweiter echter Scroll: er MUSS ankommen — dafür
+    // muss der Editor spürbar WEITER stehen als nach dem ersten Scroll,
+    // sonst bliebe unentdeckt, dass der zweite Scroll als Echo verschluckt
+    // wurde (genau das, was scheduleGuardReset verhindern soll).
     await scrolleAufAnteil(m.scroller, 0.8);
-    expect(anteil(panel)).toBeCloseTo(0.8, 1);
+    const zweiterAnteil = anteil(m.scroller);
+    expect(zweiterAnteil).toBeGreaterThan(ersterAnteil);
+    expect(anteil(panel)).toBeCloseTo(zweiterAnteil, 1);
   });
 
   it('bleibt ruhig, wenn das Dokument kürzer als der Viewport ist', async () => {
