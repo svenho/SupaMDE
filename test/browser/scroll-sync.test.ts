@@ -11,10 +11,27 @@ import {
 
 const merke = registriereCleanup();
 
-/** Mount mit aktiver Vorschau und gesetztem Layout. */
+/**
+ * Mount mit aktiver Vorschau und gesetztem Layout.
+ *
+ * Zusätzlich zu setSideBySide(true) auch setFullScreen(true): Eine
+ * Höhenbegrenzung existiert nur unter .supamde-fullscreen
+ * (src/ui/fullscreen.css) — src/ui/preview.css setzt keine. Ohne Fullscreen
+ * wächst der Editor mit dem Dokument mit (height: auto), scrollHeight ===
+ * clientHeight bleibt, und es gibt strukturell nichts zu synchronisieren.
+ * Gemessen (langes Dokument, beide Seiten):
+ *   ohne Fullscreen: scroller 4820/4820, panel 4820/4820 -> nichts scrollbar
+ *   mit  Fullscreen: scroller 4820/804,  panel 3648/804  -> beide scrollbar
+ * Das deckt sich mit dem Produkt: die Default-Toolbar bietet für diese
+ * Ansicht nur den kombinierten preview-fullscreen-Button (F8) an, der
+ * togglePreviewFullScreen() (src/index.ts:355-358) ruft und Side-by-Side
+ * und Fullscreen gemeinsam schaltet. Reines Side-by-Side ohne Fullscreen
+ * ist keine Konstellation, die das Produkt so anbietet.
+ */
 async function mitVorschau(text: string) {
   const m = merke(await mountEditor({ initialValue: text }));
   m.editor.setSideBySide(true);
+  m.editor.setFullScreen(true);
   // Die Vorschau rendert per innerHTML — erst danach stehen ihre Höhen.
   await naechsterFrame();
   return { m, panel: panelOf(m) };
