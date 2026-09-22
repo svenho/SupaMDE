@@ -20,9 +20,9 @@ export interface Mounted {
  * EditorState/EditorView ohne Layout und ist auf die Unit-Ebene zugeschnitten.
  * Hier geht es um die vollständige Fassade samt Container, Toolbar und CSS.
  *
- * `async`, weil CodeMirror sich selbst asynchron einmisst und die Vorschau per
- * innerHTML rendert. Wer direkt nach dem Mount Geometrie misst, misst sonst
- * einen Zwischenstand — genau die Sorte Flakiness, die eine Browser-Suite
+ * `async`, weil CodeMirror sich asynchron einmisst (`measure()`-rAF zur
+ * Geometrie-Berechnung). Wer direkt nach dem Mount Geometrie misst, misst
+ * sonst einen Zwischenstand — genau die Sorte Flakiness, die eine Browser-Suite
  * unbrauchbar macht.
  */
 export async function mountEditor(options: SupaMDEOptions = {}): Promise<Mounted> {
@@ -124,18 +124,60 @@ export async function bisGilt(pruefung: () => boolean, label: string, ms = 2000)
  * das der zwischenzeitlich gelaufene rAF-Release schon gelöscht hat. Das
  * Ergebnis hinge dann an der Frame-Taktung.
  *
- * Ist das Ziel bereits erreicht, feuert kein Event — deshalb der Kurzschluss.
+ * Der Kurzschluss muss gegen den **geklemmten** Zielwert prüfen, nicht gegen
+ * den rohen: Fordert man ein Ziel über dem Maximum (z.B. 6000), aber scrollTop
+ * steht bereits geklemmt am Maximum (z.B. 150), würde die Zuweisung die Wert
+ * nicht ändern, das scroll-Event feuert nicht, und die Funktion hängt. Deshalb
+ * vergleichen wir gegen `Math.min(ziel, scrollHeight - clientHeight)`.
  */
 export async function scrolleUndWarte(el: HTMLElement, ziel: number): Promise<void> {
-  const gerundet = Math.round(ziel);
-  if (Math.round(el.scrollTop) === gerundet) {
+  const max = el.scrollHeight - el.clientHeight;
+  const geklemmtZiel = Math.round(Math.min(Math.max(ziel, 0), max));
+  const istAktuell = Math.round(el.scrollTop) === geklemmtZiel;
+
+  if (istAktuell) {
     await naechsterFrame();
     return;
   }
-  const gefeuert = new Promise<void>((resolve) => {
-    el.addEventListener('scroll', () => resolve(), { once: true });
+
+  let listener: (() => void) | null = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const gefeuert = new Promise<void>((resolve, reject) => {
+    const handleScroll = (): void => {
+      if (listener) {
+        el.removeEventListener('scroll', listener);
+        listener = null;
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      resolve();
+    };
+    listener = handleScroll;
+    el.addEventListener('scroll', listener, { once: true });
+
+    // Timeout-Schutz: Wenn ein Event nach korrektem Kurzschluss ausbleibt,
+    // deutet das auf ein echtes Problem hin (Sub-Pixel-Rundung, Browser-Bug).
+    // Statt unbegrenzt zu warten (und bei CI-Fehlschlag wertlos zu sein), werfen
+    // wir eine aussagekräftige Fehlermeldung.
+    timeoutId = setTimeout(() => {
+      if (listener) {
+        el.removeEventListener('scroll', listener);
+        listener = null;
+      }
+      timeoutId = null;
+      reject(
+        new Error(
+          `scroll-Event feuerte nicht nach ${2000} ms: ` +
+          `Ziel=${ziel}, scrollTop=${el.scrollTop}, max=${max}, geklemmtZiel=${geklemmtZiel}`,
+        ),
+      );
+    }, 2000);
   });
-  el.scrollTop = gerundet;
+
+  el.scrollTop = geklemmtZiel;
   await gefeuert;
   // Ein Frame extra: der Sync-Handler schreibt die Gegenseite und gibt erst im
   // nächsten Frame den Guard frei (scheduleGuardReset).
