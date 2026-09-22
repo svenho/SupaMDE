@@ -51,7 +51,12 @@ export async function mountEditor(options: SupaMDEOptions = {}): Promise<Mounted
   };
 
   await naechsterFrame();
-  return { editor, container: container as HTMLElement, scroller: editor.codemirror.scrollDOM, cleanup };
+  return {
+    editor,
+    container: container as HTMLElement,
+    scroller: editor.codemirror.scrollDOM,
+    cleanup,
+  };
 }
 
 /**
@@ -115,6 +120,9 @@ export async function bisGilt(pruefung: () => boolean, label: string, ms = 2000)
   throw new Error(`Timeout nach ${ms} ms: ${label}`);
 }
 
+/** Frist, nach der ein ausbleibendes scroll-Event als Fehler gilt (wie `bisGilt`). */
+const SCROLL_TIMEOUT_MS = 2000;
+
 /**
  * Setzt `scrollTop` und wartet das NATIVE scroll-Event ab, danach einen Frame.
  *
@@ -131,7 +139,11 @@ export async function bisGilt(pruefung: () => boolean, label: string, ms = 2000)
  * vergleichen wir gegen `Math.min(ziel, scrollHeight - clientHeight)`.
  */
 export async function scrolleUndWarte(el: HTMLElement, ziel: number): Promise<void> {
-  const max = el.scrollHeight - el.clientHeight;
+  // `max` kann nie negativ werden — der Browser garantiert scrollHeight >= clientHeight
+  // (in Chromium für alle geprüften Geometrien verifiziert). Das äußere Math.max hält
+  // die Klemmung trotzdem im gültigen Bereich, falls diese Annahme je fällt: ein negatives
+  // Ziel würde der Browser auf 0 klemmen, ohne ein Event zu feuern.
+  const max = Math.max(el.scrollHeight - el.clientHeight, 0);
   const geklemmtZiel = Math.round(Math.min(Math.max(ziel, 0), max));
   const istAktuell = Math.round(el.scrollTop) === geklemmtZiel;
 
@@ -170,11 +182,11 @@ export async function scrolleUndWarte(el: HTMLElement, ziel: number): Promise<vo
       timeoutId = null;
       reject(
         new Error(
-          `scroll-Event feuerte nicht nach ${2000} ms: ` +
-          `Ziel=${ziel}, scrollTop=${el.scrollTop}, max=${max}, geklemmtZiel=${geklemmtZiel}`,
+          `scroll-Event feuerte nicht nach ${SCROLL_TIMEOUT_MS} ms: ` +
+            `Ziel=${ziel}, scrollTop=${el.scrollTop}, max=${max}, geklemmtZiel=${geklemmtZiel}`,
         ),
       );
-    }, 2000);
+    }, SCROLL_TIMEOUT_MS);
   });
 
   el.scrollTop = geklemmtZiel;
