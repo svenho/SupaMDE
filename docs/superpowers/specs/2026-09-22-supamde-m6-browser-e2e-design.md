@@ -264,14 +264,30 @@ Unit-Suite — sonst zahlt die Browser-Ebene Laufzeit für Redundanz.
   Browser-Ebene zusätzlich abdeckt, sind die echten Scroll-Höhen und das
   echte, asynchrone Event-Timing — nicht ein anderer Code-Zweig.
 
-  **Bekannte Grenze:** Der Guard-Test der Browser-Suite prüft den
-  Guard-Mechanismus selbst **nicht** scharf. Per Mutationstest belegt:
-  Sowohl mit deaktiviertem rAF-Release (`scheduleGuardReset`) als auch mit
-  deaktiviertem Haupt-Guard (`syncingFrom`-Check) bleiben alle 13 Tests
-  grün. Der Test zeigt nur, dass zwei aufeinanderfolgende Scrolls ankommen.
-  Abgedeckt ist der Guard weiterhin auf Unit-Ebene, in
+  **Bekannte Grenze — der Feedback-Guard ist auf keiner Ebene abgedeckt.**
+  Der Guard-Test der Browser-Suite prüft den Guard-Mechanismus selbst
+  **nicht**: Per Mutationstest belegt bleiben alle 13 Browser-Tests grün,
+  sowohl mit deaktiviertem rAF-Release (`scheduleGuardReset`) als auch mit
+  entferntem `syncingFrom`-Check. Der Test zeigt nur, dass zwei
+  aufeinanderfolgende Scrolls ankommen.
+
+  Auf Unit-Ebene gilt dasselbe nur zur Hälfte, ebenfalls per Mutationstest
+  belegt: Ein deaktivierter rAF-Release macht
   [`preview.test.ts:99-144`](../../../src/ui/__tests__/preview.test.ts)
-  (inklusive rAF-Flush).
+  rot (1 von 568) — der Release **ist** dort abgedeckt. Ein **entfernter
+  `syncingFrom`-Check** lässt dagegen alle 568 Unit-Tests grün.
+
+  Die Ursache ist strukturell: In jsdom feuert eine `scrollTop`-Zuweisung
+  kein scroll-Event; die Unit-Tests dispatchen jedes Event von Hand. Die
+  Rückkopplung, die der Guard verhindern soll, kann dort also gar nicht
+  erst entstehen.
+
+  Die Lücke ist damit nicht durch M6 entstanden, sondern durch M6 erstmals
+  sichtbar geworden: Wer den `syncingFrom`-Check bei einem Refactoring
+  entfernt, bekommt von keiner der 581 Tests eine Warnung — im echten
+  Browser entstünde eine Scroll-Rückkopplung im Side-by-Side-Fullscreen.
+  Ein scharfer Test dafür bräuchte zwei Scrollziele, die auf denselben
+  gerundeten Pixelwert fallen; das ist bewusst **nicht** Teil von M6.
 - Randfall `denom === 0` (Dokument kürzer als der Viewport): kein NaN, kein
   Sprung.
 
