@@ -32,3 +32,5 @@ pnpm-debug.log*
 
 # Mein privates Nexxt-File
 NEXXT.md
+# Vitest-Browser-Artefakte (Fehlschlag-Screenshots)
+.vitest/
