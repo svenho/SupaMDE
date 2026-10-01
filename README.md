@@ -10,58 +10,43 @@ modernisierte Neufassung von [easyMDE](https://github.com/Ionaru/easy-markdown-e
 
 > **Voraussetzung:** Node.js ≥ 22.13 (oder ≥ 24).
 
-Aktuell (direkt aus dem Repo):
-
-```bash
-npm install git+https://github.com/svenho/SupaMDE.git
-```
-
-Später als npm-Paket:
-
 ```bash
 npm install supamde
 ```
 
 ### Aktualisieren
 
-Denselben Befehl erneut ausführen:
+```bash
+npm update supamde
+```
+
+`npm update` bleibt innerhalb des Semver-Ranges aus der `package.json`
+(standardmäßig `^0.1.0`). Solange SupaMDE in der `0.x`-Reihe ist, kann jedes
+Minor-Release Breaking Changes enthalten — auf eine neue Minor-Version (z. B.
+`0.2.0`) wechselt erst `npm install supamde@latest`.
+
+### Alternative: direkt aus dem Git-Repo
+
+Für unveröffentlichte Stände lässt sich SupaMDE auch direkt aus dem Repo
+installieren — wahlweise vom Default-Branch oder von einem Tag:
 
 ```bash
+# aktueller Stand des Default-Branches
 npm install git+https://github.com/svenho/SupaMDE.git
-```
 
-Die URL enthält keine feste Referenz, daher löst npm sie auf den aktuellen
-HEAD des Default-Branches auf und schreibt den Commit-Hash in die
-`package-lock.json`. `npm update supamde` hilft hier **nicht** — es fehlt ein
-Semver-Range, an dem npm sich orientieren könnte. Falls npm einen alten Stand
-aus dem Cache zieht, erzwingt `--force` den erneuten Abgleich:
-
-```bash
-npm install git+https://github.com/svenho/SupaMDE.git --force
-```
-
-**Auf einen festen Stand installieren.** Sobald Releases getaggt sind, wird
-der Install reproduzierbar:
-
-```bash
 # fester Tag
-npm install git+https://github.com/svenho/SupaMDE.git#v0.1.1
-
-# Semver-Range über Tags — hier funktioniert dann auch `npm update`
-npm install git+https://github.com/svenho/SupaMDE.git#semver:^0.1.0
+npm install git+https://github.com/svenho/SupaMDE.git#v0.1.0
 ```
 
-Bei der `semver:`-Variante landet ein echter Range in der `package.json`, und
-`npm update supamde` holt neue passende Tags automatisch.
-
-> **Hinweis:** Das Repo hat derzeit noch **keine Tags** — die beiden Varianten
-> oben greifen erst, wenn welche gepusht sind (`git tag v0.1.1 && git push --tags`).
+Ohne Tag löst npm die URL auf den aktuellen HEAD auf und schreibt den
+Commit-Hash in die `package-lock.json`; `npm update` hilft dann **nicht**,
+neu holt erst ein erneutes `npm install … --force`.
 
 **Was beim Git-Install passiert:** `dist/` ist nicht eingecheckt, sondern wird
 bei der Installation gebaut — das `prepare`-Script stößt `npm run build` an.
 npm klont dazu das Repo und installiert die Build-Abhängigkeiten (Vite,
-TypeScript & Co.). Der Install dauert damit spürbar länger als bei einem
-fertigen npm-Paket; der Build selbst liegt im Bereich weniger Sekunden.
+TypeScript & Co.). Der Install dauert damit spürbar länger als beim
+veröffentlichten npm-Paket; der Build selbst liegt im Bereich weniger Sekunden.
 
 > **Wichtig für Build-Abhängigkeiten:** Alles, was der Build zur Bauzeit
 > auflösen muss und nicht in `build.rollupOptions.external` steht, gehört in

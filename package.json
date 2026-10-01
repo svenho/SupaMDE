@@ -1,10 +1,18 @@
 {
   "name": "supamde",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "description": "Ein moderner, einbettbarer Markdown-Editor auf Basis von CodeMirror 6 — die modernisierte Neufassung von easyMDE.",
   "type": "module",
   "license": "MIT",
   "author": "Sven Deginther",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svenho/SupaMDE.git"
+  },
+  "homepage": "https://github.com/svenho/SupaMDE#readme",
+  "bugs": {
+    "url": "https://github.com/svenho/SupaMDE/issues"
+  },
   "engines": {
     "node": "^22.13.0 || >=24"
   },
@@ -39,7 +47,8 @@
     "test:all": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run test:all"
   },
   "devDependencies": {
     "@codemirror/commands": "^6.10.4",
