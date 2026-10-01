@@ -50,10 +50,12 @@ veröffentlichten npm-Paket; der Build selbst liegt im Bereich weniger Sekunden.
 
 > **Wichtig für Build-Abhängigkeiten:** Alles, was der Build zur Bauzeit
 > auflösen muss und nicht in `build.rollupOptions.external` steht, gehört in
-> `devDependencies` — auch dann, wenn es zusätzlich Peer-Dependency ist
-> (Beispiel: `lucide`, dessen Icons ins Bundle wandern). npm installiert die
-> Peers des Wurzelprojekts beim Git-Install nicht mit, sodass `prepare` sonst
-> mit „failed to resolve import" abbricht.
+> `devDependencies` (Beispiel: `lucide`, dessen Icons ins Bundle wandern und
+> das deshalb weder Dependency noch Peer-Dependency ist). Beim Git-Install
+> installiert npm die `devDependencies` für `prepare` mit; fehlt dort etwas,
+> bricht der Build mit „failed to resolve import" ab. Auch Peer-Dependencies,
+> die der Build auflöst (z. B. für Typen), gehören deshalb zusätzlich in
+> `devDependencies`.
 
 ### CodeMirror 6 als Peer Dependencies
 
