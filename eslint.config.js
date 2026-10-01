@@ -12,10 +12,11 @@ export default tseslint.config(
     files: ['**/*.ts'],
     languageOptions: {
       parserOptions: {
-        projectService: {
-          allowDefaultProject: ['*.config.js', '*.config.ts'],
-          defaultProject: './tsconfig.node.json',
-        },
+        // Kein projectService: Dateien unter test/ werden von ihm nicht
+        // erfasst (allowDefaultProject deckt nur *.config.*), und ein
+        // zusätzliches tsconfig zieht er nicht von selbst heran. Das
+        // explizite Array nennt beide Projekte, die es im Repo gibt.
+        project: ['./tsconfig.test.json', './tsconfig.node.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },
