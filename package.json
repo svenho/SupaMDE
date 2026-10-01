@@ -1,7 +1,7 @@
 {
   "name": "supamde",
   "version": "0.1.0",
-  "description": "Ein moderner, einbettbarer Markdown-Editor auf Basis von CodeMirror 6 — die modernisierte Neufassung von easyMDE.",
+  "description": "A modern, embeddable Markdown editor built on CodeMirror 6 — a modernized rewrite of easyMDE.",
   "type": "module",
   "license": "MIT",
   "author": "Sven Deginther",
