@@ -3,8 +3,8 @@
 Ein moderner, einbettbarer Markdown-Editor auf Basis von **CodeMirror 6** — die
 modernisierte Neufassung von [easyMDE](https://github.com/Ionaru/easy-markdown-editor).
 
-> **Status:** In Entwicklung. Aktueller Meilenstein: **M6 — Browser-E2E-Tests**
-> (zweite Testebene in Chromium für Layout, Scroll-Geometrie und Bild-Upload).
+> **Status:** Erste öffentliche Version (**0.1.x**). Bis 1.0 kann sich die API
+> noch ändern — Breaking Changes kommen mit einer neuen Minor-Version.
 
 ## Installation
 
