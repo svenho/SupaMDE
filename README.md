@@ -1000,6 +1000,43 @@ autosave status (`en`: `Saved: 02:05 PM`, `de`: `Gespeichert: 14:05`). An
 invalid code logs one warning and falls back to `'en'` for both; the texts stay
 as given.
 
+### Locale from a JSON file
+
+A locale is plain data, so it can live in a JSON file that your bundler
+(Vite, webpack, esbuild, …) imports. Abbreviated here — the file needs all keys:
+
+```json
+{
+  "code": "fr",
+  "texts": {
+    "toolbar.bold": "Gras",
+    "status.lines": { "one": "{count} ligne", "other": "{count} lignes" }
+  }
+}
+```
+
+```js
+import SupaMDE from 'supamde';
+import fr from './locales/fr.json';
+
+new SupaMDE({ element, locale: fr });
+```
+
+A file with only some keys (and no `code`) works as an override file via
+`texts`:
+
+```js
+import overrides from './locales/overrides.json';
+
+new SupaMDE({ element, locale: de, texts: overrides });
+```
+
+Copy the full key list from [`en.ts`](https://github.com/svenho/SupaMDE/blob/main/src/i18n/en.ts)
+as a template. In TypeScript, enable `"resolveJsonModule": true`; the imported
+file is then checked against `Locale`, so a missing key is reported at compile
+time. The file is read at build time and passed as an object — SupaMDE does not
+load locale files from a URL at runtime.
+
 ## API
 
 | Method                           | Description                                          |
