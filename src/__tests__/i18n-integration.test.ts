@@ -154,3 +154,64 @@ describe('i18n: Tabellenvorlage und mehrere Instanzen', () => {
     deutsch.toTextArea();
   });
 });
+
+describe('i18n: Bild-Upload', () => {
+  const upload = async (): Promise<string> => 'https://cdn.test/a.png';
+
+  function einladungstext(extra: Partial<SupaMDEOptions> = {}): string | null {
+    const editor = new SupaMDE({
+      element: textarea,
+      status: ['upload-image'],
+      uploadImage: { enabled: true, upload },
+      ...extra,
+    });
+    const text = document.querySelector('.supamde-status-upload-image')!.textContent;
+    editor.toTextArea();
+    return text;
+  }
+
+  it('ist per Default englisch', () => {
+    expect(einladungstext()).toBe('Drag an image here or paste it');
+  });
+
+  it('ist mit locale: de deutsch', () => {
+    expect(einladungstext({ locale: de })).toBe('Bild hierher ziehen oder einfügen');
+  });
+
+  it('nimmt upload.*-Schlüssel aus texts', () => {
+    expect(einladungstext({ texts: { 'upload.statusInit': 'Drop images here' } })).toBe(
+      'Drop images here',
+    );
+  });
+
+  it('Statusmeldungen eines Uploads folgen der Locale', async () => {
+    const editor = new SupaMDE({
+      element: textarea,
+      status: ['upload-image'],
+      locale: de,
+      uploadImage: { enabled: true, upload },
+    });
+    const slot = document.querySelector('.supamde-status-upload-image')!;
+    editor.uploadImages([new File([new Uint8Array(10)], 'a.png', { type: 'image/png' })]);
+    expect(slot.textContent).toBe('Lade a.png hoch…');
+    await vi.waitFor(() => expect(slot.textContent).toBe('a.png hochgeladen'));
+    editor.toTextArea();
+  });
+
+  it('uploadImage.texts gibt es nicht mehr', () => {
+    const editor = new SupaMDE({
+      element: textarea,
+      status: ['upload-image'],
+      uploadImage: {
+        enabled: true,
+        upload,
+        // @ts-expect-error — ersatzlos entfernt, stattdessen `texts` mit upload.*-Schlüsseln
+        texts: { statusInit: 'alt' },
+      },
+    });
+    expect(document.querySelector('.supamde-status-upload-image')!.textContent).toBe(
+      'Drag an image here or paste it',
+    );
+    editor.toTextArea();
+  });
+});

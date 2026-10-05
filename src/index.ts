@@ -22,11 +22,7 @@ import { markdownToHtml, renderOptionsFrom, type RenderOptions } from './markdow
 import type { SupaLike } from './ui/actions';
 import { livePreviewCompartment, livePreviewFor, type EditorMode } from './livepreview';
 import { createAutosave, type Autosave } from './features/autosave';
-import {
-  createImageUploader,
-  resolveUploadTexts,
-  type ImageUploader,
-} from './features/image-upload';
+import { createImageUploader, type ImageUploader } from './features/image-upload';
 import { uploadPlaceholderField } from './features/upload-placeholder';
 import { uploadDropPasteExtension, openFilePicker } from './features/upload-dom';
 import { createTranslator, type Translator } from './i18n/translator';
@@ -37,7 +33,7 @@ export type { KeyBinding } from '@codemirror/view';
 export type { EditorMode } from './livepreview';
 export type { SupaStorage } from './features/storage';
 export type { AutosaveOptions } from './features/autosave';
-export type { UploadImageOptions, UploadError, UploadTexts } from './features/image-upload';
+export type { UploadImageOptions, UploadError } from './features/image-upload';
 export type { Locale, LocaleTexts, PluralText } from './i18n/types';
 
 /**
@@ -200,9 +196,12 @@ export class SupaMDE {
             'Funktion — Bild-Upload bleibt aus.',
         );
       } else {
-        this.uploader = createImageUploader(this.codemirror, options.uploadImage, {
-          setStatus: (text) => this.statusbar?.setItem('upload-image', text),
-        });
+        this.uploader = createImageUploader(
+          this.codemirror,
+          options.uploadImage,
+          { setStatus: (text) => this.statusbar?.setItem('upload-image', text) },
+          this.translator,
+        );
 
         // `setItem` findet ein Item nur, wenn es tatsächlich gerendert wurde —
         // also nur, wenn sein Name in der `status`-Option steht (siehe
@@ -222,10 +221,7 @@ export class SupaMDE {
 
         // Der Slot zeigt von Anfang an den Einladungstext, nicht erst nach dem
         // ersten Upload — sonst bliebe er beim frisch geöffneten Editor leer.
-        this.statusbar?.setItem(
-          'upload-image',
-          resolveUploadTexts(options.uploadImage.texts).statusInit,
-        );
+        this.statusbar?.setItem('upload-image', this.translator.t('upload.statusInit'));
       }
     }
 
