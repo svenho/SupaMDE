@@ -30,6 +30,7 @@ describe('resolveToolbar', () => {
     const items = resolveToolbar(['bold', 'gibt-es-nicht', 'italic']);
     expect(items!.filter((i) => i.kind === 'builtin')).toHaveLength(2);
     expect(warn).toHaveBeenCalled();
+    expect(warn.mock.calls[0]![0]).toMatch(/^SupaMDE: unknown toolbar action ".*" is skipped\.$/);
     warn.mockRestore();
   });
 

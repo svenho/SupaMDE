@@ -59,9 +59,7 @@ export type ResolvedToolbarItem =
  * `false` → null (keine Toolbar). `undefined` → DEFAULT_TOOLBAR.
  * Unbekannte Built-in-Strings werden mit Warnung übersprungen.
  */
-export function resolveToolbar(
-  option: ToolbarOption | undefined,
-): ResolvedToolbarItem[] | null {
+export function resolveToolbar(option: ToolbarOption | undefined): ResolvedToolbarItem[] | null {
   if (option === false) return null;
   const items = option ?? DEFAULT_TOOLBAR;
 
@@ -74,7 +72,7 @@ export function resolveToolbar(
       }
       const action = getAction(entry);
       if (!action) {
-        console.warn(`SupaMDE: unbekannte Toolbar-Aktion "${entry}" wird übersprungen.`);
+        console.warn(`SupaMDE: unknown toolbar action "${entry}" is skipped.`);
         continue;
       }
       resolved.push({ kind: 'builtin', name: entry, action });

@@ -85,7 +85,7 @@ export interface ResolvedOptions {
 function resolveEditorMode(mode: EditorMode | undefined): EditorMode {
   if (mode === undefined) return 'source';
   if (EDITOR_MODES.includes(mode)) return mode;
-  console.warn(`SupaMDE: unbekannter editorMode "${String(mode)}" — nutze "source".`);
+  console.warn(`SupaMDE: unknown editorMode "${String(mode)}" — using "source".`);
   return 'source';
 }
 

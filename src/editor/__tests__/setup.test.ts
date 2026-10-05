@@ -10,12 +10,14 @@ function makeTextarea(value = '', attach = true): HTMLTextAreaElement {
 
 describe('editorFromTextArea', () => {
   it('wirft bei fehlendem element', () => {
-    expect(() => editorFromTextArea({})).toThrow(/element/i);
+    expect(() => editorFromTextArea({})).toThrow('SupaMDE: `element` is required (a <textarea>).');
   });
 
   it('wirft bei nicht-Textarea-element', () => {
     const div = document.createElement('div');
-    expect(() => editorFromTextArea({ element: div })).toThrow(/textarea/i);
+    expect(() => editorFromTextArea({ element: div })).toThrow(
+      'SupaMDE: `element` must be a <textarea>.',
+    );
   });
 
   it('initialisiert das Doc aus dem Textarea-Wert', () => {

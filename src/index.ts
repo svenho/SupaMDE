@@ -192,8 +192,8 @@ export class SupaMDE {
       // und `openBrowseFileWindow()` bleiben dann folgenlos.
       if (typeof options.uploadImage.upload !== 'function') {
         console.warn(
-          'SupaMDE: uploadImage.enabled ist true, aber uploadImage.upload ist keine ' +
-            'Funktion — Bild-Upload bleibt aus.',
+          'SupaMDE: uploadImage.enabled is true, but uploadImage.upload is not a ' +
+            'function — image upload stays off.',
         );
       } else {
         this.uploader = createImageUploader(
@@ -213,9 +213,9 @@ export class SupaMDE {
           Array.isArray(options.status) && options.status.includes('upload-image');
         if (!statusZeigtUpload && !options.uploadImage.onError) {
           console.warn(
-            'SupaMDE: uploadImage ist aktiviert, aber weder das Statusbar-Item ' +
-              "'upload-image' (status-Option) noch uploadImage.onError ist gesetzt — " +
-              'Fortschritt und Fehler des Uploads bleiben unsichtbar.',
+            "SupaMDE: uploadImage is enabled, but neither the status bar item 'upload-image' " +
+              '(status option) nor uploadImage.onError is set — upload progress and errors ' +
+              'stay invisible.',
           );
         }
 

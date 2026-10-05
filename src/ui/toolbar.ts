@@ -155,10 +155,10 @@ export function createToolbar(
         // view-Buttons dauerhaft und fehlerfrei "totlaufen" lässt.
         supaLikeWarned = true;
         console.warn(
-          'SupaMDE: Toolbar enthält view-Buttons (preview-fullscreen/side-by-side/' +
-            'fullscreen/editor-mode), aber die übergebene Editor-Instanz erfüllt ' +
-            'SupaLike nicht (toggleSideBySide/toggleFullScreen/isSideBySideActive/' +
-            'isFullscreenActive) — Aktiv-Zustand dieser Buttons wird nicht aktualisiert.',
+          'SupaMDE: toolbar contains view buttons (preview-fullscreen/side-by-side/' +
+            'fullscreen/editor-mode), but the given editor instance does not satisfy ' +
+            'SupaLike (toggleSideBySide/toggleFullScreen/isSideBySideActive/' +
+            'isFullscreenActive) — the active state of these buttons is not updated.',
         );
       }
     }
