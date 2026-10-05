@@ -1,0 +1,51 @@
+import type { Locale } from './types';
+
+/** Deutsch — die bis zur Internationalisierung fest verdrahteten Texte. Reine Daten. */
+export const de: Locale = {
+  code: 'de',
+  texts: {
+    'toolbar.bold': 'Fett',
+    'toolbar.italic': 'Kursiv',
+    'toolbar.strikethrough': 'Durchgestrichen',
+    'toolbar.code': 'Inline-Code',
+    'toolbar.heading-smaller': 'Überschrift kleiner',
+    'toolbar.heading-bigger': 'Überschrift größer',
+    'toolbar.heading-1': 'Überschrift 1',
+    'toolbar.heading-2': 'Überschrift 2',
+    'toolbar.heading-3': 'Überschrift 3',
+    'toolbar.heading-4': 'Überschrift 4',
+    'toolbar.heading-5': 'Überschrift 5',
+    'toolbar.heading-6': 'Überschrift 6',
+    'toolbar.quote': 'Blockzitat',
+    'toolbar.code-block': 'Codeblock',
+    'toolbar.horizontal-rule': 'Trennlinie',
+    'toolbar.clean-block': 'Formatierung entfernen',
+    'toolbar.unordered-list': 'Liste',
+    'toolbar.ordered-list': 'Nummerierte Liste',
+    'toolbar.check-list': 'Checkliste',
+    'toolbar.link': 'Link',
+    'toolbar.image': 'Bild',
+    'toolbar.table': 'Tabelle',
+    'toolbar.undo': 'Rückgängig',
+    'toolbar.redo': 'Wiederholen',
+    'toolbar.side-by-side': 'Nebeneinander-Vorschau',
+    'toolbar.fullscreen': 'Vollbild',
+    'toolbar.preview-fullscreen': 'Vorschau im Vollbild',
+    'toolbar.editor-mode': 'Live-Vorschau',
+    'toolbar.upload-image': 'Bild hochladen',
+
+    'status.lines': { one: '{count} Zeile', other: '{count} Zeilen' },
+    'status.words': { one: '{count} Wort', other: '{count} Wörter' },
+    'status.autosaved': 'Gespeichert: {time}',
+
+    'upload.placeholder': '![Uploading {name}…]()',
+    'upload.statusInit': 'Bild hierher ziehen oder einfügen',
+    'upload.statusUploading': 'Lade {name} hoch…',
+    'upload.statusDone': '{name} hochgeladen',
+    'upload.errorTooLarge': '{name} ist zu groß (max. {maxSize}).',
+    'upload.errorType': '{name} ist kein unterstütztes Bildformat.',
+    'upload.errorFailed': 'Upload von {name} fehlgeschlagen.',
+
+    'table.column': 'Spalte {n}',
+  },
+};
