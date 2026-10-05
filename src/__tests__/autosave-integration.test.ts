@@ -45,11 +45,10 @@ describe('SupaMDE — Autosave-Verdrahtung', () => {
     editor.setValue('x');
     await vi.advanceTimersByTimeAsync(1000);
     const slot = document.querySelector('.supamde-status-autosave')!;
-    // Die Locale der Testumgebung ist `en-US`, dort formatiert `Intl` als
-    // `02:03 PM`. Das ist gewollt — SupaMDE erzwingt kein 24-Stunden-Format,
-    // sondern folgt der Umgebung. Der Test prüft deshalb Präfix und Zeitanteil,
-    // nicht den Stundenzyklus.
-    expect(slot.textContent).toMatch(/^Gespeichert: \d{1,2}:\d{2}( (AM|PM))?$/);
+    // Ohne locale formatiert SupaMDE die Uhrzeit mit dem Code 'en' (12-Stunden-
+    // Format). `\s` statt Leerzeichen: neuere ICU-Versionen setzen vor AM/PM ein
+    // schmales geschütztes Leerzeichen (U+202F).
+    expect(slot.textContent).toMatch(/^Saved: \d{2}:\d{2}\s(AM|PM)$/);
     editor.toTextArea();
   });
 

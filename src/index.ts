@@ -29,6 +29,8 @@ import {
 } from './features/image-upload';
 import { uploadPlaceholderField } from './features/upload-placeholder';
 import { uploadDropPasteExtension, openFilePicker } from './features/upload-dom';
+import { createTranslator, type Translator } from './i18n/translator';
+import { translatorFacet } from './i18n/facet';
 
 export type { SupaMDEOptions } from './options';
 export type { KeyBinding } from '@codemirror/view';
@@ -36,6 +38,7 @@ export type { EditorMode } from './livepreview';
 export type { SupaStorage } from './features/storage';
 export type { AutosaveOptions } from './features/autosave';
 export type { UploadImageOptions, UploadError, UploadTexts } from './features/image-upload';
+export type { Locale, LocaleTexts, PluralText } from './i18n/types';
 
 /**
  * SupaMDE — moderner Markdown-Editor auf Basis von CodeMirror 6.
@@ -88,6 +91,13 @@ export class SupaMDE {
    * Muster wie bei Fullscreen und Side-by-Side.
    */
   private editorMode: EditorMode;
+  /**
+   * Die UI-Texte dieser Instanz — EINMAL im Konstruktor aus `locale`/`texts`
+   * erzeugt und an Toolbar, Statusbar, Uploader und Autosave weitergereicht;
+   * Commands lesen ihn über `translatorFacet` aus dem State. Kein Sprachwechsel
+   * zur Laufzeit.
+   */
+  private readonly translator: Translator;
 
   constructor(options: SupaMDEOptions = {}) {
     this.options = options;
@@ -95,6 +105,9 @@ export class SupaMDE {
     // VOR dem DOM-Aufbau: sonst hinge der Editor kurz ungestylt in der Seite.
     // Idempotent — mehrere Instanzen teilen sich EIN <style>-Tag.
     if (options.injectStyles !== false) injectStyles();
+
+    // Vor allem anderen: Toolbar, Statusbar, Uploader und die Facet brauchen ihn.
+    this.translator = createTranslator(options.locale, options.texts);
 
     // Der EINE Sink: speist Toolbar-Aktiv-Zustand, Statusbar UND Vorschau-Panel.
     const sink = {
@@ -119,7 +132,12 @@ export class SupaMDE {
         ]
       : [];
 
-    this.handle = editorFromTextArea(options, sink, uploadExtensions);
+    this.handle = editorFromTextArea(options, sink, [
+      // Über extraExtensions statt in buildExtensions: der Translator entsteht
+      // hier in der Fassade, buildExtensions sieht nur ResolvedOptions.
+      translatorFacet.of(this.translator),
+      ...uploadExtensions,
+    ]);
     this.codemirror = this.handle.view;
 
     // Aus dem Handle, NICHT über einen zweiten resolveOptions()-Aufruf: die
@@ -154,14 +172,15 @@ export class SupaMDE {
       getValue: () => this.getValue(),
       setValue: (v) => this.setValue(v),
       onSaved: (time) => {
-        const zeit = new Intl.DateTimeFormat(undefined, {
-          hour: '2-digit',
-          minute: '2-digit',
-        }).format(time);
+        // Uhrzeit im Format des Locale-Codes, nicht der Browser-Locale — sonst
+        // stünde in einer deutschen Oberfläche „Gespeichert: 02:05 PM".
         // Instanz-eigene Statusbar statt easyMDEs globalem
         // getElementById('autosaved') — zwei Editoren auf einer Seite störten
         // sich dort gegenseitig. `setItem` schreibt textContent, kein innerHTML.
-        this.statusbar?.setItem('autosave', `Gespeichert: ${zeit}`);
+        this.statusbar?.setItem(
+          'autosave',
+          this.translator.t('status.autosaved', { time: this.translator.formatTime(time) }),
+        );
       },
     });
 
@@ -449,4 +468,6 @@ const _supaLikeCheck: SupaLike = null as unknown as SupaMDE;
 void _supaLikeCheck;
 
 export { VERSION } from './version';
+export { en } from './i18n/en';
+export { de } from './i18n/de';
 export default SupaMDE;

@@ -4,6 +4,7 @@ import type { KeyBinding } from '@codemirror/view';
 import { EDITOR_MODES, type EditorMode } from './livepreview';
 import type { AutosaveOptions } from './features/autosave';
 import type { UploadImageOptions } from './features/image-upload';
+import type { Locale, LocaleTexts } from './i18n/types';
 
 /** Öffentliche Konfigurationsoptionen für SupaMDE (Kern-Set, M1). */
 export interface SupaMDEOptions {
@@ -59,6 +60,10 @@ export interface SupaMDEOptions {
    * Dateiauswahl. Per Default aus; `upload` ist Pflicht.
    */
   uploadImage?: UploadImageOptions;
+  /** Sprache der UI-Texte (Default: en). */
+  locale?: Locale;
+  /** Überschreibt einzelne Texte; Vorrang vor `locale`. */
+  texts?: Partial<LocaleTexts>;
 }
 
 /** Normalisierte, immer vollständig belegte Optionen für die Extension-Erzeugung. */
