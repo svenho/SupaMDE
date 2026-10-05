@@ -4,6 +4,8 @@ import { EditorView } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
 import { GFM } from '@lezer/markdown';
 import { createToolbar } from '../toolbar';
+import { createTranslator } from '../../i18n/translator';
+import { de } from '../../i18n/de';
 
 function makeView(doc = ''): EditorView {
   return new EditorView({
@@ -70,12 +72,9 @@ describe('createToolbar', () => {
     const view = makeView();
     const toolbar = createToolbar(view, ['bold'], {})!;
     const btn = toolbar.dom.querySelector('button')!;
-    // bold hat title: 'Fett' und shortcut: 'Mod-B'
-    // title sollte "Fett (⌘B)" oder "Fett (Ctrl+B)" sein, abhängig von Plattform
-    const titleText = btn.title;
-    expect(titleText).toContain('Fett');
-    expect(titleText).toMatch(/\(/); // enthält öffnende Klammer
-    expect(btn.getAttribute('aria-label')).toBe(titleText);
+    // Ohne Translator englisch: "Bold (⌘B)" bzw. "Bold (Ctrl+B)", je nach Plattform.
+    expect(btn.title).toMatch(/^Bold \(.+\)$/);
+    expect(btn.getAttribute('aria-label')).toBe(btn.title);
     view.destroy();
   });
 
@@ -84,8 +83,37 @@ describe('createToolbar', () => {
     const toolbar = createToolbar(view, ['table'], {})!;
     const btn = toolbar.dom.querySelector('button')!;
     // table hat kein shortcut
+    expect(btn.title).toBe('Table');
+    expect(btn.getAttribute('aria-label')).toBe('Table');
+    view.destroy();
+  });
+
+  it('Built-in-Titel kommen aus dem übergebenen Translator', () => {
+    const view = makeView();
+    const toolbar = createToolbar(view, ['table'], {}, createTranslator(de))!;
+    const btn = toolbar.dom.querySelector('button')!;
     expect(btn.title).toBe('Tabelle');
     expect(btn.getAttribute('aria-label')).toBe('Tabelle');
+    view.destroy();
+  });
+
+  it('ein überschriebener Titel erscheint samt Kürzel', () => {
+    const view = makeView();
+    const translator = createTranslator(undefined, { 'toolbar.bold': 'Strong' });
+    const toolbar = createToolbar(view, ['bold'], {}, translator)!;
+    expect(toolbar.dom.querySelector('button')!.title).toMatch(/^Strong \(.+\)$/);
+    view.destroy();
+  });
+
+  it('Custom-Buttons behalten ihr eigenes title', () => {
+    const view = makeView();
+    const toolbar = createToolbar(
+      view,
+      [{ name: 'foo', action: () => {}, title: 'Foo' }],
+      {},
+      createTranslator(de),
+    )!;
+    expect(toolbar.dom.querySelector('button')!.title).toBe('Foo');
     view.destroy();
   });
 

@@ -83,3 +83,34 @@ describe('i18n: Autosave-Status', () => {
     ).toBe('Gesichert um 14:05');
   });
 });
+
+describe('i18n: Toolbar', () => {
+  function boldButton(extra: Partial<SupaMDEOptions> = {}): {
+    editor: SupaMDE;
+    btn: HTMLButtonElement;
+  } {
+    const editor = new SupaMDE({ element: textarea, toolbar: ['bold'], ...extra });
+    const btn = document.querySelector<HTMLButtonElement>('button[data-action="bold"]')!;
+    return { editor, btn };
+  }
+
+  it('Tooltip und aria-label sind per Default englisch', () => {
+    const { editor, btn } = boldButton();
+    expect(btn.title).toMatch(/^Bold \(/);
+    expect(btn.getAttribute('aria-label')).toBe(btn.title);
+    editor.toTextArea();
+  });
+
+  it('sind mit locale: de deutsch', () => {
+    const { editor, btn } = boldButton({ locale: de });
+    expect(btn.title).toMatch(/^Fett \(/);
+    expect(btn.getAttribute('aria-label')).toBe(btn.title);
+    editor.toTextArea();
+  });
+
+  it('ein einzelner Titel lässt sich über texts überschreiben', () => {
+    const { editor, btn } = boldButton({ locale: de, texts: { 'toolbar.bold': 'Fettdruck' } });
+    expect(btn.title).toMatch(/^Fettdruck \(/);
+    editor.toTextArea();
+  });
+});

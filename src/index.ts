@@ -156,7 +156,7 @@ export class SupaMDE {
         ? options.toolbar.filter((eintrag) => eintrag !== 'upload-image')
         : options.toolbar;
 
-    this.toolbar = createToolbar(this.codemirror, toolbarOption, this);
+    this.toolbar = createToolbar(this.codemirror, toolbarOption, this, this.translator);
     this.statusbar = createStatusbar(options.status);
 
     // NACH der Statusbar: onSaved schreibt in sie hinein. Die Instanz wird immer
