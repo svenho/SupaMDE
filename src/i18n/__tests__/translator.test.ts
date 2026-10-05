@@ -81,6 +81,26 @@ describe('createTranslator — Rangfolge texts → locale → en', () => {
   });
 });
 
+describe('createTranslator — fehlerhafte Eingaben aus JavaScript', () => {
+  it('eine Pluralform, die kein String ist, fällt auf other zurück statt zu werfen', () => {
+    const texts = {
+      'status.lines': { one: 5, other: '{count} l' },
+      'status.words': { one: {}, other: '{count} w' },
+    } as unknown as Partial<LocaleTexts>;
+    const t = createTranslator(undefined, texts);
+    expect(t.plural('status.lines', 1)).toBe('1 l');
+    expect(t.plural('status.words', 1)).toBe('1 w');
+  });
+
+  it('locale: null wird wie keine Angabe behandelt', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const t = createTranslator(null as unknown as Locale);
+    expect(t.code).toBe('en');
+    expect(t.t('toolbar.bold')).toBe('Bold');
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
 describe('createTranslator — Platzhalter', () => {
   it('t setzt Platzhalter ein', () => {
     expect(createTranslator().t('upload.statusUploading', { name: 'a.png' })).toBe(

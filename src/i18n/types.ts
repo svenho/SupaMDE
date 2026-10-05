@@ -70,6 +70,10 @@ export interface LocaleTexts {
   /** Platzhalter: `{name}`. */
   'upload.errorFailed': string;
 
+  // Eingabedialoge der Link-/Bild-Aktionen (window.prompt)
+  'prompt.linkUrl': string;
+  'prompt.imageUrl': string;
+
   // In das Dokument eingefügter Text
   /** Spaltenüberschrift der Tabellenvorlage. Platzhalter: `{n}`. */
   'table.column': string;

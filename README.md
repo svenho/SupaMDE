@@ -912,8 +912,8 @@ the fallback happens only once no upload is pending anymore.
 ## Localization
 
 All texts users see — toolbar tooltips (and their `aria-label`), the status bar
-labels, the autosave status, the image-upload messages and the column headers
-of the inserted table template — are **English** by default. German ships with
+labels, the autosave status, the image-upload messages, the link/image prompts
+and the column headers of the inserted table template — are **English** by default. German ships with
 the package:
 
 ```js
@@ -956,6 +956,8 @@ built-in English texts.
 | `upload.errorTooLarge`   | `{name}`, `{maxSize}` | File exceeds `maxSize`.                                                                                     |
 | `upload.errorType`       | `{name}`              | MIME type not in `accept`.                                                                                  |
 | `upload.errorFailed`     | `{name}`              | `upload()` threw or rejected.                                                                               |
+| `prompt.linkUrl`         | —                     | Prompt of the link action (`window.prompt`).                                                                |
+| `prompt.imageUrl`        | —                     | Prompt of the image action (`window.prompt`).                                                               |
 | `table.column`           | `{n}`                 | Column header of the table template (`Column 1`, `Column 2`).                                               |
 
 Placeholders are named and written in curly braces; all occurrences are

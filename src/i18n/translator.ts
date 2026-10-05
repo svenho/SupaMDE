@@ -88,7 +88,7 @@ function createIntl(code: unknown): {
  */
 export function createTranslator(locale?: Locale, texts?: Partial<LocaleTexts>): Translator {
   const merged = mergeTexts([locale?.texts, texts]);
-  const intl = createIntl(locale === undefined ? FALLBACK_CODE : locale.code);
+  const intl = createIntl(locale == null ? FALLBACK_CODE : locale.code);
   // Für Laufzeitzugriffe mit Schlüsseln, die der Typ nicht kennt (Toolbar-Cast).
   const lookup = merged as unknown as Record<string, unknown>;
 
@@ -100,7 +100,10 @@ export function createTranslator(locale?: Locale, texts?: Partial<LocaleTexts>):
     },
     plural(key, count, params = {}) {
       const entry = merged[key];
-      const form = entry[intl.rules.select(count)] ?? entry.other;
+      const candidate: unknown = entry[intl.rules.select(count)];
+      // Nur ein String taugt als Form: `isUsable` prüft bei Pluraltexten nur `other`,
+      // eine Zahl oder ein Objekt als Einzelform käme sonst bis `formatText`.
+      const form = typeof candidate === 'string' ? candidate : entry.other;
       // `count` zuletzt: der Zählwert ist maßgeblich, auch wenn `params` ihn enthält.
       return formatText(form, { ...params, count: String(count) });
     },

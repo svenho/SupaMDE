@@ -46,6 +46,9 @@ export const de: Locale = {
     'upload.errorType': '{name} ist kein unterstütztes Bildformat.',
     'upload.errorFailed': 'Upload von {name} fehlgeschlagen.',
 
+    'prompt.linkUrl': 'Link-URL:',
+    'prompt.imageUrl': 'Bild-URL:',
+
     'table.column': 'Spalte {n}',
   },
 };

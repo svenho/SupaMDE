@@ -46,6 +46,9 @@ export const en: Locale = {
     'upload.errorType': '{name} is not a supported image format.',
     'upload.errorFailed': 'Upload of {name} failed.',
 
+    'prompt.linkUrl': 'Link URL:',
+    'prompt.imageUrl': 'Image URL:',
+
     'table.column': 'Column {n}',
   },
 };
