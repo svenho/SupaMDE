@@ -157,7 +157,7 @@ export class SupaMDE {
         : options.toolbar;
 
     this.toolbar = createToolbar(this.codemirror, toolbarOption, this, this.translator);
-    this.statusbar = createStatusbar(options.status);
+    this.statusbar = createStatusbar(options.status, this.translator);
 
     // NACH der Statusbar: onSaved schreibt in sie hinein. Die Instanz wird immer
     // erzeugt (der sink referenziert sie), bleibt ohne autosave-Option aber

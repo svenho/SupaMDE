@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { createStatusbar, DEFAULT_STATUS } from '../statusbar';
+import { createTranslator } from '../../i18n/translator';
+import { de } from '../../i18n/de';
 
 function stateOf(doc: string, pos = 0): EditorState {
   return EditorState.create({ doc, selection: { anchor: pos } });
@@ -102,5 +104,47 @@ describe('createStatusbar', () => {
   it('DEFAULT_STATUS enthält weder autosave noch upload-image', () => {
     expect(DEFAULT_STATUS).not.toContain('autosave');
     expect(DEFAULT_STATUS).not.toContain('upload-image');
+  });
+});
+
+describe('createStatusbar — Texte und Pluralformen', () => {
+  function textVon(sb: ReturnType<typeof createStatusbar>, name: string): string {
+    return sb!.dom.querySelector(`.supamde-status-${name}`)!.textContent!;
+  }
+
+  it('lines: Singular und Plural (en, Default)', () => {
+    const sb = createStatusbar(['lines'])!;
+    sb.update(stateOf('a'), full);
+    expect(textVon(sb, 'lines')).toBe('1 line');
+    sb.update(stateOf('a\nb'), full);
+    expect(textVon(sb, 'lines')).toBe('2 lines');
+  });
+
+  it('words: null, Singular und Plural (en, Default)', () => {
+    const sb = createStatusbar(['words'])!;
+    sb.update(stateOf(''), full);
+    expect(textVon(sb, 'words')).toBe('0 words');
+    sb.update(stateOf('eins'), full);
+    expect(textVon(sb, 'words')).toBe('1 word');
+    sb.update(stateOf('eins zwei'), full);
+    expect(textVon(sb, 'words')).toBe('2 words');
+  });
+
+  it('de: Zeile/Zeilen und 0 Wörter/1 Wort/2 Wörter', () => {
+    const sb = createStatusbar(['lines', 'words'], createTranslator(de))!;
+    sb.update(stateOf(''), full);
+    expect(textVon(sb, 'lines')).toBe('1 Zeile');
+    expect(textVon(sb, 'words')).toBe('0 Wörter');
+    sb.update(stateOf('eins\nzwei'), full);
+    expect(textVon(sb, 'lines')).toBe('2 Zeilen');
+    expect(textVon(sb, 'words')).toBe('2 Wörter');
+    sb.update(stateOf('eins'), full);
+    expect(textVon(sb, 'words')).toBe('1 Wort');
+  });
+
+  it('cursor bleibt sprachneutral', () => {
+    const sb = createStatusbar(['cursor'], createTranslator(de))!;
+    sb.update(stateOf('abc\ndef', 5), full);
+    expect(textVon(sb, 'cursor')).toBe('2:2');
   });
 });

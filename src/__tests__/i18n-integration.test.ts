@@ -114,3 +114,21 @@ describe('i18n: Toolbar', () => {
     editor.toTextArea();
   });
 });
+
+describe('i18n: Statusbar', () => {
+  it('ist per Default englisch', () => {
+    const editor = new SupaMDE({ element: textarea });
+    expect(document.querySelector('.supamde-status-lines')!.textContent).toBe('1 line');
+    expect(document.querySelector('.supamde-status-words')!.textContent).toBe('0 words');
+    editor.toTextArea();
+  });
+
+  it('ist mit locale: de deutsch und folgt der Pluralregel', () => {
+    const editor = new SupaMDE({ element: textarea, locale: de });
+    expect(document.querySelector('.supamde-status-lines')!.textContent).toBe('1 Zeile');
+    editor.setValue('ein\nzwei');
+    expect(document.querySelector('.supamde-status-lines')!.textContent).toBe('2 Zeilen');
+    expect(document.querySelector('.supamde-status-words')!.textContent).toBe('2 Wörter');
+    editor.toTextArea();
+  });
+});
