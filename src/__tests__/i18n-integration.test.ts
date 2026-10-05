@@ -132,3 +132,25 @@ describe('i18n: Statusbar', () => {
     editor.toTextArea();
   });
 });
+
+describe('i18n: Tabellenvorlage und mehrere Instanzen', () => {
+  it('jede Instanz auf einer Seite behält ihre eigene Sprache', () => {
+    const zweite = document.createElement('textarea');
+    document.body.appendChild(zweite);
+    const englisch = new SupaMDE({ element: textarea, toolbar: ['table'] });
+    const deutsch = new SupaMDE({ element: zweite, toolbar: ['table'], locale: de });
+    const [btnEn, btnDe] = document.querySelectorAll<HTMLButtonElement>(
+      'button[data-action="table"]',
+    );
+
+    btnEn!.click();
+    btnDe!.click();
+
+    expect(englisch.getValue()).toBe('| Column 1 | Column 2 |\n| --- | --- |\n|  |  |\n');
+    expect(deutsch.getValue()).toBe('| Spalte 1 | Spalte 2 |\n| --- | --- |\n|  |  |\n');
+    expect(btnEn!.title).toBe('Table');
+    expect(btnDe!.title).toBe('Tabelle');
+    englisch.toTextArea();
+    deutsch.toTextArea();
+  });
+});
