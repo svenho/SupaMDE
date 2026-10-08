@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'easy-markdown-editor/**', 'coverage/**'],
+    ignores: ['dist/**', 'dist-demo/**', 'node_modules/**', 'easy-markdown-editor/**', 'coverage/**'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
