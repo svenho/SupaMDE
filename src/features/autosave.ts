@@ -88,18 +88,18 @@ export function createAutosave(options: AutosaveOptions, hooks: AutosaveHooks): 
       // jedem Tastendruck erneut zu werfen.
       aktiv = false;
       stop();
-      warnEinmal('Autosave-Speicher nicht beschreibbar — Autosave ist deaktiviert.');
+      warnEinmal('autosave storage is not writable — autosave is disabled.');
     }
   };
 
   const start = async (): Promise<void> => {
     if (!enabled) return;
     if (!key) {
-      warnEinmal('autosave.key ist erforderlich — Autosave bleibt aus.');
+      warnEinmal('autosave.key is required — autosave stays off.');
       return;
     }
     if (!(await isStorageAvailable(storage))) {
-      warnEinmal('Autosave-Speicher nicht verfügbar — Autosave ist deaktiviert.');
+      warnEinmal('autosave storage is not available — autosave is disabled.');
       return;
     }
     aktiv = true;
@@ -109,7 +109,7 @@ export function createAutosave(options: AutosaveOptions, hooks: AutosaveHooks): 
       gespeichert = await storage.load(key);
     } catch {
       aktiv = false;
-      warnEinmal('Autosave-Speicher nicht lesbar — Autosave ist deaktiviert.');
+      warnEinmal('autosave storage is not readable — autosave is disabled.');
       return;
     }
 
@@ -157,7 +157,7 @@ export function createAutosave(options: AutosaveOptions, hooks: AutosaveHooks): 
     try {
       await storage.clear(key);
     } catch {
-      warnEinmal('Autosave-Eintrag konnte nicht gelöscht werden.');
+      warnEinmal('autosave entry could not be deleted.');
     }
   };
 

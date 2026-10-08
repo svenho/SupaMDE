@@ -22,20 +22,19 @@ import { markdownToHtml, renderOptionsFrom, type RenderOptions } from './markdow
 import type { SupaLike } from './ui/actions';
 import { livePreviewCompartment, livePreviewFor, type EditorMode } from './livepreview';
 import { createAutosave, type Autosave } from './features/autosave';
-import {
-  createImageUploader,
-  resolveUploadTexts,
-  type ImageUploader,
-} from './features/image-upload';
+import { createImageUploader, type ImageUploader } from './features/image-upload';
 import { uploadPlaceholderField } from './features/upload-placeholder';
 import { uploadDropPasteExtension, openFilePicker } from './features/upload-dom';
+import { createTranslator, type Translator } from './i18n/translator';
+import { translatorFacet } from './i18n/facet';
 
 export type { SupaMDEOptions } from './options';
 export type { KeyBinding } from '@codemirror/view';
 export type { EditorMode } from './livepreview';
 export type { SupaStorage } from './features/storage';
 export type { AutosaveOptions } from './features/autosave';
-export type { UploadImageOptions, UploadError, UploadTexts } from './features/image-upload';
+export type { UploadImageOptions, UploadError } from './features/image-upload';
+export type { Locale, LocaleTexts, PluralText } from './i18n/types';
 
 /**
  * SupaMDE — moderner Markdown-Editor auf Basis von CodeMirror 6.
@@ -88,6 +87,13 @@ export class SupaMDE {
    * Muster wie bei Fullscreen und Side-by-Side.
    */
   private editorMode: EditorMode;
+  /**
+   * Die UI-Texte dieser Instanz — EINMAL im Konstruktor aus `locale`/`texts`
+   * erzeugt und an Toolbar, Statusbar, Uploader und Autosave weitergereicht;
+   * Commands lesen ihn über `translatorFacet` aus dem State. Kein Sprachwechsel
+   * zur Laufzeit.
+   */
+  private readonly translator: Translator;
 
   constructor(options: SupaMDEOptions = {}) {
     this.options = options;
@@ -95,6 +101,9 @@ export class SupaMDE {
     // VOR dem DOM-Aufbau: sonst hinge der Editor kurz ungestylt in der Seite.
     // Idempotent — mehrere Instanzen teilen sich EIN <style>-Tag.
     if (options.injectStyles !== false) injectStyles();
+
+    // Vor allem anderen: Toolbar, Statusbar, Uploader und die Facet brauchen ihn.
+    this.translator = createTranslator(options.locale, options.texts);
 
     // Der EINE Sink: speist Toolbar-Aktiv-Zustand, Statusbar UND Vorschau-Panel.
     const sink = {
@@ -119,7 +128,12 @@ export class SupaMDE {
         ]
       : [];
 
-    this.handle = editorFromTextArea(options, sink, uploadExtensions);
+    this.handle = editorFromTextArea(options, sink, [
+      // Über extraExtensions statt in buildExtensions: der Translator entsteht
+      // hier in der Fassade, buildExtensions sieht nur ResolvedOptions.
+      translatorFacet.of(this.translator),
+      ...uploadExtensions,
+    ]);
     this.codemirror = this.handle.view;
 
     // Aus dem Handle, NICHT über einen zweiten resolveOptions()-Aufruf: die
@@ -138,8 +152,8 @@ export class SupaMDE {
         ? options.toolbar.filter((eintrag) => eintrag !== 'upload-image')
         : options.toolbar;
 
-    this.toolbar = createToolbar(this.codemirror, toolbarOption, this);
-    this.statusbar = createStatusbar(options.status);
+    this.toolbar = createToolbar(this.codemirror, toolbarOption, this, this.translator);
+    this.statusbar = createStatusbar(options.status, this.translator);
 
     // NACH der Statusbar: onSaved schreibt in sie hinein. Die Instanz wird immer
     // erzeugt (der sink referenziert sie), bleibt ohne autosave-Option aber
@@ -154,14 +168,15 @@ export class SupaMDE {
       getValue: () => this.getValue(),
       setValue: (v) => this.setValue(v),
       onSaved: (time) => {
-        const zeit = new Intl.DateTimeFormat(undefined, {
-          hour: '2-digit',
-          minute: '2-digit',
-        }).format(time);
+        // Uhrzeit im Format des Locale-Codes, nicht der Browser-Locale — sonst
+        // stünde in einer deutschen Oberfläche „Gespeichert: 02:05 PM".
         // Instanz-eigene Statusbar statt easyMDEs globalem
         // getElementById('autosaved') — zwei Editoren auf einer Seite störten
         // sich dort gegenseitig. `setItem` schreibt textContent, kein innerHTML.
-        this.statusbar?.setItem('autosave', `Gespeichert: ${zeit}`);
+        this.statusbar?.setItem(
+          'autosave',
+          this.translator.t('status.autosaved', { time: this.translator.formatTime(time) }),
+        );
       },
     });
 
@@ -177,13 +192,16 @@ export class SupaMDE {
       // und `openBrowseFileWindow()` bleiben dann folgenlos.
       if (typeof options.uploadImage.upload !== 'function') {
         console.warn(
-          'SupaMDE: uploadImage.enabled ist true, aber uploadImage.upload ist keine ' +
-            'Funktion — Bild-Upload bleibt aus.',
+          'SupaMDE: uploadImage.enabled is true, but uploadImage.upload is not a ' +
+            'function — image upload stays off.',
         );
       } else {
-        this.uploader = createImageUploader(this.codemirror, options.uploadImage, {
-          setStatus: (text) => this.statusbar?.setItem('upload-image', text),
-        });
+        this.uploader = createImageUploader(
+          this.codemirror,
+          options.uploadImage,
+          { setStatus: (text) => this.statusbar?.setItem('upload-image', text) },
+          this.translator,
+        );
 
         // `setItem` findet ein Item nur, wenn es tatsächlich gerendert wurde —
         // also nur, wenn sein Name in der `status`-Option steht (siehe
@@ -195,18 +213,15 @@ export class SupaMDE {
           Array.isArray(options.status) && options.status.includes('upload-image');
         if (!statusZeigtUpload && !options.uploadImage.onError) {
           console.warn(
-            'SupaMDE: uploadImage ist aktiviert, aber weder das Statusbar-Item ' +
-              "'upload-image' (status-Option) noch uploadImage.onError ist gesetzt — " +
-              'Fortschritt und Fehler des Uploads bleiben unsichtbar.',
+            "SupaMDE: uploadImage is enabled, but neither the status bar item 'upload-image' " +
+              '(status option) nor uploadImage.onError is set — upload progress and errors ' +
+              'stay invisible.',
           );
         }
 
         // Der Slot zeigt von Anfang an den Einladungstext, nicht erst nach dem
         // ersten Upload — sonst bliebe er beim frisch geöffneten Editor leer.
-        this.statusbar?.setItem(
-          'upload-image',
-          resolveUploadTexts(options.uploadImage.texts).statusInit,
-        );
+        this.statusbar?.setItem('upload-image', this.translator.t('upload.statusInit'));
       }
     }
 
@@ -449,4 +464,6 @@ const _supaLikeCheck: SupaLike = null as unknown as SupaMDE;
 void _supaLikeCheck;
 
 export { VERSION } from './version';
+export { en } from './i18n/en';
+export { de } from './i18n/de';
 export default SupaMDE;

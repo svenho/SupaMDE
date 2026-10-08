@@ -97,6 +97,7 @@ describe('resolveOptions — editorMode', () => {
     const resolved = resolveOptions({ editorMode: 'wysiwyg' } as never);
     expect(resolved.editorMode).toBe('source');
     expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0]![0]).toMatch(/^SupaMDE: unknown editorMode ".*" — using "source"\.$/);
     warn.mockRestore();
   });
 

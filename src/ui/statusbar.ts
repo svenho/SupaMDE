@@ -1,5 +1,6 @@
 import type { EditorState } from '@codemirror/state';
 import { wordCount } from '../features/word-count';
+import { createTranslator, type Translator } from '../i18n/translator';
 
 /** Ein Custom-Statusbar-Item (easyMDE-kompatibel). */
 export interface CustomStatusItem {
@@ -45,12 +46,12 @@ interface CustomEntry {
 }
 
 /** Berechnet den Textinhalt eines Built-in-Items aus dem State. */
-function builtinContent(name: string, state: EditorState): string {
+function builtinContent(name: string, state: EditorState, translator: Translator): string {
   switch (name) {
     case 'lines':
-      return `${state.doc.lines} Zeilen`;
+      return translator.plural('status.lines', state.doc.lines);
     case 'words':
-      return `${wordCount(state.doc.toString())} Wörter`;
+      return translator.plural('status.words', wordCount(state.doc.toString()));
     case 'cursor': {
       const head = state.selection.main.head;
       const line = state.doc.lineAt(head);
@@ -65,8 +66,14 @@ function builtinContent(name: string, state: EditorState): string {
   }
 }
 
-/** Erzeugt die Statusbar aus der `status`-Option. `null` bei `false`. */
-export function createStatusbar(option: StatusOption | undefined): Statusbar | null {
+/**
+ * Erzeugt die Statusbar aus der `status`-Option. `null` bei `false`.
+ * `translator` liefert die Texte der Built-ins; ohne Angabe englisch.
+ */
+export function createStatusbar(
+  option: StatusOption | undefined,
+  translator: Translator = createTranslator(),
+): Statusbar | null {
   if (option === false) return null;
   const items = option ?? DEFAULT_STATUS;
 
@@ -98,7 +105,7 @@ export function createStatusbar(option: StatusOption | undefined): Statusbar | n
   ): void => {
     for (const { name, el } of builtins) {
       if (STICKY_NAMES.has(name)) continue;
-      el.textContent = builtinContent(name, state);
+      el.textContent = builtinContent(name, state, translator);
     }
     for (const { item, el } of customs) {
       if (opts.docChanged) item.onUpdate?.(el);

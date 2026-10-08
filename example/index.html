@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SupaMDE — M4 LaTeX-Vorschau</title>
+    <title>SupaMDE — M4 LaTeX preview</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css" crossorigin="anonymous">
-    <!-- KEIN defer: window.katex muss stehen, bevor das SupaMDE-Modul erstmals rendert.
-         (Mit defer würde der erste Render evtl. vor gesetztem window.katex laufen und
-         kurz Rohtext zeigen; resolveKatex() greift beim nächsten Render nach.) -->
+    <!-- NO defer: window.katex must be set before the SupaMDE module renders for the
+         first time. (With defer, the first render might run before window.katex is set
+         and briefly show raw text; resolveKatex() catches up on the next render.) -->
     <script src="https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.js" crossorigin="anonymous"></script>
     <style>
       body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
@@ -15,21 +15,21 @@
   </head>
   <body>
     <h1>SupaMDE</h1>
-    <p>M4: LaTeX-Vorschau mit Side-by-Side-Anzeige, Fullscreen und Live-Rendering.
-      KaTeX ist vom CDN geladen und global verfügbar.</p>
+    <p>M4: LaTeX preview with side-by-side view, fullscreen and live rendering.
+      KaTeX is loaded from the CDN and available globally.</p>
     <form>
       <textarea id="editor">
-# SupaMDE mit LaTeX
+# SupaMDE with LaTeX
 
-Inline-Formel: $E = mc^2$ mitten im Text.
+Inline formula: $E = mc^2$ in the middle of the text.
 
-Block-Formel:
+Block formula:
 
 $$
 \int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
 $$
 
-Ausgerichtete Gleichungen:
+Aligned equations:
 
 $$
 \begin{align}
@@ -38,19 +38,19 @@ x &= y - z
 \end{align}
 $$
 
-Ein Preis wie $5 und $10 bleibt Text.
+A price like $5 and $10 stays text.
 </textarea>
-      <button type="submit">Absenden (forceSync-Demo)</button>
+      <button type="submit">Submit (forceSync demo)</button>
     </form>
     <script type="module">
       import SupaMDE from '../src/index.ts';
       const editor = new SupaMDE({
         element: document.getElementById('editor'),
-        placeholder: 'Schreibe etwas Markdown …',
-        // Default-Toolbar + ein eigener Button, der die Wortzahl in die Statusbar schreibt.
-        // Ansicht: 'preview-fullscreen' schaltet Vorschau und Vollbild gemeinsam (F8) und
-        // steht so auch in der Default-Toolbar. Die Einzel-Buttons daneben zeigen, dass sie
-        // weiterhin explizit konfigurierbar sind.
+        placeholder: 'Write some Markdown …',
+        // Default toolbar + a custom button that writes the word count into the status bar.
+        // View: 'preview-fullscreen' toggles preview and fullscreen together (F8) and is
+        // part of the default toolbar as well. The individual buttons next to it show that
+        // they can still be configured explicitly.
         toolbar: [
           'bold', 'italic', 'strikethrough', 'code', '|',
           'quote', 'unordered-list', 'ordered-list', 'check-list', '|',
@@ -60,7 +60,7 @@ Ein Preis wie $5 und $10 bleibt Text.
         status: ['lines', 'words', 'cursor'],
       });
       // eslint-disable-next-line no-console
-      console.log('SupaMDE-Version:', SupaMDE.version, editor.getValue());
+      console.log('SupaMDE version:', SupaMDE.version, editor.getValue());
     </script>
   </body>
 </html>

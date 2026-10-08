@@ -35,7 +35,7 @@ describe('SupaMDE — Upload-Verdrahtung', () => {
   it('zeigt den Einladungstext von Anfang an', () => {
     const editor = editorMit(async () => 'u');
     const slot = document.querySelector('.supamde-status-upload-image')!;
-    expect(slot.textContent).toBe('Bild hierher ziehen oder einfügen');
+    expect(slot.textContent).toBe('Drag an image here or paste it');
     editor.toTextArea();
   });
 
@@ -43,8 +43,8 @@ describe('SupaMDE — Upload-Verdrahtung', () => {
     const editor = editorMit(async () => 'u');
     editor.uploadImages([fileOf('a.png', 'image/png')]);
     const slot = document.querySelector('.supamde-status-upload-image')!;
-    expect(slot.textContent).toBe('Lade a.png hoch…');
-    await vi.waitFor(() => expect(slot.textContent).toBe('a.png hochgeladen'));
+    expect(slot.textContent).toBe('Uploading a.png…');
+    await vi.waitFor(() => expect(slot.textContent).toBe('a.png uploaded'));
     editor.toTextArea();
   });
 
@@ -151,7 +151,7 @@ describe('SupaMDE — Upload-Verdrahtung', () => {
       const slot = document.querySelector('.supamde-status-upload-image')!;
       editor.uploadImages([fileOf('a.png', 'image/png')]);
       await vi.advanceTimersByTimeAsync(0);
-      expect(slot.textContent).toBe('a.png hochgeladen');
+      expect(slot.textContent).toBe('a.png uploaded');
 
       editor.toTextArea();
       const beimRückbau = slot.textContent;

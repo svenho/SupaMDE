@@ -3,7 +3,6 @@ import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import {
   createImageUploader,
-  resolveUploadTexts,
   validateFile,
   imageMarkdown,
   DEFAULT_UPLOAD_ACCEPT,
@@ -12,6 +11,8 @@ import {
 } from '../image-upload';
 import { uploadPlaceholderField } from '../upload-placeholder';
 import { fileOf } from '../../__tests__/helpers';
+import { createTranslator } from '../../i18n/translator';
+import { de } from '../../i18n/de';
 
 /** View mit dem Platzhalter-Feld, am Body hängend (Konvention der Suite). */
 function viewOf(doc: string, cursor = doc.length): EditorView {
@@ -64,18 +65,6 @@ function deferredUpload() {
     },
   };
 }
-
-describe('resolveUploadTexts', () => {
-  it('liefert die Defaults ohne Angabe', () => {
-    expect(resolveUploadTexts().placeholder).toBe('![Uploading {name}…]()');
-  });
-
-  it('überschreibt einzelne Texte, der Rest bleibt Default', () => {
-    const t = resolveUploadTexts({ statusDone: 'fertig' });
-    expect(t.statusDone).toBe('fertig');
-    expect(t.statusInit).toBe('Bild hierher ziehen oder einfügen');
-  });
-});
 
 describe('validateFile', () => {
   const opts = { maxSize: 100, accept: DEFAULT_UPLOAD_ACCEPT };
@@ -149,7 +138,11 @@ describe('createImageUploader — Erfolgsfall', () => {
   it('fügt sofort einen Platzhalter am Cursor ein', () => {
     const view = viewOf('Text ');
     const d = deferredUpload();
-    const u = createImageUploader(view, { enabled: true, upload: d.upload }, { setStatus: vi.fn() });
+    const u = createImageUploader(
+      view,
+      { enabled: true, upload: d.upload },
+      { setStatus: vi.fn() },
+    );
     u.uploadFiles([fileOf('a.png', 'image/png')]);
     expect(view.state.doc.toString()).toBe('Text ![Uploading a.png…]()');
     cleanup(view);
@@ -158,7 +151,11 @@ describe('createImageUploader — Erfolgsfall', () => {
   it('ersetzt den Platzhalter nach Erfolg durch das fertige Bild', async () => {
     const view = viewOf('Text ');
     const d = deferredUpload();
-    const u = createImageUploader(view, { enabled: true, upload: d.upload }, { setStatus: vi.fn() });
+    const u = createImageUploader(
+      view,
+      { enabled: true, upload: d.upload },
+      { setStatus: vi.fn() },
+    );
     u.uploadFiles([fileOf('a.png', 'image/png')]);
     await d.löseAuf(0, 'https://cdn.test/a.png');
     await vi.waitFor(() =>
@@ -170,7 +167,11 @@ describe('createImageUploader — Erfolgsfall', () => {
   it('setzt das Bild an die MITGEWANDERTE Position, wenn davor getippt wurde', async () => {
     const view = viewOf('');
     const d = deferredUpload();
-    const u = createImageUploader(view, { enabled: true, upload: d.upload }, { setStatus: vi.fn() });
+    const u = createImageUploader(
+      view,
+      { enabled: true, upload: d.upload },
+      { setStatus: vi.fn() },
+    );
     u.uploadFiles([fileOf('a.png', 'image/png')]);
     // Der Nutzer tippt VOR dem Platzhalter weiter.
     view.dispatch({ changes: { from: 0, insert: 'davor ' } });
@@ -185,9 +186,9 @@ describe('createImageUploader — Erfolgsfall', () => {
     const d = deferredUpload();
     const u = createImageUploader(view, { enabled: true, upload: d.upload }, { setStatus });
     u.uploadFiles([fileOf('a.png', 'image/png')]);
-    expect(setStatus).toHaveBeenCalledWith('Lade a.png hoch…');
+    expect(setStatus).toHaveBeenCalledWith('Uploading a.png…');
     await d.löseAuf(0, 'u');
-    await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('a.png hochgeladen'));
+    await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('a.png uploaded'));
     cleanup(view);
   });
 });
@@ -196,7 +197,11 @@ describe('createImageUploader — Fehlerfall', () => {
   it('entfernt den Platzhalter ersatzlos, wenn upload wirft', async () => {
     const view = viewOf('Text ');
     const d = deferredUpload();
-    const u = createImageUploader(view, { enabled: true, upload: d.upload }, { setStatus: vi.fn() });
+    const u = createImageUploader(
+      view,
+      { enabled: true, upload: d.upload },
+      { setStatus: vi.fn() },
+    );
     u.uploadFiles([fileOf('a.png', 'image/png')]);
     await d.verwirf(0, new Error('500'));
     await vi.waitFor(() => expect(view.state.doc.toString()).toBe('Text '));
@@ -258,7 +263,7 @@ describe('createImageUploader — Fehlerfall', () => {
     // Wirft der Host-Code synchron statt eine abgelehnte Promise zu liefern,
     // darf der Fehler NICHT aus ladeEine() herausbrechen — sonst bliebe der
     // Platzhalter für immer im Dokument stehen und die Statusanzeige hinge
-    // dauerhaft auf 'Lade … hoch…'.
+    // dauerhaft auf 'Uploading …'.
     const view = viewOf('Text ');
     const fehler: UploadError[] = [];
     const setStatus = vi.fn();
@@ -275,9 +280,7 @@ describe('createImageUploader — Fehlerfall', () => {
     await vi.waitFor(() => expect(view.state.doc.toString()).toBe('Text '));
     expect(fehler[0]!.kind).toBe('upload-failed');
     expect(fehler[0]!.cause).toBe(ursache);
-    await vi.waitFor(() =>
-      expect(setStatus).toHaveBeenLastCalledWith('Upload von a.png fehlgeschlagen.'),
-    );
+    await vi.waitFor(() => expect(setStatus).toHaveBeenLastCalledWith('Upload of a.png failed.'));
     cleanup(view);
   });
 
@@ -290,7 +293,7 @@ describe('createImageUploader — Fehlerfall', () => {
       { setStatus },
     );
     expect(() => u.uploadFiles([fileOf('gross.png', 'image/png', 500)])).not.toThrow();
-    expect(setStatus).toHaveBeenCalledWith('gross.png ist zu groß (max. 100 B).');
+    expect(setStatus).toHaveBeenCalledWith('gross.png is too large (max. 100 B).');
     cleanup(view);
   });
 });
@@ -299,11 +302,13 @@ describe('createImageUploader — mehrere Dateien', () => {
   it('ordnet korrekt zu, wenn der zweite Upload vor dem ersten fertig wird', async () => {
     const view = viewOf('');
     const d = deferredUpload();
-    const u = createImageUploader(view, { enabled: true, upload: d.upload }, { setStatus: vi.fn() });
-    u.uploadFiles([fileOf('erste.png', 'image/png'), fileOf('zweite.png', 'image/png')]);
-    expect(view.state.doc.toString()).toBe(
-      '![Uploading erste.png…]()![Uploading zweite.png…]()',
+    const u = createImageUploader(
+      view,
+      { enabled: true, upload: d.upload },
+      { setStatus: vi.fn() },
     );
+    u.uploadFiles([fileOf('erste.png', 'image/png'), fileOf('zweite.png', 'image/png')]);
+    expect(view.state.doc.toString()).toBe('![Uploading erste.png…]()![Uploading zweite.png…]()');
     await d.löseAuf(1, 'url-zwei');
     await vi.waitFor(() =>
       expect(view.state.doc.toString()).toBe('![Uploading erste.png…]()![zweite.png](url-zwei)'),
@@ -344,7 +349,11 @@ describe('createImageUploader — verschwundener Platzhalter', () => {
   it('fügt NICHTS ein, wenn der Platzhalter währenddessen gelöscht wurde', async () => {
     const view = viewOf('');
     const d = deferredUpload();
-    const u = createImageUploader(view, { enabled: true, upload: d.upload }, { setStatus: vi.fn() });
+    const u = createImageUploader(
+      view,
+      { enabled: true, upload: d.upload },
+      { setStatus: vi.fn() },
+    );
     u.uploadFiles([fileOf('a.png', 'image/png')]);
     // Der Nutzer löscht den Platzhalter von Hand.
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } });
@@ -359,9 +368,15 @@ describe('createImageUploader — verschwundener Platzhalter', () => {
   it('fügt NICHTS ein, wenn setValue das Dokument ersetzt hat', async () => {
     const view = viewOf('alt');
     const d = deferredUpload();
-    const u = createImageUploader(view, { enabled: true, upload: d.upload }, { setStatus: vi.fn() });
+    const u = createImageUploader(
+      view,
+      { enabled: true, upload: d.upload },
+      { setStatus: vi.fn() },
+    );
     u.uploadFiles([fileOf('a.png', 'image/png')]);
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: 'ganz neues Dokument' } });
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: 'ganz neues Dokument' },
+    });
     await d.löseAuf(0, 'u');
     await Promise.resolve();
     await Promise.resolve();
@@ -388,11 +403,11 @@ describe('createImageUploader — Rückfall der Statusanzeige', () => {
     u.uploadFiles([fileOf('a.png', 'image/png')]);
     await d.löseAuf(0, 'u');
     await vi.advanceTimersByTimeAsync(0);
-    expect(setStatus).toHaveBeenLastCalledWith('a.png hochgeladen');
+    expect(setStatus).toHaveBeenLastCalledWith('a.png uploaded');
     await vi.advanceTimersByTimeAsync(1999);
-    expect(setStatus).toHaveBeenLastCalledWith('a.png hochgeladen');
+    expect(setStatus).toHaveBeenLastCalledWith('a.png uploaded');
     await vi.advanceTimersByTimeAsync(1);
-    expect(setStatus).toHaveBeenLastCalledWith('Bild hierher ziehen oder einfügen');
+    expect(setStatus).toHaveBeenLastCalledWith('Drag an image here or paste it');
     cleanup(view);
   });
 
@@ -404,11 +419,11 @@ describe('createImageUploader — Rückfall der Statusanzeige', () => {
     u.uploadFiles([fileOf('a.png', 'image/png')]);
     await d.verwirf(0, new Error('500'));
     await vi.advanceTimersByTimeAsync(0);
-    expect(setStatus).toHaveBeenLastCalledWith('Upload von a.png fehlgeschlagen.');
+    expect(setStatus).toHaveBeenLastCalledWith('Upload of a.png failed.');
     await vi.advanceTimersByTimeAsync(5999);
-    expect(setStatus).toHaveBeenLastCalledWith('Upload von a.png fehlgeschlagen.');
+    expect(setStatus).toHaveBeenLastCalledWith('Upload of a.png failed.');
     await vi.advanceTimersByTimeAsync(1);
-    expect(setStatus).toHaveBeenLastCalledWith('Bild hierher ziehen oder einfügen');
+    expect(setStatus).toHaveBeenLastCalledWith('Drag an image here or paste it');
     cleanup(view);
   });
 
@@ -423,11 +438,11 @@ describe('createImageUploader — Rückfall der Statusanzeige', () => {
     await vi.advanceTimersByTimeAsync(3000);
     // Der Einladungstext darf hier NICHT erscheinen — sonst sähe es aus, als
     // wäre nichts mehr im Gange, während b.png noch hochlädt.
-    expect(setStatus).not.toHaveBeenCalledWith('Bild hierher ziehen oder einfügen');
+    expect(setStatus).not.toHaveBeenCalledWith('Drag an image here or paste it');
 
     await d.löseAuf(1, 'u2');
     await vi.advanceTimersByTimeAsync(2000);
-    expect(setStatus).toHaveBeenLastCalledWith('Bild hierher ziehen oder einfügen');
+    expect(setStatus).toHaveBeenLastCalledWith('Drag an image here or paste it');
     cleanup(view);
   });
 
@@ -443,7 +458,7 @@ describe('createImageUploader — Rückfall der Statusanzeige', () => {
     u.uploadFiles([fileOf('a.png', 'image/png')]);
     await d.löseAuf(0, 'u');
     await vi.advanceTimersByTimeAsync(0);
-    expect(setStatus).toHaveBeenLastCalledWith('a.png hochgeladen');
+    expect(setStatus).toHaveBeenLastCalledWith('a.png uploaded');
 
     u.destroy();
     setStatus.mockClear();
@@ -454,11 +469,7 @@ describe('createImageUploader — Rückfall der Statusanzeige', () => {
 
   it('destroy ist ohne laufenden Timer folgenlos', () => {
     const view = viewOf('');
-    const u = createImageUploader(
-      view,
-      { enabled: true, upload: vi.fn() },
-      { setStatus: vi.fn() },
-    );
+    const u = createImageUploader(view, { enabled: true, upload: vi.fn() }, { setStatus: vi.fn() });
     expect(() => {
       u.destroy();
       u.destroy();
@@ -476,6 +487,57 @@ describe('createImageUploader — inaktiv', () => {
     expect(view.state.doc.toString()).toBe('Text');
     expect(upload).not.toHaveBeenCalled();
     expect(u.isActive()).toBe(false);
+    cleanup(view);
+  });
+});
+
+describe('createImageUploader — Texte aus dem Translator', () => {
+  it('nutzt die Texte der übergebenen Locale', async () => {
+    const view = viewOf('');
+    const setStatus = vi.fn();
+    const d = deferredUpload();
+    const u = createImageUploader(
+      view,
+      { enabled: true, upload: d.upload },
+      { setStatus },
+      createTranslator(de),
+    );
+    u.uploadFiles([fileOf('a.png', 'image/png')]);
+    expect(setStatus).toHaveBeenCalledWith('Lade a.png hoch…');
+    await d.löseAuf(0, 'u');
+    await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('a.png hochgeladen'));
+    cleanup(view);
+  });
+
+  it('meldet einen abgelehnten Typ über upload.errorType', () => {
+    const view = viewOf('');
+    const setStatus = vi.fn();
+    const translator = createTranslator(undefined, {
+      'upload.errorType': '{name}: type not allowed',
+    });
+    const u = createImageUploader(
+      view,
+      { enabled: true, upload: vi.fn() },
+      { setStatus },
+      translator,
+    );
+    u.uploadFiles([fileOf('a.txt', 'text/plain')]);
+    expect(setStatus).toHaveBeenCalledWith('a.txt: type not allowed');
+    cleanup(view);
+  });
+
+  it('fügt den Platzhalter aus upload.placeholder ein', () => {
+    const view = viewOf('');
+    const d = deferredUpload();
+    const translator = createTranslator(undefined, { 'upload.placeholder': '![wait {name}]()' });
+    const u = createImageUploader(
+      view,
+      { enabled: true, upload: d.upload },
+      { setStatus: vi.fn() },
+      translator,
+    );
+    u.uploadFiles([fileOf('a.png', 'image/png')]);
+    expect(view.state.doc.toString()).toBe('![wait a.png]()');
     cleanup(view);
   });
 });

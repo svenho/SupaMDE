@@ -1,0 +1,51 @@
+{
+  "code": "fr",
+  "texts": {
+    "toolbar.bold": "Gras",
+    "toolbar.italic": "Italique",
+    "toolbar.strikethrough": "Barré",
+    "toolbar.code": "Code en ligne",
+    "toolbar.heading-smaller": "Titre plus petit",
+    "toolbar.heading-bigger": "Titre plus grand",
+    "toolbar.heading-1": "Titre 1",
+    "toolbar.heading-2": "Titre 2",
+    "toolbar.heading-3": "Titre 3",
+    "toolbar.heading-4": "Titre 4",
+    "toolbar.heading-5": "Titre 5",
+    "toolbar.heading-6": "Titre 6",
+    "toolbar.quote": "Citation",
+    "toolbar.code-block": "Bloc de code",
+    "toolbar.horizontal-rule": "Ligne de séparation",
+    "toolbar.clean-block": "Effacer la mise en forme",
+    "toolbar.unordered-list": "Liste à puces",
+    "toolbar.ordered-list": "Liste numérotée",
+    "toolbar.check-list": "Liste de tâches",
+    "toolbar.link": "Lien",
+    "toolbar.image": "Image",
+    "toolbar.table": "Tableau",
+    "toolbar.undo": "Annuler",
+    "toolbar.redo": "Rétablir",
+    "toolbar.side-by-side": "Aperçu côte à côte",
+    "toolbar.fullscreen": "Plein écran",
+    "toolbar.preview-fullscreen": "Aperçu en plein écran",
+    "toolbar.editor-mode": "Aperçu en direct",
+    "toolbar.upload-image": "Téléverser une image",
+
+    "status.lines": { "one": "{count} ligne", "other": "{count} lignes" },
+    "status.words": { "one": "{count} mot", "other": "{count} mots" },
+    "status.autosaved": "Enregistré : {time}",
+
+    "upload.placeholder": "![Téléversement de {name}…]()",
+    "upload.statusInit": "Glissez une image ici ou collez-la",
+    "upload.statusUploading": "Téléversement de {name}…",
+    "upload.statusDone": "{name} téléversé",
+    "upload.errorTooLarge": "{name} est trop volumineux (max. {maxSize}).",
+    "upload.errorType": "{name} n’est pas un format d’image pris en charge.",
+    "upload.errorFailed": "Le téléversement de {name} a échoué.",
+
+    "prompt.linkUrl": "URL du lien :",
+    "prompt.imageUrl": "URL de l’image :",
+
+    "table.column": "Colonne {n}"
+  }
+}

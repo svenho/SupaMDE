@@ -16,7 +16,6 @@ describe('BUILTIN_ACTIONS registry', () => {
     if (bold?.kind === 'command') {
       expect(typeof bold.command).toBe('function');
     }
-    expect(bold?.title.length).toBeGreaterThan(0);
   });
 
   it('getAction liefert undefined für Unbekanntes', () => {
@@ -155,10 +154,9 @@ describe('view-Aktion preview-fullscreen', () => {
     };
   }
 
-  it('ist registriert, hat Titel, Icon und das Kürzel F8', () => {
+  it('ist registriert, hat Icon und das Kürzel F8', () => {
     const action = getAction('preview-fullscreen');
     expect(action?.kind).toBe('view');
-    expect(action?.title).toBe('Vorschau im Vollbild');
     expect(action?.icon).toBe('preview-fullscreen');
     expect(action?.shortcut).toBe('F8');
   });

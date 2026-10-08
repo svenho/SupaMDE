@@ -6,12 +6,6 @@ rewrite of [easyMDE](https://github.com/Ionaru/easy-markdown-editor).
 > **Status:** First public release (**0.1.x**). The API may still change before
 > 1.0 — breaking changes come with a new minor version.
 
-> **UI language:** The built-in UI texts are currently **German** (toolbar
-> tooltips such as „Fett", status bar labels such as „12 Zeilen" / „34 Wörter",
-> „Gespeichert: HH:MM", and the image-upload messages). The upload messages can
-> be overridden via [`uploadImage.texts`](#customizing-display-texts); the
-> other texts are not configurable yet.
-
 ## Installation
 
 > **Requirement:** Node.js ≥ 22.13 (or ≥ 24).
@@ -200,18 +194,20 @@ bottom:
 
 ## Options (core)
 
-| Option         | Type                  | Default          | Meaning                                                 |
-| -------------- | --------------------- | ---------------- | ------------------------------------------------------- |
-| `element`      | `HTMLTextAreaElement` | —                | **Required.** The textarea to replace.                  |
-| `lineWrapping` | `boolean`             | `true`           | Wrap lines instead of scrolling horizontally.           |
-| `placeholder`  | `string`              | —                | Placeholder text in the empty editor.                   |
-| `autofocus`    | `boolean`             | `false`          | Focuses the editor after creation.                      |
-| `tabSize`      | `number`              | `2`              | Tab width in columns.                                   |
-| `indentUnit`   | `number`              | `2`              | Indentation depth in spaces.                            |
-| `initialValue` | `string`              | textarea content | Initial value (overrides the textarea).                 |
-| `extraKeys`    | `KeyBinding[]`        | `[]`             | Custom CM6 key bindings; take precedence over defaults. |
-| `autosave`     | `AutosaveOptions`     | —                | Autosave, see [Autosave](#autosave).                    |
-| `uploadImage`  | `UploadImageOptions`  | —                | Image upload, see [Image upload](#image-upload).        |
+| Option         | Type                   | Default          | Meaning                                                        |
+| -------------- | ---------------------- | ---------------- | -------------------------------------------------------------- |
+| `element`      | `HTMLTextAreaElement`  | —                | **Required.** The textarea to replace.                         |
+| `lineWrapping` | `boolean`              | `true`           | Wrap lines instead of scrolling horizontally.                  |
+| `placeholder`  | `string`               | —                | Placeholder text in the empty editor.                          |
+| `autofocus`    | `boolean`              | `false`          | Focuses the editor after creation.                             |
+| `tabSize`      | `number`               | `2`              | Tab width in columns.                                          |
+| `indentUnit`   | `number`               | `2`              | Indentation depth in spaces.                                   |
+| `initialValue` | `string`               | textarea content | Initial value (overrides the textarea).                        |
+| `extraKeys`    | `KeyBinding[]`         | `[]`             | Custom CM6 key bindings; take precedence over defaults.        |
+| `autosave`     | `AutosaveOptions`      | —                | Autosave, see [Autosave](#autosave).                           |
+| `uploadImage`  | `UploadImageOptions`   | —                | Image upload, see [Image upload](#image-upload).               |
+| `locale`       | `Locale`               | `en`             | UI language, see [Localization](#localization).                |
+| `texts`        | `Partial<LocaleTexts>` | —                | Overrides individual UI texts; takes precedence over `locale`. |
 
 ## Toolbar & status bar
 
@@ -572,8 +568,9 @@ async function save() {
 `clearAutosavedValue()` also stops the running debounce timer. Without that,
 the next change would immediately write back the entry that was just deleted.
 
-**Status bar.** The `'autosave'` item shows `Gespeichert: HH:MM` ("Saved:")
-after every save, in the environment's locale. It is **not** part of
+**Status bar.** The `'autosave'` item shows `Saved: HH:MM` after every save.
+The text comes from the `status.autosaved` key and the time is formatted for
+the locale's `code` (see [Localization](#localization)). It is **not** part of
 `DEFAULT_STATUS` — add it to the `status` option if you want it (see the
 example above).
 
@@ -693,7 +690,6 @@ const editor = new SupaMDE({
 | `upload`  | `(file: File) => Promise<string>` | —                               | **Required.** Uploads, returns the URL, throws on error. |
 | `maxSize` | `number`                          | `2097152` (2 MB)                | Maximum file size in bytes.                              |
 | `accept`  | `string[]`                        | PNG, JPEG, GIF, WebP, AVIF, SVG | Allowed MIME types.                                      |
-| `texts`   | `Partial<UploadTexts>`            | —                               | Overrides individual display texts.                      |
 | `onError` | `(error: UploadError) => void`    | —                               | Called on every error.                                   |
 
 **Toolbar button and status bar item** are both called `'upload-image'` and
@@ -881,26 +877,22 @@ upload: async (file) => {
 
 ### Customizing display texts
 
-The default texts are German. Placeholders are named and written in curly
-braces; **all** occurrences are replaced. For example, in English:
+The upload texts are part of the [localization](#localization). Override them
+via the top-level `texts` option with the `upload.*` keys — not inside
+`uploadImage`:
 
 ```js
-uploadImage: {
-  enabled: true,
-  upload: myUpload,
+new SupaMDE({
+  element,
   texts: {
-    placeholder: '![Uploading {name}…]()',
-    statusInit: 'Drag an image here or paste it',
-    statusUploading: 'Uploading {name}…',
-    statusDone: '{name} uploaded',
-    errorTooLarge: '{name} is too large (max. {maxSize}).',
-    errorType: '{name} is not a supported image format.',
-    errorFailed: 'Upload of {name} failed.',
+    'upload.statusInit': 'Drop an image here',
+    'upload.errorTooLarge': '{name} exceeds {maxSize}.',
   },
-}
+  uploadImage: { enabled: true, upload: myUpload },
+});
 ```
 
-After a success, the status display falls back to `statusInit` after about
+After a success, the status display falls back to `upload.statusInit` after about
 2 s, after an error after about 6 s. If several uploads run at the same time,
 the fallback happens only once no upload is pending anymore.
 
@@ -916,6 +908,134 @@ the fallback happens only once no upload is pending anymore.
 | ------------------------ | ----------------------------------------------- |
 | `uploadImages(files)`    | Starts the upload for a `FileList` or `File[]`. |
 | `openBrowseFileWindow()` | Opens the file picker.                          |
+
+## Localization
+
+All texts users see — toolbar tooltips (and their `aria-label`), the status bar
+labels, the autosave status, the image-upload messages, the link/image prompts
+and the column headers of the inserted table template — are **English** by default. German ships with
+the package:
+
+```js
+import SupaMDE, { de } from 'supamde';
+
+new SupaMDE({ element, locale: de });
+```
+
+The language is fixed when the editor is constructed. Custom toolbar buttons
+and custom status bar items bring their own texts.
+
+### Overriding individual texts
+
+`texts` overrides single keys without writing a whole locale and takes
+precedence over `locale`:
+
+```js
+new SupaMDE({
+  element,
+  locale: de,
+  texts: { 'toolbar.bold': 'Fettdruck', 'status.autosaved': 'Zuletzt gesichert: {time}' },
+});
+```
+
+For every key, SupaMDE looks in `texts`, then in `locale.texts`, then in the
+built-in English texts.
+
+### Keys
+
+| Key                      | Placeholders          | Used for                                                                                                    |
+| ------------------------ | --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `toolbar.<action>`       | —                     | Tooltip and `aria-label` of a built-in button, one key per action (`toolbar.bold`, `toolbar.heading-1`, …). |
+| `status.lines`           | `{count}`             | Status bar item `lines` (plural text).                                                                      |
+| `status.words`           | `{count}`             | Status bar item `words` (plural text).                                                                      |
+| `status.autosaved`       | `{time}`              | Status bar item `autosave`.                                                                                 |
+| `upload.placeholder`     | `{name}`              | Placeholder inserted into the document while a file uploads.                                                |
+| `upload.statusInit`      | —                     | Idle text of the `upload-image` status item.                                                                |
+| `upload.statusUploading` | `{name}`              | Upload in progress.                                                                                         |
+| `upload.statusDone`      | `{name}`              | Upload finished.                                                                                            |
+| `upload.errorTooLarge`   | `{name}`, `{maxSize}` | File exceeds `maxSize`.                                                                                     |
+| `upload.errorType`       | `{name}`              | MIME type not in `accept`.                                                                                  |
+| `upload.errorFailed`     | `{name}`              | `upload()` threw or rejected.                                                                               |
+| `prompt.linkUrl`         | —                     | Prompt of the link action (`window.prompt`).                                                                |
+| `prompt.imageUrl`        | —                     | Prompt of the image action (`window.prompt`).                                                               |
+| `table.column`           | `{n}`                 | Column header of the table template (`Column 1`, `Column 2`).                                               |
+
+Placeholders are named and written in curly braces; all occurrences are
+replaced, unknown ones stay as they are.
+
+### Plural texts
+
+Count-dependent texts are objects with [CLDR plural
+forms](https://cldr.unicode.org/index/cldr-spec/plural-rules) (`zero`, `one`,
+`two`, `few`, `many`, `other`). `other` is required and used for every missing
+form:
+
+```js
+texts: { 'status.words': { one: '{count} word', other: '{count} words' } }
+```
+
+### Your own locale
+
+A locale is a plain object with a BCP 47 `code` and the texts. The `Locale`
+type requires every key, so TypeScript reports a forgotten text; at runtime,
+missing keys fall back to English.
+
+```ts
+import SupaMDE, { type Locale } from 'supamde';
+
+const fr: Locale = {
+  code: 'fr',
+  texts: {
+    'toolbar.bold': 'Gras',
+    'status.lines': { one: '{count} ligne', other: '{count} lignes' },
+    // … all other keys
+  },
+};
+
+new SupaMDE({ element, locale: fr });
+```
+
+`code` selects the plural rules (`Intl.PluralRules`) and the time format of the
+autosave status (`en`: `Saved: 02:05 PM`, `de`: `Gespeichert: 14:05`). An
+invalid code logs one warning and falls back to `'en'` for both; the texts stay
+as given.
+
+### Locale from a JSON file
+
+A locale is plain data, so it can live in a JSON file that your bundler
+(Vite, webpack, esbuild, …) imports. Abbreviated here — the file needs all keys:
+
+```json
+{
+  "code": "fr",
+  "texts": {
+    "toolbar.bold": "Gras",
+    "status.lines": { "one": "{count} ligne", "other": "{count} lignes" }
+  }
+}
+```
+
+```js
+import SupaMDE from 'supamde';
+import fr from './locales/fr.json';
+
+new SupaMDE({ element, locale: fr });
+```
+
+A file with only some keys (and no `code`) works as an override file via
+`texts`:
+
+```js
+import overrides from './locales/overrides.json';
+
+new SupaMDE({ element, locale: de, texts: overrides });
+```
+
+Copy the full key list from [`en.ts`](https://github.com/svenho/SupaMDE/blob/main/src/i18n/en.ts)
+as a template. In TypeScript, enable `"resolveJsonModule": true`; the imported
+file is then checked against `Locale`, so a missing key is reported at compile
+time. The file is read at build time and passed as an object — SupaMDE does not
+load locale files from a URL at runtime.
 
 ## API
 

@@ -1,5 +1,6 @@
 import type { EditorView } from '@codemirror/view';
 import type { SupaCommand } from './types';
+import { translatorFacet } from '../i18n/facet';
 
 /** Fügt `[text](url)` ein; ohne `text` wird die Selektion verwendet. */
 export function insertLink(url: string, text?: string): SupaCommand {
@@ -36,14 +37,14 @@ export function insertImage(url: string, altText?: string): SupaCommand {
  * reinen `insertLink`. Der Seiteneffekt (Prompt) ist bewusst hier isoliert.
  */
 export function drawLink(view: EditorView): boolean {
-  const url = window.prompt('Link-URL:', 'https://');
+  const url = window.prompt(view.state.facet(translatorFacet).t('prompt.linkUrl'), 'https://');
   if (!url) return false;
   return insertLink(url)(view);
 }
 
 /** Wie `drawLink`, aber für ein Bild (`insertImage`). */
 export function drawImage(view: EditorView): boolean {
-  const url = window.prompt('Bild-URL:', 'https://');
+  const url = window.prompt(view.state.facet(translatorFacet).t('prompt.imageUrl'), 'https://');
   if (!url) return false;
   return insertImage(url)(view);
 }

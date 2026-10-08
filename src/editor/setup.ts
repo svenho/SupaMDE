@@ -33,10 +33,10 @@ export function editorFromTextArea(
 ): EditorHandle {
   const element = options.element;
   if (!element) {
-    throw new Error('SupaMDE: `element` ist erforderlich (eine <textarea>).');
+    throw new Error('SupaMDE: `element` is required (a <textarea>).');
   }
   if (!(element instanceof HTMLTextAreaElement)) {
-    throw new Error('SupaMDE: `element` muss ein <textarea> sein.');
+    throw new Error('SupaMDE: `element` must be a <textarea>.');
   }
   const textarea = element;
 

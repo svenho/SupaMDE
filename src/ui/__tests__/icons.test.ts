@@ -17,15 +17,28 @@ describe('icons', () => {
   });
 
   it('renderIcon wirft bei unbekanntem Namen', () => {
-    expect(() => renderIcon('gibt-es-nicht')).toThrow();
+    expect(() => renderIcon('gibt-es-nicht')).toThrow('SupaMDE: unknown icon "gibt-es-nicht".');
   });
 
   it('kennt alle Default-Toolbar-Icons', () => {
     for (const name of [
-      'bold', 'italic', 'strikethrough', 'code',
-      'heading', 'quote', 'code-block', 'horizontal-rule', 'clean-block',
-      'unordered-list', 'ordered-list', 'check-list',
-      'link', 'image', 'table', 'undo', 'redo',
+      'bold',
+      'italic',
+      'strikethrough',
+      'code',
+      'heading',
+      'quote',
+      'code-block',
+      'horizontal-rule',
+      'clean-block',
+      'unordered-list',
+      'ordered-list',
+      'check-list',
+      'link',
+      'image',
+      'table',
+      'undo',
+      'redo',
     ]) {
       expect(hasIcon(name), name).toBe(true);
     }
