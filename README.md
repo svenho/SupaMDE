@@ -6,6 +6,8 @@ rewrite of [easyMDE](https://github.com/Ionaru/easy-markdown-editor).
 > **Status:** First public release (**0.1.x**). The API may still change before
 > 1.0 — breaking changes come with a new minor version.
 
+**[Live demo](https://svenho.github.io/SupaMDE/)**
+
 ## Installation
 
 > **Requirement:** Node.js ≥ 22.13 (or ≥ 24).

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SupaMDE — M4 LaTeX preview</title>
+    <title>SupaMDE — Demo</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.0/dist/katex.min.css" crossorigin="anonymous">
     <!-- NO defer: window.katex must be set before the SupaMDE module renders for the
          first time. (With defer, the first render might run before window.katex is set
@@ -15,10 +15,11 @@
   </head>
   <body>
     <h1>SupaMDE</h1>
-    <p>M4: LaTeX preview with side-by-side view, fullscreen and live rendering.
-      KaTeX is loaded from the CDN and available globally.</p>
-    <form>
-      <textarea id="editor">
+    <p>Markdown editor demo with a configurable toolbar, status bar, preview,
+      side-by-side view and fullscreen. LaTeX formulas are rendered with KaTeX,
+      which is loaded from the CDN and available globally.</p>
+    <form id="demo-form">
+      <textarea id="editor" name="editor">
 # SupaMDE with LaTeX
 
 Inline formula: $E = mc^2$ in the middle of the text.
@@ -42,6 +43,8 @@ A price like $5 and $10 stays text.
 </textarea>
       <button type="submit">Submit (forceSync demo)</button>
     </form>
+    <h2>Submitted value</h2>
+    <pre id="submitted" style="white-space: pre-wrap;">Nothing submitted yet.</pre>
     <script type="module">
       import SupaMDE from '../src/index.ts';
       const editor = new SupaMDE({
@@ -58,6 +61,14 @@ A price like $5 and $10 stays text.
           'editor-mode', 'preview-fullscreen', 'side-by-side', 'fullscreen',
         ],
         status: ['lines', 'words', 'cursor'],
+      });
+      // Registered after the SupaMDE constructor, so SupaMDE's own submit listener
+      // (forceSync) has already copied the editor content into the textarea when this
+      // runs. preventDefault keeps the page from reloading and losing the content.
+      document.getElementById('demo-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const value = new FormData(event.currentTarget).get('editor');
+        document.getElementById('submitted').textContent = value;
       });
       // eslint-disable-next-line no-console
       console.log('SupaMDE version:', SupaMDE.version, editor.getValue());
