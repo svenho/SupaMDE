@@ -1,68 +1,70 @@
 # SupaMDE
 
-Ein moderner, einbettbarer Markdown-Editor auf Basis von **CodeMirror 6** — die
-modernisierte Neufassung von [easyMDE](https://github.com/Ionaru/easy-markdown-editor).
+A modern, embeddable Markdown editor built on **CodeMirror 6** — a modernized
+rewrite of [easyMDE](https://github.com/Ionaru/easy-markdown-editor).
 
-> **Status:** In Entwicklung. Aktueller Meilenstein: **M6 — Browser-E2E-Tests**
-> (zweite Testebene in Chromium für Layout, Scroll-Geometrie und Bild-Upload).
+> **Status:** First public release (**0.1.x**). The API may still change before
+> 1.0 — breaking changes come with a new minor version.
+
+**[Live demo](https://svenho.github.io/SupaMDE/)**
 
 ## Installation
 
-> **Voraussetzung:** Node.js ≥ 22.13 (oder ≥ 24).
+> **Requirement:** Node.js ≥ 22.13 (or ≥ 24).
 
 ```bash
 npm install supamde
 ```
 
-### Aktualisieren
+### Updating
 
 ```bash
 npm update supamde
 ```
 
-`npm update` bleibt innerhalb des Semver-Ranges aus der `package.json`
-(standardmäßig `^0.1.0`). Solange SupaMDE in der `0.x`-Reihe ist, kann jedes
-Minor-Release Breaking Changes enthalten — auf eine neue Minor-Version (z. B.
-`0.2.0`) wechselt erst `npm install supamde@latest`.
+`npm update` stays within the semver range from your `package.json` (by
+default `^0.1.0`). As long as SupaMDE is in the `0.x` series, every minor
+release may contain breaking changes — moving to a new minor version (e.g.
+`0.2.0`) requires `npm install supamde@latest`.
 
-### Alternative: direkt aus dem Git-Repo
+### Alternative: straight from the Git repo
 
-Für unveröffentlichte Stände lässt sich SupaMDE auch direkt aus dem Repo
-installieren — wahlweise vom Default-Branch oder von einem Tag:
+For unreleased states, SupaMDE can also be installed directly from the repo —
+either from the default branch or from a tag:
 
 ```bash
-# aktueller Stand des Default-Branches
+# current state of the default branch
 npm install git+https://github.com/svenho/SupaMDE.git
 
-# fester Tag
+# fixed tag
 npm install git+https://github.com/svenho/SupaMDE.git#v0.1.0
 ```
 
-Ohne Tag löst npm die URL auf den aktuellen HEAD auf und schreibt den
-Commit-Hash in die `package-lock.json`; `npm update` hilft dann **nicht**,
-neu holt erst ein erneutes `npm install … --force`.
+Without a tag, npm resolves the URL to the current HEAD and writes the commit
+hash into `package-lock.json`; `npm update` does **not** help then, only
+re-running `npm install … --force` fetches the new state.
 
-**Was beim Git-Install passiert:** `dist/` ist nicht eingecheckt, sondern wird
-bei der Installation gebaut — das `prepare`-Script stößt `npm run build` an.
-npm klont dazu das Repo und installiert die Build-Abhängigkeiten (Vite,
-TypeScript & Co.). Der Install dauert damit spürbar länger als beim
-veröffentlichten npm-Paket; der Build selbst liegt im Bereich weniger Sekunden.
+**What happens on a Git install:** `dist/` is not checked in but built during
+installation — the `prepare` script triggers `npm run build`. npm clones the
+repo for this and installs the build dependencies (Vite, TypeScript & co.).
+The install therefore takes noticeably longer than with the published npm
+package; the build itself takes only a few seconds.
 
-> **Wichtig für Build-Abhängigkeiten:** Alles, was der Build zur Bauzeit
-> auflösen muss und nicht in `build.rollupOptions.external` steht, gehört in
-> `devDependencies` (Beispiel: `lucide`, dessen Icons ins Bundle wandern und
-> das deshalb weder Dependency noch Peer-Dependency ist). Beim Git-Install
-> installiert npm die `devDependencies` für `prepare` mit; fehlt dort etwas,
-> bricht der Build mit „failed to resolve import" ab. Auch Peer-Dependencies,
-> die der Build auflöst (z. B. für Typen), gehören deshalb zusätzlich in
+> **Important for build dependencies:** Everything the build has to resolve at
+> build time and that is not listed in `build.rollupOptions.external` belongs
+> in `devDependencies` (example: `lucide`, whose icons are bundled and which
+> is therefore neither a dependency nor a peer dependency). On a Git install,
+> npm installs the `devDependencies` for `prepare`; if something is missing
+> there, the build aborts with "failed to resolve import". Peer dependencies
+> that the build resolves (e.g. for types) therefore also belong in
 > `devDependencies`.
 
-### CodeMirror 6 als Peer Dependencies
+### CodeMirror 6 as peer dependencies
 
-SupaMDE bündelt CodeMirror 6 **nicht** mit — die CM6/Lezer-Pakete sind
-Peer Dependencies und müssen im Projekt selbst installiert werden. So teilt
-sich SupaMDE dieselbe CM6-Instanz wie dein übriger Code (npm dedupet über die
-Version), und es entstehen keine doppelten oder inkompatiblen CM6-Kopien:
+SupaMDE does **not** bundle CodeMirror 6 — the CM6/Lezer packages are peer
+dependencies and must be installed in your project. This way SupaMDE shares
+the same CM6 instance as the rest of your code (npm dedupes by version), and
+no duplicate or incompatible CM6 copies end up in your bundle:
 
 ```bash
 npm install \
@@ -71,30 +73,30 @@ npm install \
   @lezer/common @lezer/highlight @lezer/markdown
 ```
 
-Die Einbindung erfolgt über einen Bundler (Vite, esbuild, Rollup, webpack …),
-der die Bare-Imports auflöst. SupaMDE wird als ESM ausgeliefert.
+SupaMDE is shipped as ESM and is meant to be used with a bundler (Vite,
+esbuild, Rollup, webpack …) that resolves the bare imports.
 
-### KaTeX (optional, für Formeln in der Vorschau)
+### KaTeX (optional, for formulas in the preview)
 
-Die Live-Vorschau rendert LaTeX-Formeln (`$…$`, `$$…$$`, `\begin{align}` in
-`$$`) über **KaTeX**. KaTeX ist eine **optionale** Peer-Dependency — ist es
-nicht installiert, zeigt die Vorschau reines Markdown und lässt Formeln als
-Text stehen. Zum Aktivieren:
+The live preview renders LaTeX formulas (`$…$`, `$$…$$`, `\begin{align}` inside
+`$$`) with **KaTeX**. KaTeX is an **optional** peer dependency — if it is not
+installed, the preview shows plain Markdown and leaves formulas as text. To
+enable it:
 
 ```bash
 npm install katex
 ```
 
-Zusätzlich das KaTeX-CSS (inkl. Schriften) in der Host-Seite einbinden, z.B.:
+Also include the KaTeX CSS (including fonts) in the host page, e.g.:
 
 ```html
 <link rel="stylesheet" href="/node_modules/katex/dist/katex.min.css" />
 ```
 
-## Grundnutzung
+## Basic usage
 
 ```html
-<textarea id="editor"># Hallo **Welt**</textarea>
+<textarea id="editor"># Hello **world**</textarea>
 <script type="module">
   import SupaMDE from 'supamde';
   const editor = new SupaMDE({ element: document.getElementById('editor') });
@@ -103,19 +105,19 @@ Zusätzlich das KaTeX-CSS (inkl. Schriften) in der Host-Seite einbinden, z.B.:
 
 ### Styles
 
-Toolbar, Statusbar, Vorschau-Panel und Vollbild brauchen CSS. SupaMDE setzt
-diese Regeln beim ersten Konstruktor-Aufruf selbst als `<style>`-Tag in den
-Head — im Normalfall ist **nichts weiter zu tun**. Das Tag trägt das Attribut
-`data-supamde-styles`, hängt als erstes Kind im Head und wird pro Seite nur
-einmal gesetzt (mehrere Instanzen teilen es sich).
+Toolbar, status bar, preview panel and fullscreen need CSS. SupaMDE injects
+these rules itself as a `<style>` tag into the head on the first constructor
+call — normally there is **nothing else to do**. The tag carries the
+`data-supamde-styles` attribute, is inserted as the first child of the head,
+and is added only once per page (multiple instances share it).
 
-Die Position ganz vorn im Head ist Absicht: Deine eigenen Stylesheets kommen
-danach und gewinnen damit bei gleicher Spezifität — Overrides brauchen kein
-`!important`.
+The position at the very start of the head is intentional: your own
+stylesheets come after it and therefore win at equal specificity — overrides
+don't need `!important`.
 
-Willst du die Styles über deine eigene Build-Pipeline laufen lassen (Purging,
-Reihenfolge-Kontrolle, eigenes Theming), schalte den Auto-Inject ab und binde
-das mitgelieferte Stylesheet selbst ein:
+If you want the styles to go through your own build pipeline (purging, order
+control, custom theming), turn off the auto-inject and include the bundled
+stylesheet yourself:
 
 ```js
 import SupaMDE from 'supamde';
@@ -124,35 +126,35 @@ import 'supamde/style.css';
 new SupaMDE({ element: document.getElementById('editor'), injectStyles: false });
 ```
 
-Ohne eines von beidem — weder Auto-Inject noch manueller Import — erscheint der
-Editor ungestylt: die Toolbar-Buttons stehen dann als nackte Icon-Reihe da.
+Without either — neither auto-inject nor a manual import — the editor appears
+unstyled: the toolbar buttons show up as a bare row of icons.
 
-Farben, Rahmenbreiten und Radius laufen über CSS-Variablen auf
-`.supamde-container`, die sich überschreiben lassen.
+Colors, border widths and radius are controlled via CSS variables on
+`.supamde-container`, which you can override.
 
-Jede Linie ist einzeln steuerbar; einen Sammelschalter über alle Linien hinweg
-gibt es bewusst nicht. `--supamde-border-width` wirkt nur auf den Außenrahmen —
-die Trennlinien im Inneren bleiben davon unberührt.
+Every line can be controlled individually; there is deliberately no master
+switch for all lines. `--supamde-border-width` only affects the outer border —
+the dividers inside are not affected.
 
-| Variable                            | Default                  | Wirkung                                      |
-| ----------------------------------- | ------------------------ | -------------------------------------------- |
-| `--supamde-border-color`            | `#d0d0d0`                | Farbe aller Rahmen und Trennlinien.          |
-| `--supamde-border-width`            | `1px`                    | Außenrahmen, alle vier Kanten.               |
-| `--supamde-border-top-width`        | `--supamde-border-width` | Außenrahmen nur oben.                        |
-| `--supamde-border-right-width`      | `--supamde-border-width` | Außenrahmen nur rechts.                      |
-| `--supamde-border-bottom-width`     | `--supamde-border-width` | Außenrahmen nur unten.                       |
-| `--supamde-border-left-width`       | `--supamde-border-width` | Außenrahmen nur links.                       |
-| `--supamde-radius`                  | `4px`                    | Eckenradius des Containers.                  |
-| `--supamde-divider-toolbar-width`   | `1px`                    | Trennlinie Toolbar ↔ Inhalt.                 |
-| `--supamde-divider-statusbar-width` | `1px`                    | Trennlinie Inhalt ↔ Statusleiste.            |
-| `--supamde-divider-preview-width`   | `1px`                    | Trennlinie Editor ↔ Vorschau (Side-by-Side). |
-| `--supamde-toolbar-bg`              | `#f7f7f7`                | Toolbar-Hintergrund.                         |
-| `--supamde-statusbar-bg`            | `#f7f7f7`                | Hintergrund der Statusleiste.                |
-| `--supamde-btn-hover`               | `#e6e6e6`                | Button-Hover.                                |
-| `--supamde-btn-active`              | `#d8e6ff`                | Aktiver Button.                              |
-| `--supamde-btn-text`                | `#333`                   | Icon-/Textfarbe der Buttons.                 |
+| Variable                            | Default                  | Effect                                   |
+| ----------------------------------- | ------------------------ | ---------------------------------------- |
+| `--supamde-border-color`            | `#d0d0d0`                | Color of all borders and dividers.       |
+| `--supamde-border-width`            | `1px`                    | Outer border, all four edges.            |
+| `--supamde-border-top-width`        | `--supamde-border-width` | Outer border, top only.                  |
+| `--supamde-border-right-width`      | `--supamde-border-width` | Outer border, right only.                |
+| `--supamde-border-bottom-width`     | `--supamde-border-width` | Outer border, bottom only.               |
+| `--supamde-border-left-width`       | `--supamde-border-width` | Outer border, left only.                 |
+| `--supamde-radius`                  | `4px`                    | Corner radius of the container.          |
+| `--supamde-divider-toolbar-width`   | `1px`                    | Divider toolbar ↔ content.               |
+| `--supamde-divider-statusbar-width` | `1px`                    | Divider content ↔ status bar.            |
+| `--supamde-divider-preview-width`   | `1px`                    | Divider editor ↔ preview (side by side). |
+| `--supamde-toolbar-bg`              | `#f7f7f7`                | Toolbar background.                      |
+| `--supamde-statusbar-bg`            | `#f7f7f7`                | Status bar background.                   |
+| `--supamde-btn-hover`               | `#e6e6e6`                | Button hover.                            |
+| `--supamde-btn-active`              | `#d8e6ff`                | Active button.                           |
+| `--supamde-btn-text`                | `#333`                   | Icon/text color of the buttons.          |
 
-**Nur den Außenrahmen abschalten**, Trennlinien innen behalten:
+**Turn off only the outer border**, keep the dividers inside:
 
 ```css
 .supamde-container {
@@ -161,7 +163,7 @@ die Trennlinien im Inneren bleiben davon unberührt.
 }
 ```
 
-**Komplett randlos** — jede Linie einzeln aus:
+**Completely borderless** — every line turned off individually:
 
 ```css
 .supamde-container {
@@ -173,7 +175,8 @@ die Trennlinien im Inneren bleiben davon unberührt.
 }
 ```
 
-**Einzelne Kanten** — z. B. bündig in einer Spalte, nur oben und unten eine Linie:
+**Individual edges** — e.g. flush in a column, with a line only at the top and
+bottom:
 
 ```css
 .supamde-container {
@@ -183,50 +186,52 @@ die Trennlinien im Inneren bleiben davon unberührt.
 }
 ```
 
-> Zeigt dein Editor trotzdem noch einen Rahmen, stammt er aus dem Host-Projekt:
-> SupaMDE setzt auf `.cm-editor` selbst keinen Rahmen. Häufige Quellen sind
-> globale Resets oder Framework-Regeln (z. B. Bootstraps `.form-control`).
+> If your editor still shows a border, it comes from the host project: SupaMDE
+> sets no border on `.cm-editor` itself. Common sources are global resets or
+> framework rules (e.g. Bootstrap's `.form-control`).
 
-> **Breaking Change:** Die Farbvariable hieß früher `--supamde-border`. Der Name
-> gab vor, ein `border`-Shorthand zu sein, nahm aber nur eine Farbe entgegen —
-> daher jetzt `--supamde-border-color`. Der alte Name wirkt nicht mehr.
+> **Breaking change:** The color variable used to be called `--supamde-border`.
+> The name suggested a `border` shorthand but only accepted a color — hence
+> `--supamde-border-color` now. The old name no longer has any effect.
 
-## Optionen (Kern-Set, M1)
+## Options (core)
 
-| Option         | Typ                   | Default         | Bedeutung                                               |
-| -------------- | --------------------- | --------------- | ------------------------------------------------------- |
-| `element`      | `HTMLTextAreaElement` | —               | **Pflicht.** Die zu ersetzende Textarea.                |
-| `lineWrapping` | `boolean`             | `true`          | Zeilenumbruch statt horizontalem Scrollen.              |
-| `placeholder`  | `string`              | —               | Platzhaltertext im leeren Editor.                       |
-| `autofocus`    | `boolean`             | `false`         | Fokussiert den Editor nach Erzeugung.                   |
-| `tabSize`      | `number`              | `2`             | Tab-Breite in Spalten.                                  |
-| `indentUnit`   | `number`              | `2`             | Einrücktiefe in Leerzeichen.                            |
-| `initialValue` | `string`              | Textarea-Inhalt | Startwert (überschreibt Textarea).                      |
-| `extraKeys`    | `KeyBinding[]`        | `[]`            | Eigene CM6-Tastenkürzel; Vorrang vor Defaults.          |
-| `autosave`     | `AutosaveOptions`     | —               | Autosave, siehe [Autosave (M5)](#autosave-m5).          |
-| `uploadImage`  | `UploadImageOptions`  | —               | Bild-Upload, siehe [Bild-Upload (M5)](#bild-upload-m5). |
+| Option         | Type                   | Default          | Meaning                                                        |
+| -------------- | ---------------------- | ---------------- | -------------------------------------------------------------- |
+| `element`      | `HTMLTextAreaElement`  | —                | **Required.** The textarea to replace.                         |
+| `lineWrapping` | `boolean`              | `true`           | Wrap lines instead of scrolling horizontally.                  |
+| `placeholder`  | `string`               | —                | Placeholder text in the empty editor.                          |
+| `autofocus`    | `boolean`              | `false`          | Focuses the editor after creation.                             |
+| `tabSize`      | `number`               | `2`              | Tab width in columns.                                          |
+| `indentUnit`   | `number`               | `2`              | Indentation depth in spaces.                                   |
+| `initialValue` | `string`               | textarea content | Initial value (overrides the textarea).                        |
+| `extraKeys`    | `KeyBinding[]`         | `[]`             | Custom CM6 key bindings; take precedence over defaults.        |
+| `autosave`     | `AutosaveOptions`      | —                | Autosave, see [Autosave](#autosave).                           |
+| `uploadImage`  | `UploadImageOptions`   | —                | Image upload, see [Image upload](#image-upload).               |
+| `locale`       | `Locale`               | `en`             | UI language, see [Localization](#localization).                |
+| `texts`        | `Partial<LocaleTexts>` | —                | Overrides individual UI texts; takes precedence over `locale`. |
 
-## Toolbar & Statusbar (M3)
+## Toolbar & status bar
 
-| Option    | Typ                                          | Default                        | Bedeutung                                 |
-| --------- | -------------------------------------------- | ------------------------------ | ----------------------------------------- |
-| `toolbar` | `false \| Array<string \| CustomButton>`     | Default-Toolbar                | Toolbar-Aufbau. `false` blendet sie aus.  |
-| `status`  | `false \| Array<string \| CustomStatusItem>` | `['lines', 'words', 'cursor']` | Statusbar-Items. `false` blendet sie aus. |
+| Option    | Type                                         | Default                        | Meaning                             |
+| --------- | -------------------------------------------- | ------------------------------ | ----------------------------------- |
+| `toolbar` | `false \| Array<string \| CustomButton>`     | default toolbar                | Toolbar layout. `false` hides it.   |
+| `status`  | `false \| Array<string \| CustomStatusItem>` | `['lines', 'words', 'cursor']` | Status bar items. `false` hides it. |
 
-**Built-in-Toolbar-Buttons:** `bold`, `italic`, `strikethrough`, `code`,
+**Built-in toolbar buttons:** `bold`, `italic`, `strikethrough`, `code`,
 `heading-smaller`, `heading-bigger`, `heading-1`…`heading-6`, `quote`, `code-block`,
 `horizontal-rule`, `clean-block`, `unordered-list`, `ordered-list`, `check-list`,
 `link`, `image`, `table`, `undo`, `redo`, `preview-fullscreen`, `side-by-side`,
-`fullscreen`, `editor-mode`, `upload-image` (nur bei aktiviertem Bild-Upload
-sinnvoll; nicht im Default). `'|'` fügt einen Separator ein.
+`fullscreen`, `editor-mode`, `upload-image` (only useful with image upload
+enabled; not in the default). `'|'` inserts a separator.
 
-**Ansichts-Buttons:** `preview-fullscreen` schaltet Nebeneinander-Vorschau und
-Vollbild **gemeinsam** — ein Klick genügt für den Arbeitsmodus „Vorschau im
-Vollbild". Der Button gilt als aktiv, wenn beide Modi laufen; aus einem
-Teilzustand heraus (nur Vorschau oder nur Vollbild) schaltet ein Klick beides
-ein. Er ist Teil der Default-Toolbar. Die Einzel-Buttons `side-by-side` und
-`fullscreen` bleiben verfügbar, sind aber **nicht** mehr im Default — wer sie
-weiterhin einzeln möchte, nimmt sie explizit in die `toolbar`-Option auf:
+**View buttons:** `preview-fullscreen` toggles the side-by-side preview and
+fullscreen **together** — one click is enough for the "preview in fullscreen"
+working mode. The button counts as active when both modes are on; from a
+partial state (only preview or only fullscreen) a click turns both on. It is
+part of the default toolbar. The individual buttons `side-by-side` and
+`fullscreen` remain available but are **no longer** in the default — if you
+still want them separately, add them explicitly to the `toolbar` option:
 
 ```js
 new SupaMDE({
@@ -235,59 +240,58 @@ new SupaMDE({
 });
 ```
 
-**Custom-Buttons** behalten die easyMDE-Signatur:
+**Custom buttons** keep the easyMDE signature:
 
 ```js
 {
   name: 'shout',
-  title: 'In Großbuchstaben',
-  className: 'fa fa-bullhorn',       // optionale eigene Icon-Klasse
+  title: 'Uppercase',
+  className: 'fa fa-bullhorn',       // optional custom icon class
   action: (editor) => editor.setValue(editor.getValue().toUpperCase()),
 }
 ```
 
-**Statusbar-Items:** `lines`, `words`, `cursor`, `autosave`, `upload-image`.
-`autosave` und `upload-image` sind **nicht** Teil von `DEFAULT_STATUS` — wer sie
-will, nimmt sie in die `status`-Option auf (siehe [Autosave](#autosave-m5) und
-[Bild-Upload](#bild-upload-m5)). Custom-Items via
+**Status bar items:** `lines`, `words`, `cursor`, `autosave`, `upload-image`.
+`autosave` and `upload-image` are **not** part of `DEFAULT_STATUS` — add them
+to the `status` option if you want them (see [Autosave](#autosave) and
+[Image upload](#image-upload)). Custom items via
 `{ className, defaultValue, onUpdate, onActivity }`.
 
-**Icons:** Die Built-in-Buttons nutzen gebündelte
-[Lucide](https://lucide.dev)-SVG-Icons — es muss **kein** Icon-Font eingebunden
-werden. Custom-Buttons können über `className` weiterhin eigene Icon-Fonts
-(z. B. FontAwesome) verwenden.
+**Icons:** The built-in buttons use bundled [Lucide](https://lucide.dev) SVG
+icons — **no** icon font needs to be included. Custom buttons can still use
+their own icon fonts (e.g. FontAwesome) via `className`.
 
-## Optionen (Preview/Fullscreen, M4)
+## Options (preview & fullscreen)
 
-| Option                             | Typ                  | Default | Bedeutung                                                       |
+| Option                             | Type                 | Default | Meaning                                                         |
 | ---------------------------------- | -------------------- | ------- | --------------------------------------------------------------- |
-| `previewRender`                    | `(text) => string`   | —       | Ersetzt den eingebauten Markdown-Renderer komplett.             |
-| `previewClass`                     | `string \| string[]` | —       | Zusätzliche CSS-Klassen aufs Vorschau-Panel. Mehrere als Array. |
-| `renderingConfig.singleLineBreaks` | `boolean`            | `true`  | Einfacher Zeilenumbruch → `<br>`.                               |
-| `syncSideBySidePreviewScroll`      | `boolean`            | `true`  | Bidirektionaler Scroll-Sync im Side-by-Side.                    |
-| `onToggleFullScreen`               | `(active) => void`   | —       | Callback bei Fullscreen-Wechsel.                                |
-| `injectStyles`                     | `boolean`            | `true`  | Setzt die SupaMDE-Styles automatisch in den Head.               |
+| `previewRender`                    | `(text) => string`   | —       | Replaces the built-in Markdown renderer entirely.               |
+| `previewClass`                     | `string \| string[]` | —       | Additional CSS classes on the preview panel. Multiple as array. |
+| `renderingConfig.singleLineBreaks` | `boolean`            | `true`  | Single line break → `<br>`.                                     |
+| `syncSideBySidePreviewScroll`      | `boolean`            | `true`  | Bidirectional scroll sync in side-by-side mode.                 |
+| `onToggleFullScreen`               | `(active) => void`   | —       | Callback when fullscreen is toggled.                            |
+| `injectStyles`                     | `boolean`            | `true`  | Injects the SupaMDE styles into the head automatically.         |
 
-### Die Vorschau stylen
+### Styling the preview
 
-Das mitgelieferte CSS gibt für die Vorschau **nur das Layout** vor: halbe
-Breite, eigenes Scrolling, Trennlinie, Innenabstand. Für den Inhalt — `h1`,
-`p`, `ul`, `pre`, `table` — bringt SupaMDE bewusst **keine** Regeln mit.
+For the preview, the bundled CSS defines **only the layout**: half width, its
+own scrolling, divider, padding. For the content — `h1`, `p`, `ul`, `pre`,
+`table` — SupaMDE deliberately ships **no** rules.
 
-Das ist Absicht: Die Vorschau soll aussehen wie dein späteres Ergebnis, nicht
-wie ein Fremdkörper. Ein Editor-Paket, das ungefragt eine eigene Typografie in
-deine Seite kippt, würde damit kollidieren.
+This is intentional: the preview should look like your final result, not like
+a foreign object. An editor package that dumps its own typography into your
+page unasked would clash with it.
 
-Die Folge: Die Vorschau erbt die Typografie deiner Seite. Hat dein Projekt
-einen CSS-Reset oder Tailwinds Preflight, sind `h1` und `ul` dort plattgemacht
-— die Vorschau wirkt dann unformatiert, obwohl der Editor korrekt aussieht.
-Dagegen hilft einer der folgenden drei Wege.
+The consequence: the preview inherits your page's typography. If your project
+uses a CSS reset or Tailwind's Preflight, `h1` and `ul` are flattened there —
+the preview then looks unformatted even though the editor looks correct. One
+of the following three approaches fixes that.
 
-#### Weg 1 — vorhandene Typografie-Klasse anhängen (empfohlen)
+#### Approach 1 — attach an existing typography class (recommended)
 
-`previewClass` hängt beliebige Klassen ans Vorschau-Panel. Nutze die Klasse,
-mit der dein Projekt gerenderte Inhalte ohnehin darstellt — dann zeigt die
-Vorschau exakt das spätere Ergebnis:
+`previewClass` adds arbitrary classes to the preview panel. Use the class your
+project already uses to display rendered content — then the preview shows
+exactly the final result:
 
 ```js
 new SupaMDE({
@@ -297,26 +301,26 @@ new SupaMDE({
 });
 ```
 
-> **Mehrere Klassen als Array übergeben, nicht als ein String mit
-> Leerzeichen.** `previewClass: 'prose max-w-none'` wirft einen
-> `InvalidCharacterError` und verhindert, dass der Editor startet — die Klassen
-> gehen an `classList.add()`, das keine Leerzeichen im einzelnen Token erlaubt.
-> Eine einzelne Klasse als String ist dagegen in Ordnung.
+> **Pass multiple classes as an array, not as one string with spaces.**
+> `previewClass: 'prose max-w-none'` throws an `InvalidCharacterError` and
+> prevents the editor from starting — the classes are passed to
+> `classList.add()`, which does not allow spaces within a single token. A
+> single class as a string is fine.
 
-`max-w-none` ist bei `prose` sinnvoll, weil die Klasse sonst auf etwa 65
-Zeichen begrenzt und in der halben Editorbreite unnötig schmal wirkt. Im
-Dark Mode zusätzlich `dark:prose-invert`.
+`max-w-none` makes sense with `prose`, because the class otherwise limits the
+width to about 65 characters, which looks unnecessarily narrow in the
+half-width panel. In dark mode, add `dark:prose-invert`.
 
-Ohne Tailwind funktioniert dasselbe mit deiner eigenen Content-Klasse:
+Without Tailwind, the same works with your own content class:
 `previewClass: 'content'`.
 
-#### Weg 2 — eigenes Stylesheet gegen `.supamde-preview-side`
+#### Approach 2 — your own stylesheet against `.supamde-preview-side`
 
-Hat dein Projekt kein Typografie-System, style die **Kinder** des Panels. Die
-Panel-Klasse selbst nicht neu definieren — sie trägt das Layout:
+If your project has no typography system, style the **children** of the
+panel. Don't redefine the panel class itself — it carries the layout:
 
 ```css
-/* Erste Überschrift nicht nach unten schieben */
+/* Don't push the first heading down */
 .supamde-preview-side > :first-child {
   margin-top: 0;
 }
@@ -345,7 +349,7 @@ Panel-Klasse selbst nicht neu definieren — sie trägt das Layout:
   color: #555;
 }
 
-/* overflow-x verhindert, dass ein langer Code-Block das 50/50-Layout sprengt */
+/* overflow-x keeps a long code block from breaking the 50/50 layout */
 .supamde-preview-side pre {
   background: #f6f8fa;
   padding: 0.75em 1em;
@@ -368,73 +372,73 @@ Panel-Klasse selbst nicht neu definieren — sie trägt das Layout:
   padding: 0.3em 0.6em;
 }
 
-/* Bilder nicht über die Panel-Breite hinauslaufen lassen */
+/* Keep images from overflowing the panel width */
 .supamde-preview-side img {
   max-width: 100%;
   height: auto;
 }
 
-/* Checklisten: marked erzeugt <input type="checkbox"> im <li> */
+/* Checklists: marked renders <input type="checkbox"> inside the <li> */
 .supamde-preview-side li:has(input[type='checkbox']) {
   list-style: none;
 }
 ```
 
-Dieses Stylesheet bindest du ganz normal in deiner Seite ein. Es gewinnt ohne
-`!important`, weil die SupaMDE-Styles als erstes Kind im Head sitzen (siehe
+Include this stylesheet in your page as usual. It wins without `!important`,
+because the SupaMDE styles sit as the first child of the head (see
 [Styles](#styles)).
 
-#### Weg 3 — Renderer ersetzen
+#### Approach 3 — replace the renderer
 
-Brauchst du eigenes Markup (andere Klassen, Syntax-Highlighting, eigener
-Sanitizer), ersetzt `previewRender` den eingebauten Renderer vollständig:
+If you need your own markup (different classes, syntax highlighting, your own
+sanitizer), `previewRender` replaces the built-in renderer entirely:
 
 ```js
 new SupaMDE({
   element: document.getElementById('editor'),
-  previewRender: (text) => meinRenderer(text), // liefert fertiges HTML
+  previewRender: (text) => myRenderer(text), // returns finished HTML
 });
 ```
 
-Der Rückgabewert wird als HTML ins Panel geschrieben — Escaping und
-Sanitisierung liegen dann bei dir.
+The return value is written into the panel as HTML — escaping and
+sanitization are then your responsibility.
 
-#### Welches HTML entsteht
+#### Which HTML is produced
 
-Zum Schreiben eigener Regeln — der eingebaute Renderer (`marked`) erzeugt
-gewöhnliches HTML ohne eigene Klassen:
+For writing your own rules — the built-in renderer (`marked`) produces plain
+HTML without classes of its own:
 
-| Markdown      | HTML                                                     |
-| ------------- | -------------------------------------------------------- |
-| Überschriften | `<h1>` … `<h6>`                                          |
-| Absatz        | `<p>`                                                    |
-| Listen        | `<ul>` / `<ol>` mit `<li>`                               |
-| Checkliste    | `<li>` mit `<input type="checkbox" disabled>`            |
-| Zitat         | `<blockquote>`                                           |
-| Code-Block    | `<pre><code class="language-js">`                        |
-| Inline-Code   | `<code>`                                                 |
-| Tabelle       | `<table>`, `<thead>`, `<tbody>`, `<th>`, `<td>`          |
-| Link          | `<a target="_blank" rel="noopener noreferrer">`          |
-| Trennlinie    | `<hr>`                                                   |
-| LaTeX (KaTeX) | `<span class="katex">` bzw. `.katex-display` bei `$$…$$` |
+| Markdown        | HTML                                                    |
+| --------------- | ------------------------------------------------------- |
+| Headings        | `<h1>` … `<h6>`                                         |
+| Paragraph       | `<p>`                                                   |
+| Lists           | `<ul>` / `<ol>` with `<li>`                             |
+| Checklist       | `<li>` with `<input type="checkbox" disabled>`          |
+| Quote           | `<blockquote>`                                          |
+| Code block      | `<pre><code class="language-js">`                       |
+| Inline code     | `<code>`                                                |
+| Table           | `<table>`, `<thead>`, `<tbody>`, `<th>`, `<td>`         |
+| Link            | `<a target="_blank" rel="noopener noreferrer">`         |
+| Horizontal rule | `<hr>`                                                  |
+| LaTeX (KaTeX)   | `<span class="katex">`, or `.katex-display` for `$$…$$` |
 
-Zwei Punkte, die dabei leicht überraschen:
+Two things that are easy to be surprised by:
 
-- **Tabellen brauchen `renderingConfig.singleLineBreaks: false`.** Im Default
-  wird jeder einfache Zeilenumbruch zu `<br>`, wodurch die Zeilen einer
-  Markdown-Tabelle als einzelne Absätze statt als `<table>` ankommen.
-- **LaTeX-Formeln brauchen zusätzlich das KaTeX-CSS** in der Host-Seite (siehe
-  [KaTeX](#katex-optional-für-formeln-in-der-vorschau)). Ohne dieses Stylesheet
-  bleibt die Formel unformatiert, auch wenn KaTeX installiert ist.
+- **Tables need `renderingConfig.singleLineBreaks: false`.** By default every
+  single line break becomes `<br>`, so the rows of a Markdown table arrive as
+  separate paragraphs instead of a `<table>`.
+- **LaTeX formulas additionally need the KaTeX CSS** in the host page (see
+  [KaTeX](#katex-optional-for-formulas-in-the-preview)). Without this
+  stylesheet the formula stays unformatted, even if KaTeX is installed.
 
-## Editor-Modus (Live-Vorschau)
+## Editor mode (live preview)
 
-SupaMDE kennt zwei Darstellungsmodi:
+SupaMDE has two display modes:
 
-| Modus                | Verhalten                                                                                 |
-| -------------------- | ----------------------------------------------------------------------------------------- |
-| `'source'` (Default) | Das Markdown-Markup bleibt sichtbar und wird live formatiert.                             |
-| `'live'`             | Das Markup wird ausgeblendet und erscheint nur dort, wo der Cursor steht (Obsidian-Stil). |
+| Mode                 | Behavior                                                                    |
+| -------------------- | --------------------------------------------------------------------------- |
+| `'source'` (default) | The Markdown markup stays visible and is formatted live.                    |
+| `'live'`             | The markup is hidden and only appears where the cursor is (Obsidian style). |
 
 ```js
 const editor = new SupaMDE({
@@ -443,30 +447,31 @@ const editor = new SupaMDE({
 });
 ```
 
-| Option       | Typ                  | Default    | Beschreibung                  |
-| ------------ | -------------------- | ---------- | ----------------------------- |
-| `editorMode` | `'source' \| 'live'` | `'source'` | Darstellungsmodus beim Start. |
+| Option       | Type                 | Default    | Description              |
+| ------------ | -------------------- | ---------- | ------------------------ |
+| `editorMode` | `'source' \| 'live'` | `'source'` | Display mode at startup. |
 
-**Zur Laufzeit umschalten:**
+**Switching at runtime:**
 
-| Methode               | Beschreibung                   |
-| --------------------- | ------------------------------ |
-| `getEditorMode()`     | Liefert den aktuellen Modus.   |
-| `setEditorMode(mode)` | Setzt den Modus. Idempotent.   |
-| `toggleEditorMode()`  | Wechselt zwischen beiden Modi. |
+| Method                | Description                  |
+| --------------------- | ---------------------------- |
+| `getEditorMode()`     | Returns the current mode.    |
+| `setEditorMode(mode)` | Sets the mode. Idempotent.   |
+| `toggleEditorMode()`  | Switches between both modes. |
 
-Der Wechsel erhält Dokument, Cursor, Selektion, Undo-Historie und Scrollposition.
+Switching preserves document, cursor, selection, undo history and scroll
+position.
 
-**Was im Live-Modus ausgeblendet wird:** die Marker von Fett, Kursiv,
-Durchgestrichen, Inline-Code, ATX-Überschriften (`#` … `######`) und
-Blockzitaten. Fenced Code Blocks und Setext-Überschriften (Unterstreichung mit
-`=`/`-`) bleiben vollständig sichtbar, ebenso Listen-Marker und Link-Syntax.
+**What is hidden in live mode:** the markers of bold, italic, strikethrough,
+inline code, ATX headings (`#` … `######`) and blockquotes. Fenced code blocks
+and setext headings (underlined with `=`/`-`) stay fully visible, as do list
+markers and link syntax.
 
-Der Text bleibt in beiden Modi editierbarer Markdown-Quelltext — kopierter Text
-enthält immer das vollständige Markup.
+In both modes the text remains editable Markdown source — copied text always
+contains the full markup.
 
-**Toolbar-Button:** Die Aktion `'editor-mode'` ist bewusst **nicht** Teil der
-Standard-Toolbar. Wer sie will, nimmt sie in die eigene `toolbar`-Liste auf:
+**Toolbar button:** The `'editor-mode'` action is deliberately **not** part of
+the default toolbar. If you want it, add it to your own `toolbar` list:
 
 ```js
 new SupaMDE({
@@ -475,108 +480,104 @@ new SupaMDE({
 });
 ```
 
-## Autosave (M5)
+## Autosave
 
-Autosave sichert den Inhalt in einem austauschbaren Speicher — der Entwurf
-überlebt Absturz, versehentliches Schließen und Reload. Per Default **aus**.
+Autosave stores the content in a pluggable storage — the draft survives
+crashes, accidental closing and reloads. **Off** by default.
 
-Das Minimum sind zwei Zeilen:
+The minimum is two lines:
 
 ```js
 const editor = new SupaMDE({
   element: document.querySelector('#editor'),
-  autosave: { enabled: true, key: 'artikel-42' },
+  autosave: { enabled: true, key: 'article-42' },
 });
 ```
 
-Mit Statusanzeige und Hinweis bei wiederhergestelltem Entwurf:
+With a status display and a notice when a draft was restored:
 
 ```js
 const editor = new SupaMDE({
   element: document.querySelector('#editor'),
   autosave: {
     enabled: true,
-    key: 'artikel-42',
+    key: 'article-42',
     delay: 1000,
-    onRestore: (entwurf) => {
-      hinweisAnzeigen(
-        `Ein ungespeicherter Entwurf wurde wiederhergestellt (${entwurf.length} Zeichen).`,
-      );
+    onRestore: (draft) => {
+      showNotice(`An unsaved draft was restored (${draft.length} characters).`);
     },
   },
   status: ['lines', 'words', 'cursor', 'autosave'],
 });
 ```
 
-| Option      | Typ                       | Default      | Beschreibung                                             |
-| ----------- | ------------------------- | ------------ | -------------------------------------------------------- |
-| `enabled`   | `boolean`                 | `false`      | Aktiviert Autosave.                                      |
-| `key`       | `string`                  | —            | **Pflicht.** Identifiziert das Dokument im Speicher.     |
-| `delay`     | `number`                  | `1000`       | Debounce nach der letzten Änderung, in ms.               |
-| `storage`   | `SupaStorage`             | localStorage | Eigener Speicher (siehe unten).                          |
-| `onRestore` | `(saved: string) => void` | —            | Wird gerufen, wenn beim Start ein Entwurf geladen wurde. |
+| Option      | Type                      | Default      | Description                                           |
+| ----------- | ------------------------- | ------------ | ----------------------------------------------------- |
+| `enabled`   | `boolean`                 | `false`      | Enables autosave.                                     |
+| `key`       | `string`                  | —            | **Required.** Identifies the document in the storage. |
+| `delay`     | `number`                  | `1000`       | Debounce after the last change, in ms.                |
+| `storage`   | `SupaStorage`             | localStorage | Custom storage (see below).                           |
+| `onRestore` | `(saved: string) => void` | —            | Called when a draft was loaded at startup.            |
 
-**Den `key` sorgfältig wählen.** Er ist die einzige Unterscheidung zwischen zwei
-Dokumenten. Zwei Editoren mit demselben `key` überschreiben sich gegenseitig —
-in der Praxis also die Dokument-ID mitnehmen, nicht `'editor'`:
+**Choose the `key` carefully.** It is the only thing that distinguishes two
+documents. Two editors with the same `key` overwrite each other — so in
+practice include the document ID, not just `'editor'`:
 
 ```js
-autosave: { enabled: true, key: `artikel-${artikelId}` }
+autosave: { enabled: true, key: `article-${articleId}` }
 ```
 
-Im localStorage landet der Eintrag unter `supamde:<key>`.
+In localStorage the entry is stored under `supamde:<key>`.
 
-**Wann wiederhergestellt wird.** Beim Start liest SupaMDE den gespeicherten
-Stand. Ist er nicht leer **und** weicht er vom aktuellen Dokument ab, gewinnt er
-gegenüber dem Inhalt der Textarea und `onRestore` wird gerufen. Stimmen beide
-überein, passiert nichts — es gibt keinen Entwurf wiederherzustellen, wenn er
-dem Ausgangsinhalt gleicht.
+**When a draft is restored.** At startup SupaMDE reads the saved state. If it
+is not empty **and** differs from the current document, it wins over the
+textarea content and `onRestore` is called. If both match, nothing happens —
+there is no draft to restore if it equals the initial content.
 
-**Ein `setValue()` direkt nach der Konstruktion gewinnt.** Das Lesen des
-Speichers ist asynchron; zwischen `new SupaMDE(...)` und dem Wiederherstellen
-liegt mindestens ein Tick. Wer in dieser Zeit selbst Inhalt setzt — Formular
-vorbefüllen, Inhalt nachladen — behält ihn: SupaMDE stellt nur wieder her, wenn
-das Dokument seit der Konstruktion unberührt ist. Der Entwurf bleibt gespeichert
-und ist beim nächsten Öffnen wieder ein Kandidat.
+**A `setValue()` right after construction wins.** Reading the storage is
+asynchronous; there is at least one tick between `new SupaMDE(...)` and the
+restore. If you set content yourself in that window — prefilling a form,
+loading content — you keep it: SupaMDE only restores if the document has been
+untouched since construction. The draft stays saved and is a candidate again
+the next time the editor opens.
 
 ```js
-const editor = new SupaMDE({ element: el, autosave: { enabled: true, key: 'artikel-42' } });
-// Gewinnt gegen einen gespeicherten Entwurf — der Host weiß mehr über seinen Fall.
-editor.value(await inhaltLaden());
+const editor = new SupaMDE({ element: el, autosave: { enabled: true, key: 'article-42' } });
+// Wins over a saved draft — the host knows more about its own case.
+editor.value(await loadContent());
 ```
 
-SupaMDE zeigt dafür **kein eigenes UI**: `onRestore` gibt dem Host die
-Möglichkeit, selbst eine Notiz einzublenden, mit „Verwerfen"-Schaltfläche oder
-ohne.
+SupaMDE shows **no UI of its own** for this: `onRestore` lets the host display
+its own notice, with or without a "Discard" button.
 
-**`clearAutosavedValue()` nach dem echten Speichern rufen.** Das ist der Punkt,
-den man leicht übersieht: Nach erfolgreichem Speichern im eigenen Backend ist
-der lokale Entwurf hinfällig. Wird er nicht gelöscht, holt der Editor beim
-nächsten Öffnen den alten Stand zurück und überschreibt damit die frisch
-gespeicherte Fassung.
+**Call `clearAutosavedValue()` after the real save.** This is the point that's
+easy to overlook: after a successful save to your own backend, the local draft
+is obsolete. If it is not cleared, the editor brings back the old state the
+next time it opens and thereby overwrites the freshly saved version.
 
 ```js
-async function speichern() {
-  await fetch('/api/artikel/42', {
+async function save() {
+  await fetch('/api/articles/42', {
     method: 'PUT',
-    body: JSON.stringify({ inhalt: editor.value() }),
+    body: JSON.stringify({ content: editor.value() }),
   });
-  // Erst NACH dem erfolgreichen Speichern — sonst ist der Entwurf weg,
-  // obwohl der Server ihn nie bekommen hat.
+  // Only AFTER the successful save — otherwise the draft is gone
+  // even though the server never received it.
   await editor.clearAutosavedValue();
 }
 ```
 
-`clearAutosavedValue()` stoppt zusätzlich den laufenden Debounce-Timer. Ohne das
-schriebe die nächste Änderung den gerade gelöschten Eintrag sofort zurück.
+`clearAutosavedValue()` also stops the running debounce timer. Without that,
+the next change would immediately write back the entry that was just deleted.
 
-**Statusbar.** Das Item `'autosave'` zeigt nach jedem Speichern
-`Gespeichert: HH:MM` in der Locale der Umgebung. Es gehört **nicht** zu
-`DEFAULT_STATUS` — wer es will, nimmt es in die `status`-Option auf (siehe
-Beispiel oben).
+**Status bar.** The `'autosave'` item shows `Saved: HH:MM` after every save.
+The text comes from the `status.autosaved` key and the time is formatted for
+the locale's `code` (see [Localization](#localization)). It is **not** part of
+`DEFAULT_STATUS` — add it to the `status` option if you want it (see the
+example above).
 
-**Eigener Speicher.** Der `SupaStorage`-Vertrag ist absichtlich schmal und
-async-fähig, damit ein Server-Backend oder IndexedDB ohne Zusatzschicht passt:
+**Custom storage.** The `SupaStorage` contract is intentionally narrow and
+async-capable, so a server backend or IndexedDB fits without an extra layer:
 
 ```ts
 interface SupaStorage {
@@ -586,87 +587,85 @@ interface SupaStorage {
 }
 ```
 
-Ein Entwurfs-Endpunkt am eigenen Backend, in voller Länge:
+A draft endpoint on your own backend, in full:
 
 ```js
 const serverStorage = {
   async load(key) {
-    const res = await fetch(`/api/entwuerfe/${encodeURIComponent(key)}`);
+    const res = await fetch(`/api/drafts/${encodeURIComponent(key)}`);
     if (res.status === 404) return null;
-    if (!res.ok) throw new Error(`Entwurf laden fehlgeschlagen: ${res.status}`);
-    const daten = await res.json();
-    return daten.inhalt;
+    if (!res.ok) throw new Error(`Loading draft failed: ${res.status}`);
+    const data = await res.json();
+    return data.content;
   },
   async save(key, value) {
-    const res = await fetch(`/api/entwuerfe/${encodeURIComponent(key)}`, {
+    const res = await fetch(`/api/drafts/${encodeURIComponent(key)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inhalt: value }),
+      body: JSON.stringify({ content: value }),
     });
-    if (!res.ok) throw new Error(`Entwurf speichern fehlgeschlagen: ${res.status}`);
+    if (!res.ok) throw new Error(`Saving draft failed: ${res.status}`);
   },
   async clear(key) {
-    await fetch(`/api/entwuerfe/${encodeURIComponent(key)}`, { method: 'DELETE' });
+    await fetch(`/api/drafts/${encodeURIComponent(key)}`, { method: 'DELETE' });
   },
 };
 
 new SupaMDE({
   element: document.querySelector('#editor'),
-  autosave: { enabled: true, key: 'artikel-42', storage: serverStorage },
+  autosave: { enabled: true, key: 'article-42', storage: serverStorage },
 });
 ```
 
-**Wenn der Speicher nicht trägt** — Quota erschöpft, Private Mode, Server nicht
-erreichbar — warnt SupaMDE **einmal** auf der Konsole und schaltet Autosave still
-ab. Nicht bei jedem Tastendruck erneut. `isAutosaveActive()` liefert dann `false`.
+**When the storage fails** — quota exceeded, private mode, server unreachable
+— SupaMDE warns **once** on the console and silently disables autosave. Not
+again on every keystroke. `isAutosaveActive()` then returns `false`.
 
-**Kein Konfliktauflösen.** Der gespeicherte Stand gewinnt gegenüber dem
-Ausgangsinhalt; einen Abgleich mit einem parallel geänderten Server-Stand nimmt
-SupaMDE nicht vor. `onRestore` ist die Stelle, an der der Host das selbst
-entscheiden kann.
+**No conflict resolution.** The saved state wins over the initial content;
+SupaMDE does not reconcile it with a server state that changed in parallel.
+`onRestore` is the place where the host can decide that itself.
 
-**Beim Rückbau.** `toTextArea()` räumt den laufenden Timer ab, lässt den
-gespeicherten Wert aber stehen — den Editor zu schließen ist kein Signal, den
-Entwurf zu verwerfen.
+**On teardown.** `toTextArea()` clears the running timer but leaves the saved
+value in place — closing the editor is not a signal to discard the draft.
 
-| Methode                 | Beschreibung                                                         |
-| ----------------------- | -------------------------------------------------------------------- |
-| `clearAutosavedValue()` | Stoppt den Timer **und** löscht den Eintrag. `Promise<void>`.        |
-| `isAutosaveActive()`    | Ob Autosave aktiv ist (aktiviert, `key` gültig, Speicher verfügbar). |
+| Method                  | Description                                                           |
+| ----------------------- | --------------------------------------------------------------------- |
+| `clearAutosavedValue()` | Stops the timer **and** deletes the entry. `Promise<void>`.           |
+| `isAutosaveActive()`    | Whether autosave is active (enabled, valid `key`, storage available). |
 
-## Bild-Upload (M5)
+## Image upload
 
-Bilder landen per Drag & Drop, Einfügen aus der Zwischenablage oder Dateiauswahl
-im Dokument. Per Default **aus**.
+Images get into the document via drag & drop, pasting from the clipboard, or
+the file picker. **Off** by default.
 
-### Wie es funktioniert
+### How it works
 
-1. **Validierung** — Größe gegen `maxSize`, MIME-Typ gegen `accept`. Wird eine
-   Datei abgelehnt, passiert im Dokument **nichts**: nur Statusbar und `onError`.
-2. **Platzhalter** — `![Uploading foo.png…]()` wird an der Cursorposition
-   eingefügt und ab da im Dokument mitverfolgt. Tippt man davor weiter, wandert
-   er mit.
-3. **`upload(file)`** — deine Funktion lädt hoch und liefert die URL.
-4. **Ersetzung** — der Platzhalter wird an seiner _aktuellen_ Position durch
-   `![foo.png](url)` ersetzt, nicht an der ursprünglichen.
+1. **Validation** — size against `maxSize`, MIME type against `accept`. If a
+   file is rejected, **nothing** happens in the document: only the status bar
+   and `onError`.
+2. **Placeholder** — `![Uploading foo.png…]()` is inserted at the cursor
+   position and tracked in the document from then on. If you keep typing
+   before it, it moves along.
+3. **`upload(file)`** — your function uploads the file and returns the URL.
+4. **Replacement** — the placeholder is replaced by `![foo.png](url)` at its
+   _current_ position, not the original one.
 
-Zwischen Schritt 2 und 4 kann beliebig weitergetippt werden; das Bild landet
-trotzdem an der richtigen Stelle. Löscht man den Platzhalter von Hand oder
-ersetzt `setValue()` das Dokument, wird **nichts** eingefügt — ein Bild, das in
-ein inzwischen fremdes Dokument hineinspringt, wäre schlimmer als ein verlorener
-Upload.
+You can keep typing freely between steps 2 and 4; the image still ends up in
+the right place. If you delete the placeholder manually or `setValue()`
+replaces the document, **nothing** is inserted — an image jumping into what is
+by now a different document would be worse than a lost upload.
 
-### Der `upload`-Vertrag
+### The `upload` contract
 
 ```ts
 upload: (file: File) => Promise<string>;
 ```
 
-Datei rein, URL raus, **wirft bei Fehler**. Das ist die gesamte Schnittstelle zur
-Außenwelt. SupaMDE bringt **keinen** HTTP-Client, kein festes Response-Format,
-keine CSRF-Optionen und keine Endpoint-Option mit: Auth, Fehlerformate und
-Upload-Flows (direkt, presigned, SDK) unterscheiden sich pro Projekt so stark,
-dass jede eingebaute Variante für die Mehrheit falsch wäre.
+File in, URL out, **throws on error**. That is the entire interface to the
+outside world. SupaMDE ships **no** HTTP client, no fixed response format, no
+CSRF options and no endpoint option: auth, error formats and upload flows
+(direct, presigned, SDK) differ so much between projects that any built-in
+variant would be wrong for most of them.
 
 ```js
 const editor = new SupaMDE({
@@ -674,10 +673,10 @@ const editor = new SupaMDE({
   uploadImage: {
     enabled: true,
     upload: async (file) => {
-      const daten = new FormData();
-      daten.append('datei', file);
-      const res = await fetch('/api/bilder', { method: 'POST', body: daten });
-      if (!res.ok) throw new Error(`Upload fehlgeschlagen: ${res.status}`);
+      const data = new FormData();
+      data.append('file', file);
+      const res = await fetch('/api/images', { method: 'POST', body: data });
+      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
       const { url } = await res.json();
       return url;
     },
@@ -687,54 +686,53 @@ const editor = new SupaMDE({
 });
 ```
 
-| Option    | Typ                               | Default                         | Beschreibung                                               |
-| --------- | --------------------------------- | ------------------------------- | ---------------------------------------------------------- |
-| `enabled` | `boolean`                         | `false`                         | Aktiviert den Bild-Upload.                                 |
-| `upload`  | `(file: File) => Promise<string>` | —                               | **Pflicht.** Lädt hoch, liefert die URL, wirft bei Fehler. |
-| `maxSize` | `number`                          | `2097152` (2 MB)                | Maximale Dateigröße in Bytes.                              |
-| `accept`  | `string[]`                        | PNG, JPEG, GIF, WebP, AVIF, SVG | Erlaubte MIME-Typen.                                       |
-| `texts`   | `Partial<UploadTexts>`            | —                               | Überschreibt einzelne Anzeigetexte.                        |
-| `onError` | `(error: UploadError) => void`    | —                               | Wird bei jedem Fehler gerufen.                             |
+| Option    | Type                              | Default                         | Description                                              |
+| --------- | --------------------------------- | ------------------------------- | -------------------------------------------------------- |
+| `enabled` | `boolean`                         | `false`                         | Enables image upload.                                    |
+| `upload`  | `(file: File) => Promise<string>` | —                               | **Required.** Uploads, returns the URL, throws on error. |
+| `maxSize` | `number`                          | `2097152` (2 MB)                | Maximum file size in bytes.                              |
+| `accept`  | `string[]`                        | PNG, JPEG, GIF, WebP, AVIF, SVG | Allowed MIME types.                                      |
+| `onError` | `(error: UploadError) => void`    | —                               | Called on every error.                                   |
 
-**Toolbar-Button und Statusbar-Item** heißen beide `'upload-image'` und gehören
-**nicht** zu den Defaults — wer sie will, nimmt sie in die jeweilige Option auf
-(siehe Beispiel oben). Der Button öffnet die Dateiauswahl. `openBrowseFileWindow()`
-funktioniert auch bei `toolbar: false`, weil der Datei-Input bei Bedarf erzeugt
-und nicht in der Toolbar geparkt wird.
+**Toolbar button and status bar item** are both called `'upload-image'` and
+are **not** part of the defaults — add them to the respective option if you
+want them (see the example above). The button opens the file picker.
+`openBrowseFileWindow()` also works with `toolbar: false`, because the file
+input is created on demand and not parked in the toolbar.
 
-> **Ohne Statusbar-Item und ohne `onError` bleibt der Upload stumm.** Die
-> Rückmeldungen gehen ausschließlich an das Statusbar-Item `'upload-image'` und
-> an `onError`. Fehlen beide, laufen Uploads unsichtbar — auch Fehler. SupaMDE
-> warnt in dem Fall einmal auf der Konsole. Mindestens eines von beiden gehört
-> in die Konfiguration:
+> **Without the status bar item and without `onError`, the upload is silent.**
+> Feedback goes exclusively to the `'upload-image'` status bar item and to
+> `onError`. If both are missing, uploads run invisibly — errors included.
+> SupaMDE warns once on the console in that case. At least one of the two
+> belongs in your configuration:
 >
 > ```js
-> status: ['lines', 'words', 'cursor', 'upload-image'],  // sichtbarer Fortschritt
-> // oder/und
-> uploadImage: { enabled: true, upload: meinUpload, onError: zeigeToast },
+> status: ['lines', 'words', 'cursor', 'upload-image'],  // visible progress
+> // and/or
+> uploadImage: { enabled: true, upload: myUpload, onError: showToast },
 > ```
 
-**Mehrere Dateien** laufen parallel, jede mit eigenem Platzhalter. Die Zuordnung
-bleibt korrekt, auch wenn der zweite Upload vor dem ersten fertig wird. Enthält
-eine Auswahl gültige und ungültige Dateien, werden die gültigen hochgeladen und
-die ungültigen einzeln gemeldet.
+**Multiple files** upload in parallel, each with its own placeholder. The
+mapping stays correct even if the second upload finishes before the first. If
+a selection contains valid and invalid files, the valid ones are uploaded and
+the invalid ones are reported individually.
 
-**Nicht-Bild-Dateien** werden abgewiesen (`type-not-allowed`), nicht als Link
-eingefügt. Das Feature heißt Bild-Upload.
+**Non-image files** are rejected (`type-not-allowed`), not inserted as a link.
+The feature is called image upload.
 
-### Backend-Beispiele
+### Backend examples
 
-**1. `fetch` gegen einen eigenen Endpunkt** — der Standardfall, mit CSRF-Header
-und ausgewertetem Fehlerstatus:
+**1. `fetch` against your own endpoint** — the standard case, with a CSRF
+header and evaluated error status:
 
 ```js
 upload: async (file) => {
-  const daten = new FormData();
-  daten.append('datei', file);
+  const data = new FormData();
+  data.append('file', file);
 
-  const res = await fetch('/api/bilder', {
+  const res = await fetch('/api/images', {
     method: 'POST',
-    body: daten,
+    body: data,
     credentials: 'same-origin',
     headers: {
       'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
@@ -742,10 +740,10 @@ upload: async (file) => {
   });
 
   if (!res.ok) {
-    // Der Fehlertext des Servers ist oft die nützlichste Information —
-    // er landet über onError beim Host.
+    // The server's error text is often the most useful information —
+    // it reaches the host via onError.
     const text = await res.text().catch(() => '');
-    throw new Error(`Upload fehlgeschlagen (${res.status}): ${text}`);
+    throw new Error(`Upload failed (${res.status}): ${text}`);
   }
 
   const { url } = await res.json();
@@ -753,33 +751,33 @@ upload: async (file) => {
 };
 ```
 
-**2. Presigned Upload (S3 oder kompatibel)** — Signatur beim eigenen Backend
-holen, direkt zum Storage hochladen, öffentliche URL zurückgeben:
+**2. Presigned upload (S3 or compatible)** — get a signature from your own
+backend, upload directly to the storage, return the public URL:
 
 ```js
 upload: async (file) => {
-  // Schritt 1: Das eigene Backend signiert den Upload. Nur hier ist Auth nötig.
-  const signRes = await fetch('/api/uploads/signieren', {
+  // Step 1: your own backend signs the upload. Auth is only needed here.
+  const signRes = await fetch('/api/uploads/sign', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: file.name, type: file.type, size: file.size }),
   });
-  if (!signRes.ok) throw new Error(`Signatur fehlgeschlagen: ${signRes.status}`);
+  if (!signRes.ok) throw new Error(`Signing failed: ${signRes.status}`);
   const { uploadUrl, publicUrl } = await signRes.json();
 
-  // Schritt 2: direkt zum Storage — die Datei berührt das eigene Backend nie.
+  // Step 2: straight to the storage — the file never touches your own backend.
   const putRes = await fetch(uploadUrl, {
     method: 'PUT',
     body: file,
     headers: { 'Content-Type': file.type },
   });
-  if (!putRes.ok) throw new Error(`Storage-Upload fehlgeschlagen: ${putRes.status}`);
+  if (!putRes.ok) throw new Error(`Storage upload failed: ${putRes.status}`);
 
   return publicUrl;
 };
 ```
 
-**3. Supabase Storage** — in wenigen Zeilen:
+**3. Supabase Storage** — in a few lines:
 
 ```js
 import { createClient } from '@supabase/supabase-js';
@@ -787,45 +785,45 @@ import { createClient } from '@supabase/supabase-js';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 upload: async (file) => {
-  const pfad = `bilder/${Date.now()}-${file.name}`;
-  const { error } = await supabase.storage.from('medien').upload(pfad, file, {
+  const path = `images/${Date.now()}-${file.name}`;
+  const { error } = await supabase.storage.from('media').upload(path, file, {
     contentType: file.type,
   });
   if (error) throw error;
 
-  const { data } = supabase.storage.from('medien').getPublicUrl(pfad);
+  const { data } = supabase.storage.from('media').getPublicUrl(path);
   return data.publicUrl;
 };
 ```
 
-### Was der Endpunkt leisten muss
+### What the endpoint must do
 
-Die Client-Validierung ist **Komfort, keine Sicherheit** — sie lässt sich mit
-zwei Zeilen in der Konsole umgehen. Der Endpunkt muss selbst prüfen:
+Client-side validation is **convenience, not security** — it can be bypassed
+with two lines in the console. The endpoint must check for itself:
 
-- **Größe serverseitig begrenzen**, unabhängig von `maxSize`.
-- **Typ serverseitig prüfen**, und zwar am Inhalt (Magic Bytes), nicht am
-  vom Client geschickten `Content-Type`.
-- **Dateinamen nicht ungeprüft übernehmen.** `../../etc/passwd` ist ein
-  gültiger Dateiname. Am besten einen eigenen Namen vergeben und den
-  Originalnamen nur als Metadatum speichern.
-- **SVG mit Vorsicht.** SVG kann Skripte enthalten. Wer es zulässt, sollte es
-  serverseitig bereinigen oder von einer separaten Domain ausliefern. Wer es
-  nicht braucht, nimmt `'image/svg+xml'` aus der `accept`-Liste.
-- **Sinnvolle Statuscodes** zurückgeben: `413` für zu groß, `415` für falschen
-  Typ, `401`/`403` für fehlende Berechtigung. Der Fehlertext landet über
-  `onError` beim Host und kann dort angezeigt werden.
+- **Limit the size on the server**, independently of `maxSize`.
+- **Check the type on the server**, based on the content (magic bytes), not on
+  the `Content-Type` sent by the client.
+- **Don't accept file names unchecked.** `../../etc/passwd` is a valid file
+  name. Best assign your own name and store the original name only as
+  metadata.
+- **Be careful with SVG.** SVG can contain scripts. If you allow it, sanitize
+  it on the server or serve it from a separate domain. If you don't need it,
+  remove `'image/svg+xml'` from the `accept` list.
+- **Return meaningful status codes**: `413` for too large, `415` for wrong
+  type, `401`/`403` for missing permission. The error text reaches the host via
+  `onError` and can be displayed there.
 
-### Fehlerbehandlung
+### Error handling
 
-Fehler werden **strukturiert** gemeldet, nicht vorformatiert — der Host kann
-selbst darstellen und übersetzen:
+Errors are reported **structured**, not preformatted — the host can display
+and translate them itself:
 
 ```ts
 interface UploadError {
   kind: 'too-large' | 'type-not-allowed' | 'upload-failed';
   file: File;
-  /** Der ursprüngliche Fehler aus upload(), bei kind === 'upload-failed'. */
+  /** The original error from upload(), when kind === 'upload-failed'. */
   cause?: unknown;
 }
 ```
@@ -833,45 +831,45 @@ interface UploadError {
 ```js
 uploadImage: {
   enabled: true,
-  upload: meinUpload,
-  onError: (fehler) => {
-    switch (fehler.kind) {
+  upload: myUpload,
+  onError: (error) => {
+    switch (error.kind) {
       case 'too-large':
-        toast.fehler(`${fehler.file.name} ist größer als 2 MB.`);
+        toast.error(`${error.file.name} is larger than 2 MB.`);
         break;
       case 'type-not-allowed':
-        toast.fehler(`${fehler.file.name}: nur PNG, JPEG, GIF, WebP, AVIF und SVG.`);
+        toast.error(`${error.file.name}: only PNG, JPEG, GIF, WebP, AVIF and SVG.`);
         break;
       case 'upload-failed':
-        toast.fehler('Der Upload ist fehlgeschlagen. Bitte erneut versuchen.');
-        console.error(fehler.cause);
+        toast.error('The upload failed. Please try again.');
+        console.error(error.cause);
         break;
     }
   },
 }
 ```
 
-**Kein `alert()`.** SupaMDE reißt bei einem Upload-Fehler keinen blockierenden
-Browser-Dialog auf. Default ist die Statusbar-Meldung; wer mehr will, nutzt
+**No `alert()`.** SupaMDE does not pop up a blocking browser dialog on an
+upload error. The default is the status bar message; if you want more, use
 `onError`.
 
-**Timeouts gehören in deine `upload`-Funktion.** Ein `upload()`, das nie
-auflöst, lässt den Platzhalter stehen. Das ist Absicht: SupaMDE kennt deine
-Latenzen nicht, du schon.
+**Timeouts belong in your `upload` function.** An `upload()` that never
+resolves leaves the placeholder in place. That is intentional: SupaMDE doesn't
+know your latencies, you do.
 
 ```js
 upload: async (file) => {
-  const abbruch = new AbortController();
-  const timer = setTimeout(() => abbruch.abort(), 30_000);
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 30_000);
   try {
-    const daten = new FormData();
-    daten.append('datei', file);
-    const res = await fetch('/api/bilder', {
+    const data = new FormData();
+    data.append('file', file);
+    const res = await fetch('/api/images', {
       method: 'POST',
-      body: daten,
-      signal: abbruch.signal,
+      body: data,
+      signal: abort.signal,
     });
-    if (!res.ok) throw new Error(`Upload fehlgeschlagen: ${res.status}`);
+    if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
     return (await res.json()).url;
   } finally {
     clearTimeout(timer);
@@ -879,153 +877,277 @@ upload: async (file) => {
 };
 ```
 
-### Anzeigetexte anpassen
+### Customizing display texts
 
-Platzhalter sind benannt und stehen in geschweiften Klammern; **alle** Vorkommen
-werden ersetzt.
+The upload texts are part of the [localization](#localization). Override them
+via the top-level `texts` option with the `upload.*` keys — not inside
+`uploadImage`:
 
 ```js
-uploadImage: {
-  enabled: true,
-  upload: meinUpload,
+new SupaMDE({
+  element,
   texts: {
-    placeholder: '![Uploading {name}…]()',
-    statusInit: 'Bild hierher ziehen oder einfügen',
-    statusUploading: 'Lade {name} hoch…',
-    statusDone: '{name} hochgeladen',
-    errorTooLarge: '{name} ist zu groß (max. {maxSize}).',
-    errorType: '{name} ist kein unterstütztes Bildformat.',
-    errorFailed: 'Upload von {name} fehlgeschlagen.',
+    'upload.statusInit': 'Drop an image here',
+    'upload.errorTooLarge': '{name} exceeds {maxSize}.',
   },
+  uploadImage: { enabled: true, upload: myUpload },
+});
+```
+
+After a success, the status display falls back to `upload.statusInit` after about
+2 s, after an error after about 6 s. If several uploads run at the same time,
+the fallback happens only once no upload is pending anymore.
+
+### Not included
+
+- **No progress in percent** — the promise API provides no progress events.
+- **No image preview in the editor** — that belongs in the live-preview
+  feature, not in an upload feature.
+- **No image editing** (resizing, cropping, converting). If you need that, do
+  it in your `upload` function before it uploads.
+
+| Method                   | Description                                     |
+| ------------------------ | ----------------------------------------------- |
+| `uploadImages(files)`    | Starts the upload for a `FileList` or `File[]`. |
+| `openBrowseFileWindow()` | Opens the file picker.                          |
+
+## Localization
+
+All texts users see — toolbar tooltips (and their `aria-label`), the status bar
+labels, the autosave status, the image-upload messages, the link/image prompts
+and the column headers of the inserted table template — are **English** by default. German ships with
+the package:
+
+```js
+import SupaMDE, { de } from 'supamde';
+
+new SupaMDE({ element, locale: de });
+```
+
+The language is fixed when the editor is constructed. Custom toolbar buttons
+and custom status bar items bring their own texts.
+
+### Overriding individual texts
+
+`texts` overrides single keys without writing a whole locale and takes
+precedence over `locale`:
+
+```js
+new SupaMDE({
+  element,
+  locale: de,
+  texts: { 'toolbar.bold': 'Fettdruck', 'status.autosaved': 'Zuletzt gesichert: {time}' },
+});
+```
+
+For every key, SupaMDE looks in `texts`, then in `locale.texts`, then in the
+built-in English texts.
+
+### Keys
+
+| Key                      | Placeholders          | Used for                                                                                                    |
+| ------------------------ | --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `toolbar.<action>`       | —                     | Tooltip and `aria-label` of a built-in button, one key per action (`toolbar.bold`, `toolbar.heading-1`, …). |
+| `status.lines`           | `{count}`             | Status bar item `lines` (plural text).                                                                      |
+| `status.words`           | `{count}`             | Status bar item `words` (plural text).                                                                      |
+| `status.autosaved`       | `{time}`              | Status bar item `autosave`.                                                                                 |
+| `upload.placeholder`     | `{name}`              | Placeholder inserted into the document while a file uploads.                                                |
+| `upload.statusInit`      | —                     | Idle text of the `upload-image` status item.                                                                |
+| `upload.statusUploading` | `{name}`              | Upload in progress.                                                                                         |
+| `upload.statusDone`      | `{name}`              | Upload finished.                                                                                            |
+| `upload.errorTooLarge`   | `{name}`, `{maxSize}` | File exceeds `maxSize`.                                                                                     |
+| `upload.errorType`       | `{name}`              | MIME type not in `accept`.                                                                                  |
+| `upload.errorFailed`     | `{name}`              | `upload()` threw or rejected.                                                                               |
+| `prompt.linkUrl`         | —                     | Prompt of the link action (`window.prompt`).                                                                |
+| `prompt.imageUrl`        | —                     | Prompt of the image action (`window.prompt`).                                                               |
+| `table.column`           | `{n}`                 | Column header of the table template (`Column 1`, `Column 2`).                                               |
+
+Placeholders are named and written in curly braces; all occurrences are
+replaced, unknown ones stay as they are.
+
+### Plural texts
+
+Count-dependent texts are objects with [CLDR plural
+forms](https://cldr.unicode.org/index/cldr-spec/plural-rules) (`zero`, `one`,
+`two`, `few`, `many`, `other`). `other` is required and used for every missing
+form:
+
+```js
+texts: { 'status.words': { one: '{count} word', other: '{count} words' } }
+```
+
+### Your own locale
+
+A locale is a plain object with a BCP 47 `code` and the texts. The `Locale`
+type requires every key, so TypeScript reports a forgotten text; at runtime,
+missing keys fall back to English.
+
+```ts
+import SupaMDE, { type Locale } from 'supamde';
+
+const fr: Locale = {
+  code: 'fr',
+  texts: {
+    'toolbar.bold': 'Gras',
+    'status.lines': { one: '{count} ligne', other: '{count} lignes' },
+    // … all other keys
+  },
+};
+
+new SupaMDE({ element, locale: fr });
+```
+
+`code` selects the plural rules (`Intl.PluralRules`) and the time format of the
+autosave status (`en`: `Saved: 02:05 PM`, `de`: `Gespeichert: 14:05`). An
+invalid code logs one warning and falls back to `'en'` for both; the texts stay
+as given.
+
+### Locale from a JSON file
+
+A locale is plain data, so it can live in a JSON file that your bundler
+(Vite, webpack, esbuild, …) imports. Abbreviated here — the file needs all keys:
+
+```json
+{
+  "code": "fr",
+  "texts": {
+    "toolbar.bold": "Gras",
+    "status.lines": { "one": "{count} ligne", "other": "{count} lignes" }
+  }
 }
 ```
 
-Nach Erfolg fällt die Statusanzeige nach etwa 2 s auf `statusInit` zurück, nach
-einem Fehler nach etwa 6 s. Laufen mehrere Uploads gleichzeitig, erfolgt der
-Rückfall erst, wenn kein Upload mehr offen ist.
+```js
+import SupaMDE from 'supamde';
+import fr from './locales/fr.json';
 
-### Nicht enthalten
+new SupaMDE({ element, locale: fr });
+```
 
-- **Kein Fortschritt in Prozent** — die Promise-API liefert keine
-  Fortschritts-Events.
-- **Keine Bildvorschau im Editor** — gehört in die Live-Preview-Ausbaustufe,
-  nicht in ein Upload-Feature.
-- **Keine Bildbearbeitung** (Verkleinern, Zuschneiden, Konvertieren). Wer das
-  braucht, macht es in seiner `upload`-Funktion, bevor sie hochlädt.
+A file with only some keys (and no `code`) works as an override file via
+`texts`:
 
-| Methode                  | Beschreibung                                     |
-| ------------------------ | ------------------------------------------------ |
-| `uploadImages(files)`    | Startet den Upload für `FileList` oder `File[]`. |
-| `openBrowseFileWindow()` | Öffnet die Dateiauswahl.                         |
+```js
+import overrides from './locales/overrides.json';
 
-## API (M1)
+new SupaMDE({ element, locale: de, texts: overrides });
+```
 
-| Methode                          | Beschreibung                                             |
-| -------------------------------- | -------------------------------------------------------- |
-| `value()` / `getValue()`         | Aktuellen Inhalt als String lesen.                       |
-| `value(val)` / `setValue(val)`   | Gesamten Inhalt ersetzen.                                |
-| `updateStatusBar(name, content)` | Inhalt eines Statusbar-Items setzen (M3).                |
-| `toTextArea()`                   | Editor abbauen, ursprüngliche Textarea wiederherstellen. |
-| `codemirror`                     | Die zugrunde liegende CodeMirror-6-`EditorView`.         |
-| `toggleSideBySide()`             | Side-by-Side-Vorschau an/aus.                            |
-| `isSideBySideActive()`           | `true` wenn Side-by-Side aktiv (M4).                     |
-| `toggleFullScreen()`             | Fullscreen-Modus an/aus (M4).                            |
-| `isFullscreenActive()`           | `true` wenn Fullscreen aktiv (M4).                       |
-| `markdown(text)`                 | Text als Markdown mit KaTeX rendern (M4).                |
-| `clearAutosavedValue()`          | Entwurf löschen und Timer stoppen (M5).                  |
-| `isAutosaveActive()`             | `true` wenn Autosave aktiv (M5).                         |
-| `uploadImages(files)`            | Upload für `FileList`/`File[]` starten (M5).             |
-| `openBrowseFileWindow()`         | Dateiauswahl öffnen (M5).                                |
+Copy the full key list from [`en.ts`](https://github.com/svenho/SupaMDE/blob/main/src/i18n/en.ts)
+as a template. In TypeScript, enable `"resolveJsonModule": true`; the imported
+file is then checked against `Locale`, so a missing key is reported at compile
+time. The file is read at build time and passed as an object — SupaMDE does not
+load locale files from a URL at runtime.
 
-## Tastenkürzel (M2)
+## API
 
-Alle Formatierungs-Aktionen sind als CodeMirror-6-Commands umgesetzt und per
-Tastenkürzel erreichbar (`Mod` = `Cmd` auf macOS, `Ctrl` sonst). Seit M3 sind alle
-Aktionen auch über die grafische Toolbar per Klick erreichbar.
+| Method                           | Description                                          |
+| -------------------------------- | ---------------------------------------------------- |
+| `value()` / `getValue()`         | Read the current content as a string.                |
+| `value(val)` / `setValue(val)`   | Replace the entire content.                          |
+| `updateStatusBar(name, content)` | Set the content of a status bar item.                |
+| `toTextArea()`                   | Tear down the editor, restore the original textarea. |
+| `codemirror`                     | The underlying CodeMirror 6 `EditorView`.            |
+| `toggleSideBySide()`             | Side-by-side preview on/off.                         |
+| `isSideBySideActive()`           | `true` if side-by-side is active.                    |
+| `toggleFullScreen()`             | Fullscreen mode on/off.                              |
+| `isFullscreenActive()`           | `true` if fullscreen is active.                      |
+| `markdown(text)`                 | Render text as Markdown with KaTeX.                  |
+| `getEditorMode()`                | Current editor mode (`'source'` or `'live'`).        |
+| `setEditorMode(mode)`            | Set the editor mode.                                 |
+| `toggleEditorMode()`             | Switch between both editor modes.                    |
+| `clearAutosavedValue()`          | Delete the draft and stop the timer.                 |
+| `isAutosaveActive()`             | `true` if autosave is active.                        |
+| `uploadImages(files)`            | Start the upload for `FileList`/`File[]`.            |
+| `openBrowseFileWindow()`         | Open the file picker.                                |
 
-| Kürzel                                | Aktion                                              |
-| ------------------------------------- | --------------------------------------------------- |
-| `Mod-B`                               | Fett                                                |
-| `Mod-I`                               | Kursiv                                              |
-| `Mod-K`                               | Link                                                |
-| `Mod-H` / `Shift-Mod-H`               | Überschrift kleiner / größer                        |
-| `Ctrl-Alt-1` … `Ctrl-Alt-6`           | Überschrift H1 … H6                                 |
-| `Mod-'` / `Ctrl-Alt-Q`                | Blockzitat                                          |
-| `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | Liste (`- `) / nummeriert / Checkliste              |
-| `Shift-Alt-Mod-L`                     | Liste mit Sternchen (`* `)                          |
-| `Mod-Alt-C`                           | Codeblock                                           |
-| `Mod-Alt-I`                           | Bild einfügen                                       |
-| `Mod-E`                               | Blockformat entfernen                               |
-| `Mod-Z` / `Mod-Y`                     | Rückgängig / Wiederholen                            |
-| `Tab` / `Shift-Tab`                   | Zeile ein- / ausrücken                              |
-| `F8`                                  | Vorschau **und** Vollbild gemeinsam an/aus          |
-| `F9`                                  | Side-by-Side-Vorschau an/aus (M4)                   |
-| `F10`                                 | Editor-Modus umschalten (Quelltext ↔ Live-Vorschau) |
-| `F11` / `Mod-Shift-F`                 | Fullscreen-Modus an/aus (M4)                        |
+## Keyboard shortcuts
 
-**Vollbild auf macOS:** `F11` ist dort systemweit belegt (Mission Control bzw.
-„Schreibtisch einblenden“) und erreicht die Seite je nach Systemeinstellung gar
-nicht. Deshalb hört der Vollbildmodus zusätzlich auf `Cmd`+`Shift`+`F` (bzw.
-`Strg`+`Shift`+`F` auf Windows/Linux); der Toolbar-Button zeigt auf macOS
-entsprechend `⌘⇧F` als Kürzel an.
+All formatting actions are implemented as CodeMirror 6 commands and reachable
+via keyboard shortcuts (`Mod` = `Cmd` on macOS, `Ctrl` elsewhere). All actions
+are also available by clicking in the toolbar.
 
-**Links öffnen:** `Cmd`+Klick (macOS) bzw. `Strg`+Klick öffnet den Link unter dem
-Zeiger in einem neuen Tab — in beiden Editor-Modi. Das funktioniert bei
-Markdown-Links (`[Text](url)`), Autolinks (`<url>`) und bei nackten URLs, die
-GFM automatisch erkennt (`https://…`, `http://…`, `www.…` und E-Mail-Adressen
-wie `foo@example.com`). Bei `www.`-Adressen wird `https://` ergänzt, bei
-E-Mail-Adressen `mailto:` — jeweils nur, wenn noch kein Schema im Text steht.
-Nur `http://`-, `https://`- und (nach dieser Ergänzung) `mailto:`-URLs werden
-geöffnet; `https:`/`http:` ohne die beiden Schrägstriche zählen NICHT als
-gültiges Schema. Steht eine E-Mail-ähnliche Zeichenfolge als Teil einer
-größeren URL im Text (z. B. der Benutzerteil in `https://admin@github.com/…`),
-wird sie NICHT zu `mailto:` normalisiert. Cmd/Strg+Klick auf eine solche
-Adresse öffnet dann nichts — niemals ungewollt das Mailprogramm. Hinweis zur
-Parser-Grenze: GFM erkennt nackte URLs/`www.`-Adressen nur kleingeschrieben —
-`HTTPS://EXAMPLE.COM` als Fließtext wird nicht erkannt (Markdown-Links und
-Autolinks sind davon nicht betroffen).
+| Shortcut                              | Action                                     |
+| ------------------------------------- | ------------------------------------------ |
+| `Mod-B`                               | Bold                                       |
+| `Mod-I`                               | Italic                                     |
+| `Mod-K`                               | Link                                       |
+| `Mod-H` / `Shift-Mod-H`               | Heading smaller / bigger                   |
+| `Ctrl-Alt-1` … `Ctrl-Alt-6`           | Heading H1 … H6                            |
+| `Mod-'` / `Ctrl-Alt-Q`                | Blockquote                                 |
+| `Mod-L` / `Mod-Alt-L` / `Shift-Mod-L` | List (`- `) / numbered / checklist         |
+| `Shift-Alt-Mod-L`                     | List with asterisks (`* `)                 |
+| `Mod-Alt-C`                           | Code block                                 |
+| `Mod-Alt-I`                           | Insert image                               |
+| `Mod-E`                               | Remove block formatting                    |
+| `Mod-Z` / `Mod-Y`                     | Undo / redo                                |
+| `Tab` / `Shift-Tab`                   | Indent / outdent line                      |
+| `F8`                                  | Preview **and** fullscreen on/off together |
+| `F9`                                  | Side-by-side preview on/off                |
+| `F10`                                 | Toggle editor mode (source ↔ live preview) |
+| `F11` / `Mod-Shift-F`                 | Fullscreen mode on/off                     |
 
-Steht der Mauszeiger bei gedrücktem `Cmd`/`Strg` über einem klickbaren Link,
-wird er zur Klickhand (`cursor: pointer`) — wie in VS Code.
+**Fullscreen on macOS:** `F11` is taken system-wide there (Mission Control or
+"Show Desktop") and, depending on the system settings, may not reach the page
+at all. That's why fullscreen mode also listens to `Cmd`+`Shift`+`F` (or
+`Ctrl`+`Shift`+`F` on Windows/Linux); accordingly, the toolbar button shows
+`⌘⇧F` as its shortcut on macOS.
 
-`Enter` in einer Listenzeile setzt die Liste fort; in einer leeren Listenzeile
-beendet es sie. `Durchstreichen`, `Inline-Code`, `Trennlinie` und `Tabelle` sind
-über die Toolbar per Klick erreichbar.
+**Opening links:** `Cmd`+click (macOS) or `Ctrl`+click opens the link under the
+pointer in a new tab — in both editor modes. This works for Markdown links
+(`[text](url)`), autolinks (`<url>`) and bare URLs that GFM recognizes
+automatically (`https://…`, `http://…`, `www.…` and email addresses such as
+`foo@example.com`). `https://` is added to `www.` addresses and `mailto:` to
+email addresses — in each case only if no scheme is present in the text yet.
+Only `http://`, `https://` and (after this completion) `mailto:` URLs are
+opened; `https:`/`http:` without the two slashes do NOT count as a valid
+scheme. If an email-like string appears as part of a larger URL in the text
+(e.g. the user part in `https://admin@github.com/…`), it is NOT normalized to
+`mailto:`. Cmd/Ctrl+click on such an address then opens nothing — never the
+mail client unintentionally. Note on a parser limitation: GFM only recognizes
+bare URLs/`www.` addresses in lowercase — `HTTPS://EXAMPLE.COM` in running
+text is not recognized (Markdown links and autolinks are not affected).
 
-`Tab` rückt die aktuelle Zeile um ein `indentUnit` ein, `Shift-Tab` wieder aus —
-unabhängig davon, wo der Cursor in der Zeile steht. Bei einer Selektion gilt das
-für alle berührten Zeilen. So werden Listen verschachtelt: aus `- Punkt` wird
-`  - Punkt`.
+When the mouse pointer is over a clickable link while `Cmd`/`Ctrl` is held, it
+turns into a pointing hand (`cursor: pointer`) — like in VS Code.
 
-> **Hinweis (Barrierefreiheit):** `Tab` wird vom Editor ausnahmslos abgefangen
-> und verlässt ihn nicht. Wer den Editor per Tastatur verlassen will, muss
-> derzeit auf andere Navigation ausweichen.
+`Enter` in a list line continues the list; in an empty list line it ends the
+list. Strikethrough, inline code, horizontal rule and table are available by
+clicking in the toolbar.
 
-> **Hinweis (deutsche Mac-Tastatur):** `Mod-'` (Blockzitat) liegt hier auf
-> `Cmd+Shift+#` und wird je nach Browser nicht zuverlässig erkannt. Nutze
-> stattdessen das layout-unabhängige `Ctrl-Alt-Q`.
+`Tab` indents the current line by one `indentUnit`, `Shift-Tab` outdents it —
+regardless of where the cursor is in the line. With a selection, this applies
+to all touched lines. This is how lists are nested: `- item` becomes
+`  - item`.
 
-### Eigene Tastenkürzel
+> **Note (accessibility):** `Tab` is always captured by the editor and does not
+> leave it. To leave the editor via keyboard, you currently have to use other
+> navigation.
 
-Über `extraKeys` lassen sich beliebige CodeMirror-6-`KeyBinding`s ergänzen.
-CM6 wertet Tastenkürzel in Registrierungsreihenfolge aus — der erste
-passende Eintrag gewinnt. `extraKeys` steht **vor** den SupaMDE-Defaults,
-wodurch sich sowohl neue Kürzel als auch Überschreibungen bestehender
-Defaults gleich verhalten:
+> **Note (German Mac keyboard):** `Mod-'` (blockquote) is on `Cmd+Shift+#`
+> there and, depending on the browser, is not recognized reliably. Use the
+> layout-independent `Ctrl-Alt-Q` instead.
+
+### Custom key bindings
+
+`extraKeys` lets you add any CodeMirror 6 `KeyBinding`s. CM6 evaluates key
+bindings in registration order — the first matching entry wins. `extraKeys`
+comes **before** the SupaMDE defaults, so new shortcuts and overrides of
+existing defaults behave the same way:
 
 ```ts
 import SupaMDE, { type KeyBinding } from 'supamde';
 import { insertNewlineAndIndent } from '@codemirror/commands';
 
 const extraKeys: KeyBinding[] = [
-  // Override: ersetzt das eingebaute Mod-B (fett)
+  // Override: replaces the built-in Mod-B (bold)
   {
     key: 'Mod-b',
     run: (view) => {
-      /* eigene Aktion */ return true;
+      /* custom action */ return true;
     },
   },
-  // Neu: bisher unbelegter Key
+  // New: previously unbound key
   { key: 'Mod-Enter', run: insertNewlineAndIndent },
 ];
 
@@ -1035,72 +1157,70 @@ const editor = new SupaMDE({
 });
 ```
 
-## Formatierung anpassen
+## Customizing the formatting
 
-Der Editor formatiert den Markdown-Quelltext live (easyMDE-„Quasi-WYSIWYG":
-die Zeichen bleiben sichtbar, werden aber gestylt). Die Darstellung ist
-**tag-basiert**: Der Lezer-Parser vergibt jedem Element ein Syntax-Tag
-(`heading1`, `strong`, `emphasis`, `link` …), und ein `HighlightStyle` weist
-jedem Tag CSS-Eigenschaften zu. Die Regeln stehen in
-[`src/editor/highlight.ts`](src/editor/highlight.ts), die Farbwerte zentral in
-[`src/editor/tokens.ts`](src/editor/tokens.ts).
+The editor formats the Markdown source live (easyMDE-style "quasi-WYSIWYG":
+the characters stay visible but are styled). The rendering is **tag-based**:
+the Lezer parser assigns a syntax tag to each element (`heading1`, `strong`,
+`emphasis`, `link` …), and a `HighlightStyle` assigns CSS properties to each
+tag. The rules live in [`src/editor/highlight.ts`](src/editor/highlight.ts),
+the color values centrally in [`src/editor/tokens.ts`](src/editor/tokens.ts).
 
-Eine Highlight-Regel ist ein Objekt aus CSS-Eigenschaften (camelCase):
+A highlight rule is an object of CSS properties (camelCase):
 
 ```typescript
 { tag: t.heading2, fontSize: '1.4em', fontWeight: 'bold' }
 ```
 
-**Beispiel: alle Überschriften der zweiten Ebene (`## …`) rot.** Zuerst den
-Farbwert in `tokens.ts` ergänzen (eine Quelle für alle Farben):
+**Example: all second-level headings (`## …`) in red.** First add the color
+value in `tokens.ts` (one source for all colors):
 
 ```typescript
 export const colors = {
   quote: '#6a737d',
   link: '#0366d6',
   border: '#ddd',
-  heading2: '#d73a49', // neu
+  heading2: '#d73a49', // new
 } as const;
 ```
 
-Dann in `highlight.ts` die `heading2`-Regel um `color` erweitern:
+Then extend the `heading2` rule in `highlight.ts` with `color`:
 
 ```typescript
 { tag: t.heading2, fontSize: '1.4em', fontWeight: 'bold', color: colors.heading2 },
 ```
 
-Nach `npm run build` (bzw. im laufenden `npm run dev`) wird jede `## `-Zeile rot
-dargestellt. Analog lassen sich alle anderen Tags anpassen — z. B. `t.strong`
-(Fettdruck), `t.emphasis` (kursiv) oder `t.link`.
+After `npm run build` (or in a running `npm run dev`), every `## ` line is
+shown in red. All other tags can be adjusted the same way — e.g. `t.strong`
+(bold), `t.emphasis` (italic) or `t.link`.
 
-> **Tag-basiert, nicht positionsabhängig:** `t.heading2` trifft **jede**
-> Überschrift der zweiten Ebene, nicht „die zweite Überschrift im Dokument".
-> Eine positionsabhängige Formatierung (z. B. nur die zweite Überschrift
-> unabhängig vom Level) wäre keine Highlight-Regel, sondern bräuchte eine
-> eigene CodeMirror-Decoration.
+> **Tag-based, not position-based:** `t.heading2` matches **every**
+> second-level heading, not "the second heading in the document". Position-based
+> formatting (e.g. only the second heading regardless of level) would not be a
+> highlight rule but would need its own CodeMirror decoration.
 
-## Entwicklung
+## Development
 
 ```bash
 npm install
-npm run dev          # Vite-Dev-Server (example/)
-npm run test:run     # Unit-Tests in jsdom (schnell, ohne Browser)
-npm run test:browser # E2E-Tests in Chromium (braucht Browser-Binary)
-npm run test:all     # beide Testebenen (braucht Browser-Binary)
-npm run build        # Library-Build (ESM-only) + Typdeklarationen
+npm run dev          # Vite dev server (example/)
+npm run test:run     # unit tests in jsdom (fast, no browser)
+npm run test:browser # E2E tests in Chromium (needs a browser binary)
+npm run test:all     # both test levels (needs a browser binary)
+npm run build        # library build (ESM-only) + type declarations
 npm run lint         # ESLint
-npm run typecheck    # TypeScript ohne Emit (src + test)
+npm run typecheck    # TypeScript without emit (src + test)
 ```
 
-Die Browser-Tests prüfen, was jsdom nicht kann — Layout, Scroll-Geometrie und
-die nativen Drag-&-Drop-APIs. Sie brauchen ein Chromium-Binary:
+The browser tests check what jsdom can't — layout, scroll geometry and the
+native drag & drop APIs. They need a Chromium binary:
 
 ```bash
 npx playwright install chromium
 ```
 
-`npm test` läuft bewusst ohne Browser, damit der schnelle Lauf schnell bleibt.
+`npm test` deliberately runs without a browser so the fast run stays fast.
 
-## Lizenz
+## License
 
 MIT © Sven Deginther

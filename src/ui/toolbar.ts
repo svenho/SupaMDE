@@ -4,6 +4,8 @@ import { resolveToolbar, type ResolvedToolbarItem, type ToolbarOption } from './
 import { renderIcon } from './icons';
 import { formatShortcut } from './shortcut-label';
 import type { SupaLike } from './actions';
+import { createTranslator, type Translator } from '../i18n/translator';
+import type { SimpleTextKey } from '../i18n/types';
 
 /** Ein gerendertes Toolbar-Widget mit reaktivem Aktiv-Zustand. */
 export interface Toolbar {
@@ -50,6 +52,7 @@ function buildItem(
   view: EditorView,
   item: ResolvedToolbarItem,
   editor: unknown,
+  translator: Translator,
   activeButtons: ActiveButton[],
   viewButtons: ViewButton[],
 ): HTMLElement {
@@ -64,9 +67,10 @@ function buildItem(
 
   if (item.kind === 'builtin') {
     const { action, name } = item;
-    const label = action.shortcut
-      ? `${action.title} (${formatShortcut(action.shortcut)})`
-      : action.title;
+    // Der Cast ist sicher: i18n/__tests__/locales.test.ts stellt sicher, dass jede
+    // Built-in-Aktion einen `toolbar.*`-Schlüssel hat.
+    const title = translator.t(`toolbar.${name}` as SimpleTextKey);
+    const label = action.shortcut ? `${title} (${formatShortcut(action.shortcut)})` : title;
     btn.title = label;
     btn.setAttribute('aria-label', label);
     btn.dataset.action = name;
@@ -108,11 +112,13 @@ function buildItem(
 /**
  * Erzeugt die Toolbar aus der `toolbar`-Option. `null` bei `false`.
  * `editor` ist die SupaMDE-Instanz, die Custom-Buttons als action-Argument bekommen.
+ * `translator` liefert die Titel der Built-in-Buttons; ohne Angabe englisch.
  */
 export function createToolbar(
   view: EditorView,
   option: ToolbarOption | undefined,
   editor: unknown,
+  translator: Translator = createTranslator(),
 ): Toolbar | null {
   const items = resolveToolbar(option);
   if (items === null) return null;
@@ -123,7 +129,7 @@ export function createToolbar(
   const activeButtons: ActiveButton[] = [];
   const viewButtons: ViewButton[] = [];
   for (const item of items) {
-    dom.appendChild(buildItem(view, item, editor, activeButtons, viewButtons));
+    dom.appendChild(buildItem(view, item, editor, translator, activeButtons, viewButtons));
   }
 
   // Warnt höchstens einmal pro Toolbar-Instanz (nicht bei jedem update()-Tick).
@@ -149,10 +155,10 @@ export function createToolbar(
         // view-Buttons dauerhaft und fehlerfrei "totlaufen" lässt.
         supaLikeWarned = true;
         console.warn(
-          'SupaMDE: Toolbar enthält view-Buttons (preview-fullscreen/side-by-side/' +
-            'fullscreen/editor-mode), aber die übergebene Editor-Instanz erfüllt ' +
-            'SupaLike nicht (toggleSideBySide/toggleFullScreen/isSideBySideActive/' +
-            'isFullscreenActive) — Aktiv-Zustand dieser Buttons wird nicht aktualisiert.',
+          'SupaMDE: toolbar contains view buttons (preview-fullscreen/side-by-side/' +
+            'fullscreen/editor-mode), but the given editor instance does not satisfy ' +
+            'SupaLike (toggleSideBySide/toggleFullScreen/isSideBySideActive/' +
+            'isFullscreenActive) — the active state of these buttons is not updated.',
         );
       }
     }

@@ -63,7 +63,7 @@ export function hasIcon(name: string): boolean {
 export function renderIcon(name: string): SVGElement {
   const data = ICONS[name];
   if (!data) {
-    throw new Error(`SupaMDE: unbekanntes Icon "${name}".`);
+    throw new Error(`SupaMDE: unknown icon "${name}".`);
   }
   return createElement(data);
 }

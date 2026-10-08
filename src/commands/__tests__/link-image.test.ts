@@ -1,12 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
-import { EditorSelection, EditorState } from '@codemirror/state';
+import { EditorSelection, EditorState, type Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { insertLink, insertImage, drawLink, drawImage } from '../link-image';
+import { translatorFacet } from '../../i18n/facet';
+import { createTranslator } from '../../i18n/translator';
+import { de } from '../../i18n/de';
 
-function viewWith(doc: string, anchor = 0, head = anchor): EditorView {
+function viewWith(
+  doc: string,
+  anchor = 0,
+  head = anchor,
+  extensions: Extension[] = [],
+): EditorView {
   const state = EditorState.create({
     doc,
     selection: EditorSelection.single(anchor, head),
+    extensions,
   });
   return new EditorView({ state });
 }
@@ -85,6 +94,37 @@ describe('drawImage (Wrapper)', () => {
     const stub = vi.spyOn(window, 'prompt').mockReturnValue(null);
     expect(drawImage(view)).toBe(false);
     expect(view.state.doc.toString()).toBe('alt');
+    stub.mockRestore();
+    view.destroy();
+  });
+});
+
+describe('Prompt-Texte (i18n)', () => {
+  it('drawLink fragt ohne Translator englisch', () => {
+    const view = viewWith('Text', 0, 4);
+    const stub = vi.spyOn(window, 'prompt').mockReturnValue(null);
+    drawLink(view);
+    expect(stub).toHaveBeenCalledWith('Link URL:', 'https://');
+    stub.mockRestore();
+    view.destroy();
+  });
+
+  it('drawImage fragt ohne Translator englisch', () => {
+    const view = viewWith('alt', 0, 3);
+    const stub = vi.spyOn(window, 'prompt').mockReturnValue(null);
+    drawImage(view);
+    expect(stub).toHaveBeenCalledWith('Image URL:', 'https://');
+    stub.mockRestore();
+    view.destroy();
+  });
+
+  it('beide Prompts folgen dem Translator im State', () => {
+    const view = viewWith('x', 0, 1, [translatorFacet.of(createTranslator(de))]);
+    const stub = vi.spyOn(window, 'prompt').mockReturnValue(null);
+    drawLink(view);
+    drawImage(view);
+    expect(stub).toHaveBeenNthCalledWith(1, 'Link-URL:', 'https://');
+    expect(stub).toHaveBeenNthCalledWith(2, 'Bild-URL:', 'https://');
     stub.mockRestore();
     view.destroy();
   });

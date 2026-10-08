@@ -5,18 +5,9 @@ import {
   createIdSource,
   placeholderRange,
 } from './upload-placeholder';
-import { formatText, formatBytes } from '../util/text-format';
-
-/** Die Anzeigetexte des Bild-Uploads. Platzhalter: `{name}`, `{maxSize}`. */
-export interface UploadTexts {
-  placeholder: string;
-  statusInit: string;
-  statusUploading: string;
-  statusDone: string;
-  errorTooLarge: string;
-  errorType: string;
-  errorFailed: string;
-}
+import { formatBytes } from '../util/text-format';
+import { createTranslator, type Translator } from '../i18n/translator';
+import type { SimpleTextKey } from '../i18n/types';
 
 /**
  * Ein Upload-Fehler — strukturiert statt vorformatiert, damit der Host selbst
@@ -39,8 +30,6 @@ export interface UploadImageOptions {
   maxSize?: number;
   /** Erlaubte MIME-Typen. */
   accept?: string[];
-  /** Überschreibt einzelne Anzeigetexte. */
-  texts?: Partial<UploadTexts>;
   /** Wird bei jedem Fehler gerufen. Default: keiner (nur Statusbar). */
   onError?: (error: UploadError) => void;
 }
@@ -74,26 +63,17 @@ export const DEFAULT_UPLOAD_ACCEPT: string[] = [
   'image/svg+xml',
 ];
 
-/** Die Default-Anzeigetexte. */
-export const DEFAULT_UPLOAD_TEXTS: UploadTexts = {
-  placeholder: '![Uploading {name}…]()',
-  statusInit: 'Bild hierher ziehen oder einfügen',
-  statusUploading: 'Lade {name} hoch…',
-  statusDone: '{name} hochgeladen',
-  errorTooLarge: '{name} ist zu groß (max. {maxSize}).',
-  errorType: '{name} ist kein unterstütztes Bildformat.',
-  errorFailed: 'Upload von {name} fehlgeschlagen.',
-};
-
 /** Anzeigedauer der Erfolgsmeldung, bevor auf `statusInit` zurückgefallen wird. */
 export const STATUS_DONE_MS = 2000;
 /** Anzeigedauer der Fehlermeldung. Länger, weil sie gelesen werden muss. */
 export const STATUS_ERROR_MS = 6000;
 
-/** Füllt fehlende Texte mit den Defaults auf. Mutiert `texts` nicht. */
-export function resolveUploadTexts(texts?: Partial<UploadTexts>): UploadTexts {
-  return { ...DEFAULT_UPLOAD_TEXTS, ...texts };
-}
+/** Fehlerart → Textschlüssel der Statusmeldung. */
+const ERROR_TEXT_KEYS = {
+  'too-large': 'upload.errorTooLarge',
+  'type-not-allowed': 'upload.errorType',
+  'upload-failed': 'upload.errorFailed',
+} as const satisfies Record<UploadError['kind'], SimpleTextKey>;
 
 /**
  * Die Markdown-Textform eines fertigen Bildes.
@@ -126,15 +106,19 @@ export function validateFile(
   return null;
 }
 
+/**
+ * Erzeugt den Uploader. `translator` liefert Platzhalter und Statusmeldungen
+ * (`upload.*`-Schlüssel); ohne Angabe englisch.
+ */
 export function createImageUploader(
   view: EditorView,
   options: UploadImageOptions,
   hooks: { setStatus(text: string): void },
+  translator: Translator = createTranslator(),
 ): ImageUploader {
   const enabled = options.enabled ?? false;
   const maxSize = options.maxSize ?? DEFAULT_UPLOAD_MAX_SIZE;
   const accept = options.accept ?? DEFAULT_UPLOAD_ACCEPT;
-  const texts = resolveUploadTexts(options.texts);
   /** Eigene ID-Sequenz pro Uploader — kein geteilter Modulzustand. */
   const nächsteId = createIdSource();
 
@@ -156,19 +140,13 @@ export function createImageUploader(
     if (rückfallNach === undefined) return;
     rückfallTimer = setTimeout(() => {
       rückfallTimer = null;
-      if (offen === 0) hooks.setStatus(texts.statusInit);
+      if (offen === 0) hooks.setStatus(translator.t('upload.statusInit'));
     }, rückfallNach);
   };
 
   const meldeFehler = (kind: UploadError['kind'], file: File, cause?: unknown): void => {
     const werte = { name: file.name, maxSize: formatBytes(maxSize) };
-    const vorlage =
-      kind === 'too-large'
-        ? texts.errorTooLarge
-        : kind === 'type-not-allowed'
-          ? texts.errorType
-          : texts.errorFailed;
-    zeige(formatText(vorlage, werte), STATUS_ERROR_MS);
+    zeige(translator.t(ERROR_TEXT_KEYS[kind], werte), STATUS_ERROR_MS);
     options.onError?.({ kind, file, cause });
   };
 
@@ -181,7 +159,7 @@ export function createImageUploader(
     }
 
     const id = nächsteId();
-    const text = formatText(texts.placeholder, { name: file.name });
+    const text = translator.t('upload.placeholder', { name: file.name });
     // Eine bestehende Selektion wird ERSETZT, nicht umschlossen — gleiches
     // Verhalten wie beim Einfügen von Text. Bei mehreren Dateien setzt die
     // vorige Einfügung den Cursor hinter sich, sodass die zweite Datei dahinter
@@ -197,7 +175,7 @@ export function createImageUploader(
     });
 
     offen += 1;
-    zeige(formatText(texts.statusUploading, { name: file.name }));
+    zeige(translator.t('upload.statusUploading', { name: file.name }));
 
     // `Promise.resolve().then(...)` statt eines direkten Aufrufs: wirft der
     // Host-Code in `upload()` SYNCHRON statt eine abgelehnte Promise zu
@@ -221,7 +199,7 @@ export function createImageUploader(
             changes: { from: bereich.from, to: bereich.to, insert: imageMarkdown(file.name, url) },
             effects: removePlaceholder.of(id),
           });
-          zeige(formatText(texts.statusDone, { name: file.name }), STATUS_DONE_MS);
+          zeige(translator.t('upload.statusDone', { name: file.name }), STATUS_DONE_MS);
         },
         (ursache: unknown) => {
           offen -= 1;

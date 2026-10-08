@@ -12,10 +12,7 @@ afterEach(() => {
 });
 
 /** Baut Autosave über einem Doc-String, den die Hooks lesen und schreiben. */
-function setup(
-  doc: string,
-  options: Partial<AutosaveOptions> & { storage?: SupaStorage } = {},
-) {
+function setup(doc: string, options: Partial<AutosaveOptions> & { storage?: SupaStorage } = {}) {
   let wert = doc;
   const onSaved = vi.fn();
   const storage = options.storage ?? createMemoryStorage();
@@ -239,6 +236,7 @@ describe('createAutosave — inaktive Fälle', () => {
     await vi.advanceTimersByTimeAsync(5000);
     expect(s.autosave.isActive()).toBe(false);
     expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith('SupaMDE: autosave.key is required — autosave stays off.');
   });
 
   it('deaktiviert sich still, wenn der Speicher nicht verfügbar ist', async () => {
