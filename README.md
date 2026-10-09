@@ -1223,4 +1223,4 @@ npx playwright install chromium
 
 ## License
 
-MIT © Sven Deginther
+MIT © svenho
